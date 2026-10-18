@@ -4340,6 +4340,7 @@ namespace CivOne
 				new Pyramids(),              // government flexibility
 				new AdamSmithsTradingHouse(),// building upkeep relief
 				new HooverDam(),             // industry without pollution plants
+				new KyotoAccord(),           // later warming, for everyone
 				new CureForCancer()          // +1 happy in every city
 			};
 			if (Player.RepublicDemocratic) power.Insert(3, new WomensSuffrage());
@@ -5301,6 +5302,9 @@ namespace CivOne
 					Consider(new MassTransit());
 				if (Player.HasAdvance<Recycling>()      && !city.HasBuilding<RecyclingCenter>())
 					Consider(new RecyclingCenter());
+				if (Player.HasAdvance<Recycling>()      && !city.HasBuilding<CarbonCapture>()
+				    && city.CityTiles.Any(t => t.Pollution))
+					Consider(new CarbonCapture());
 				if (Player.HasAdvance<Electronics>()     && !city.HasBuilding<HydroPlant>()
 				    && !city.HasBuilding<NuclearPlant>() && !city.HasBuilding<PowerPlant>())
 					Consider(new HydroPlant());

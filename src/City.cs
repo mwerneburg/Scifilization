@@ -269,7 +269,7 @@ namespace CivOne
 		public bool HasDomeWonder() => _wonders.Any(w => w is Wonders.IDomeComponent);
 
 		// True when a friendly city on the same continent holds the Hoover Dam
-		private bool HooverDamActive => Tile is not null && Game.Started
+		internal bool HooverDamActive => Tile is not null && Game.Started
 			&& Map.ContentCities(Tile.ContinentId).Any(c => c.Owner == Owner && c.HasWonder<HooverDam>());
 
 		public int HappyCitizens => Citizens.Count(c => c == Citizen.HappyMale || c == Citizen.HappyFemale);
@@ -2103,7 +2103,7 @@ namespace CivOne
 			InvalidateCache();
 		}
 
-		private IEnumerable<ITile> CityTiles
+		internal IEnumerable<ITile> CityTiles
 		{
 			get
 			{
@@ -2295,6 +2295,17 @@ namespace CivOne
 				GameTask.Enqueue(Show.EventArt("pollution", $"Pollution in {Name}!"));
 		}
 
+		// Carbon Capture takes one polluted tile off the ground a turn; after ExecutePollution,
+		// so a city making less than one a turn ends every turn clean.
+		private void ExecuteCarbonCapture()
+		{
+			if (!HasBuilding<CarbonCapture>()) return;
+			ITile? tile = CityTiles.FirstOrDefault(t => t.Pollution);
+			if (tile is null) return;
+			tile.Pollution = false;
+			InvalidateCache();
+		}
+
 		private void ExecuteMeltdown()
 		{
 			// Destroy the Nuclear Plant
@@ -2345,6 +2356,7 @@ namespace CivOne
 			InvalidateCache();
 			UpdateResources();
 			ExecutePollution();
+			ExecuteCarbonCapture();
 			PruneWorthlessRoutes();
 
 			// Cache expensive per-city computations once for the whole turn.

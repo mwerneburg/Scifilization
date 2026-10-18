@@ -55,5 +55,6 @@ namespace CivOne.Enums
 		TheVessel                = 42,
 		TheReprocessor           = 43,
 		Starlab                  = 44,
+		KyotoAccord              = 45,
 	}
 }

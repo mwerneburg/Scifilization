@@ -2073,20 +2073,36 @@ namespace CivOne
 			Log($"[warming] incident {GlobalWarmingCount}: -{penalty} points to every civilization");
 		}
 
+		// The Kyoto Accord: half again as much smoke before the climate turns, for everyone.
+		private const int KyotoThresholdPercent = 150;
+
+		// How many polluted tiles the world can carry before the next warming event. One
+		// number, read by HandleGlobalWarming and the Environmental Advisor alike, so the
+		// page cannot promise a margin the climate does not honour.
+		internal int WarmingThreshold
+		{
+			get
+			{
+				// Civ 1's 8 + 2n was counted against a fixed 80x50 map. Ours is sized at
+				// generation: an epic 320x200 map is 64000 tiles, so the unscaled constant
+				// fired a planet-wide climate event on 14 polluted tiles out of 64000 —
+				// roughly sixteen times too eagerly. Measured on a turn-551 save: three
+				// warming events by 1996 AD with only 8 tiles smoking and one civ (in
+				// Anarchy) responsible; the icecaps were down to 0.3% of land and swamp had
+				// become the second-commonest terrain at 14.4%.
+				int threshold = (8 + (GlobalWarmingCount * 2)) * Map.WIDTH * Map.HEIGHT / 4000;
+				// While the Reprocessor runs, the same smoke goes twice as far — and the
+				// machines never signed the Accord, so it buys nothing against them.
+				if (ReprocessorActive) return Math.Max(1, threshold * ReprocessorThresholdPercent / 100);
+				if (WonderBuilt<Wonders.KyotoAccord>()) threshold = threshold * KyotoThresholdPercent / 100;
+				return threshold;
+			}
+		}
+
 		internal void HandleGlobalWarming()
 		{
 			int polluted = Map.AllTiles().Count(t => t.Pollution);
-			// Civ 1's 8 + 2n was counted against a fixed 80x50 map. Ours is sized at
-			// generation: an epic 320x200 map is 64000 tiles, so the unscaled constant
-			// fired a planet-wide climate event on 14 polluted tiles out of 64000 —
-			// roughly sixteen times too eagerly. Measured on a turn-551 save: three
-			// warming events by 1996 AD with only 8 tiles smoking and one civ (in
-			// Anarchy) responsible; the icecaps were down to 0.3% of land and swamp had
-			// become the second-commonest terrain at 14.4%.
-			int threshold = (8 + (GlobalWarmingCount * 2)) * Map.WIDTH * Map.HEIGHT / 4000;
-			// While the Reprocessor runs, the same smoke goes twice as far.
-			if (ReprocessorActive) threshold = Math.Max(1, threshold * ReprocessorThresholdPercent / 100);
-			if (polluted < threshold) return;
+			if (polluted < WarmingThreshold) return;
 
 			GlobalWarmingCount++;
 
