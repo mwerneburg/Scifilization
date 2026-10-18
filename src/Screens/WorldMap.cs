@@ -27,15 +27,26 @@ namespace CivOne.Screens
 	{
 		private bool _update = true;
 
+		// Tab flips to a political view, after the original's replay map: flat land, and
+		// every known city a 3x3 block of its owner's colour.
+		private bool _political;
+
 		protected override bool HasUpdate(uint gameTick)
 		{
-			if (_update) return false;
+			if (!_update) return false;
 			_update = false;
 			return true;
 		}
 
 		public override bool KeyDown(KeyboardEventArgs args)
 		{
+			if (args.Key == Key.Tab)
+			{
+				_political = !_political;
+				Draw();
+				_update = true;
+				return true;
+			}
 			Destroy();
 			return true;
 		}
@@ -54,11 +65,22 @@ namespace CivOne.Screens
 			Palette = Common.DefaultPalette;
 			using (Palette cassette = CassetteTheme.CreatePalette())
 				Palette.MergePalette(cassette, 1, 18);
+			Draw();
+		}
+
+		private void Draw()
+		{
 			this.Clear(CassetteTheme.BG0);
 
 			int px = Math.Max(1, Math.Min(Width / Map.WIDTH, Height / Map.HEIGHT));
 			int ox = (Width - Map.WIDTH * px) / 2;
 			int oy = (Height - Map.HEIGHT * px) / 2;
+
+			if (_political)
+			{
+				DrawPolitical(px, ox, oy);
+				return;
+			}
 
 			for (int x = 0; x < Map.WIDTH; x++)
 			for (int y = 0; y < Map.HEIGHT; y++)
@@ -86,6 +108,43 @@ namespace CivOne.Screens
 					}
 				}
 			}
+			DrawHint("[ TAB political ]");
+		}
+
+		private void DrawPolitical(int px, int ox, int oy)
+		{
+			bool Known(int x, int y) => Settings.RevealWorld || Human.Visible(x, y);
+
+			for (int x = 0; x < Map.WIDTH; x++)
+			for (int y = 0; y < Map.HEIGHT; y++)
+			{
+				if (!Known(x, y)) continue;
+				byte colour = Map[x, y].Type == Terrain.Ocean ? CassetteTheme.OCEAN : CassetteTheme.BG3;
+				this.FillRectangle(ox + x * px, oy + y * px, px, px, colour);
+			}
+
+			// Clipped to known tiles, so a city's block doesn't reveal the fog around it.
+			foreach (City city in Game.GetCities())
+			{
+				if (city.Size == 0 || !Known(city.X, city.Y)) continue;
+				byte colour = Common.ColourLight[city.Owner];
+				for (int dy = -1; dy <= 1; dy++)
+				for (int dx = -1; dx <= 1; dx++)
+				{
+					int x = (city.X + dx + Map.WIDTH) % Map.WIDTH, y = city.Y + dy;
+					if (y < 0 || y >= Map.HEIGHT || !Known(x, y)) continue;
+					this.FillRectangle(ox + x * px, oy + y * px, px, px, colour);
+				}
+			}
+			DrawHint("[ TAB terrain ]");
+		}
+
+		private void DrawHint(string text)
+		{
+			int fh = Resources.GetFontHeight(0);
+			int w = Resources.GetTextSize(0, text).Width;
+			this.FillRectangle((Width - w) / 2 - 2, Height - fh - 3, w + 4, fh + 3, CassetteTheme.BG0)
+				.DrawText(text, 0, CassetteTheme.INK_LOW, Width / 2, Height - fh - 1, TextAlign.Center);
 		}
 	}
 }
