@@ -167,6 +167,21 @@ namespace CivOne.Tests
 				p => p.Civilization is Civilizations.Arab);
 		}
 
+		// ...without seating anyone twice. The refill that kept the Arabs out took any unused
+		// extended civ, including one whose own slot was still ahead: two Maori, in slots 11
+		// and 14, each running a full empire under one name.
+		[Theory]
+		[InlineData((short)1234)]
+		[InlineData((short)4321)]
+		[InlineData((short)999)]
+		public void NoCivIsSeatedTwiceAtFullCompetition(short seed)
+		{
+			Game g = AnEarthGame(seed, competition: 17);
+
+			int[] ids = g.Players.Where(p => p is not null).Select(p => (int)p.Civilization.Id).ToArray();
+			Assert.Equal(ids.Length, ids.Distinct().Count());
+		}
+
 		// ...and the slots are still all filled. The exclusion must not be bought by leaving a
 		// hole: every slot is indexed directly throughout the engine.
 		[Fact]

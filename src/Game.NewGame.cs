@@ -500,14 +500,24 @@ namespace CivOne
 				// Any-slot seating is safe here for the same reason the extended refill is:
 				// only civs that never respawn are eligible, so nothing later writes to a
 				// slot it does not own.
+				//
+				// The same trap the extended refill guards against: a civ whose own slot is
+				// still ahead gets seated twice. Observed as two Maori, in slots 11 and 14.
+				// At full competition the Earth map has nine extended civs for ten extended
+				// slots, so this refill can take no extended civ at all. It takes an original
+				// civ whose buddy is already seated instead. Such a civ never respawns: the
+				// buddy respawn needs its buddy neither alive nor destroyed.
 				if (civs.Length == 0)
 				{
 					var seated = new System.Collections.Generic.HashSet<int>(
 						_players.Where(p => p is not null).Select(p => (int)p.Civilization.Id));
 					civs = Common.Civilizations
-						.Where(civ => (int)civ.Id >= 17 && (int)civ.Id <= 26
-						           && Selectable(civ) && !EarthMapExcludes(civ)
-						           && !seated.Contains((int)civ.Id))
+						.Where(civ => Selectable(civ) && !EarthMapExcludes(civ)
+						           && !seated.Contains((int)civ.Id)
+						           && ((int)civ.Id >= 17 && (int)civ.Id <= 26
+						                   && (civ.PreferredPlayerNumber <= i || civ.PreferredPlayerNumber > competition)
+						               || (int)civ.Id >= 1 && (int)civ.Id <= 14
+						                   && seated.Contains((int)civ.Id >= 8 ? (int)civ.Id - 7 : (int)civ.Id + 7)))
 						.ToArray();
 				}
 
