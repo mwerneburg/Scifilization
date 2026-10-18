@@ -54,7 +54,14 @@ namespace CivOne.Screens
 			return dst;
 		}
 
-		// Median-cut quantization: RGBA pixels → 256-colour indexed Picture.
+		// The low indices are black and the Cassette theme, not image colours. Credits
+		// draws the splash behind the main menu, clears its margins with index 0 and paints
+		// the menu box and text with fixed low indices. Taken from the image, those landed on
+		// whatever the median cut produced: black and orange for the old Civ91 splash by
+		// luck, all yellow for the Scifilization one, so the menu vanished into its margins.
+		private const int Reserved = CassetteTheme.OCEAN + 1;
+
+		// Median-cut quantization: RGBA pixels → indexed Picture, image colours above Reserved.
 		private static Picture Quantize(byte[] rgba, int w, int h)
 		{
 			int n = w * h;
@@ -67,7 +74,7 @@ namespace CivOne.Screens
 
 			var buckets = new List<List<PixelEntry>> { pixels };
 
-			while (buckets.Count < 256)
+			while (buckets.Count < 256 - Reserved)
 			{
 				int bestIdx = -1, bestRange = 0;
 				for (int i = 0; i < buckets.Count; i++)
@@ -111,15 +118,18 @@ namespace CivOne.Screens
 			}
 
 			var palette = new Colour[256];
+			palette[0] = new Colour(0, 0, 0);
+			using (Palette cassette = CassetteTheme.CreatePalette())
+				for (int i = 1; i < Reserved; i++) palette[i] = cassette[i];
 			var indexed = new byte[n];
-			for (int bi = 0; bi < buckets.Count && bi < 256; bi++)
+			for (int bi = 0; bi < buckets.Count && bi < 256 - Reserved; bi++)
 			{
 				var b = buckets[bi];
 				long rs = 0, gs = 0, bs2 = 0;
 				for (int j = 0; j < b.Count; j++) { rs += b[j].R; gs += b[j].G; bs2 += b[j].B; }
 				int cnt = b.Count;
-				palette[bi] = new Colour((byte)(rs / cnt), (byte)(gs / cnt), (byte)(bs2 / cnt));
-				for (int j = 0; j < b.Count; j++) indexed[b[j].Idx] = (byte)bi;
+				palette[Reserved + bi] = new Colour((byte)(rs / cnt), (byte)(gs / cnt), (byte)(bs2 / cnt));
+				for (int j = 0; j < b.Count; j++) indexed[b[j].Idx] = (byte)(Reserved + bi);
 			}
 
 			var bytemap = new Bytemap(w, h);

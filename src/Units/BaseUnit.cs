@@ -423,7 +423,7 @@ namespace CivOne.Units
 						// is the path that was missed.
 						if (Game.GetPlayer(Owner).Civilization is Civilizations.TheOthers
 						                                       or Civilizations.TheThing
-						                                       or Civilizations.Skynet)
+						                                       or Civilizations.Skynet or Civilizations.Federation)
 						{
 							capturedCity.ClearProductionQueue();
 							capturedCity.SetProduction(new MechInf());
@@ -1075,7 +1075,7 @@ namespace CivOne.Units
 			// salvage anything. Same exclusion as the gift, for the same reason: none of them
 			// may claim the Diaspora, so fuel would only buy them wasted production.
 			if (Player.Civilization is Civilizations.TheOthers or Civilizations.TheThing
-			                        or Civilizations.Skynet or Civilizations.Olvir) return;
+			                        or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir) return;
 			PlayerProgress progress = Player.Progress;
 			if (progress.HasExoticFuel || progress.ExoticFuelClock != 0) return;
 			progress.ExoticFuelClock = (int)Game.GameTurn;

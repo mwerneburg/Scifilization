@@ -224,7 +224,7 @@ namespace CivOne.Screens.Reports
 					if (Game.PlayerNumber(p) == 0) continue;
 					if (p.Civilization is Barbarian) continue;
 					if (p.Civilization is CivOne.Civilizations.TheOthers or CivOne.Civilizations.TheThing
-					                   or CivOne.Civilizations.Skynet or CivOne.Civilizations.Olvir) continue;
+					                   or CivOne.Civilizations.Skynet or CivOne.Civilizations.Federation or CivOne.Civilizations.Olvir) continue;
 					uint v = of(p);
 					if (v > best2) { best2 = v; lead = p; }
 				}
@@ -272,7 +272,7 @@ namespace CivOne.Screens.Reports
 					.Where(p => p is not null && !p.IsDestroyed() && Game.PlayerNumber(p) != 0
 					         && !(p.Civilization is Barbarian)
 					         && !(p.Civilization is CivOne.Civilizations.TheOthers or CivOne.Civilizations.TheThing
-					                             or CivOne.Civilizations.Skynet or CivOne.Civilizations.Olvir)
+					                             or CivOne.Civilizations.Skynet or CivOne.Civilizations.Federation or CivOne.Civilizations.Olvir)
 					         && p.Cities.Any(c => c.Size > 0))
 					.ToArray();
 				// The rule's own measure, off the rule's own helper, so the readout cannot
@@ -588,7 +588,7 @@ namespace CivOne.Screens.Reports
 		// occupier's economy is one Pax Mercatoria must out-earn.
 		internal static Player[] Plotted(bool culturePage) => Game.Instance.Players
 			.Where(p => !(p.Civilization is Barbarian) && !p.IsDestroyed())
-			.Where(p => !culturePage || !(p.Civilization is TheOthers or TheThing or Skynet))
+			.Where(p => !culturePage || !(p.Civilization is TheOthers or TheThing or Skynet or Federation))
 			.ToArray();
 
 		// History snapshots are [turn, player 0 (barbarians), player 1, ...].

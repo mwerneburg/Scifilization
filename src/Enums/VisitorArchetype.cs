@@ -15,7 +15,7 @@ namespace CivOne.Enums
 		Owners     = 1,  // humanity was escaped cargo — come to reclaim
 		Refugees   = 2,  // damaged, seeking a new home — will settle and trade
 		Evaluators = 3,  // former human-built AI — judging whether humanity should continue
-		Conquerors = 4,  // Attila's lineage, returned in force
+		Conquerors = 4,  // the Federation: humanity's earlier exodus, come home to find Earth non-compliant (name kept for saves)
 		Scavengers = 5,  // indifferent: here for the water and the ore, and they will leave
 	}
 }

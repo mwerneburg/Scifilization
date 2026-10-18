@@ -401,7 +401,7 @@ namespace CivOne.Tests
 
 			// The four-name claimant form, as opposed to the three-name aggression form that
 			// deliberately lets the Olvir count. Two claimant loops, so two occurrences.
-			const string claimant = "or Civilizations.Skynet or Civilizations.Olvir)).ToArray())";
+			const string claimant = "or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir)).ToArray())";
 			int count = 0;
 			for (int at = src.IndexOf(claimant); at >= 0; at = src.IndexOf(claimant, at + 1)) count++;
 			Assert.True(count >= 2,

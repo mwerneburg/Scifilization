@@ -23,6 +23,8 @@ namespace CivOne.Screens.Dialogs
 		private readonly string _title;
 		private readonly string[] _lines;
 		private readonly Action _retire;
+		private readonly Action? _accept;
+		private readonly string _yesLabel, _noLabel;
 		private bool _update = true;
 
 		protected override bool HasUpdate(uint gameTick)
@@ -47,9 +49,9 @@ namespace CivOne.Screens.Dialogs
 			for (int i = 0; i < _lines.Length; i++)
 				this.DrawText(_lines[i], 0, CassetteTheme.INK_HIGH, px + 5, py + 22 + i * fh, TextAlign.Left);
 
-			this.DrawText("Y / ENTER - PLAY ON", 0, CassetteTheme.OK,
+			this.DrawText(_yesLabel, 0, CassetteTheme.OK,
 				px + 5, py + ph - fh * 2 - 10, TextAlign.Left);
-			this.DrawText("N / ESC - RETIRE", 0, CassetteTheme.INK_MID,
+			this.DrawText(_noLabel, 0, CassetteTheme.INK_MID,
 				px + 5, py + ph - fh - 6, TextAlign.Left);
 
 			return true;
@@ -60,6 +62,7 @@ namespace CivOne.Screens.Dialogs
 			if (Char.ToUpper(args.KeyChar) == 'Y' || args.Key == Key.Enter)
 			{
 				Destroy();
+				_accept?.Invoke();
 				return true;
 			}
 			if (args.Key == Key.Escape || Char.ToUpper(args.KeyChar) == 'N')
@@ -71,11 +74,17 @@ namespace CivOne.Screens.Dialogs
 			return false;
 		}
 
-		internal EncoreChoice(string title, string[] lines, Action retire) : base(MouseCursor.Pointer)
+		// Y answers yes and N answers no; the labels name what each means. Also the
+		// Federation's ultimatum, where Y refuses and N submits.
+		internal EncoreChoice(string title, string[] lines, Action retire, Action? accept = null,
+			string yesLabel = "Y / ENTER - PLAY ON", string noLabel = "N / ESC - RETIRE") : base(MouseCursor.Pointer)
 		{
 			_title = title;
 			_lines = lines;
 			_retire = retire;
+			_accept = accept;
+			_yesLabel = yesLabel;
+			_noLabel = noLabel;
 			using Palette p = Common.DefaultPalette;
 			using (Palette cassette = CassetteTheme.CreatePalette())
 				p.MergePalette(cassette, 1, 17);

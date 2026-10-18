@@ -117,7 +117,7 @@ namespace CivOne
 			// now — they never respawn), and only civs with people AT THAT SAMPLE, so a dead
 			// civilization's peak stops counting when it dies.
 			bool[] storySlot = g._players.Select(p => p is not null
-				&& p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet).ToArray();
+				&& p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation).ToArray();
 			long WorldAverageAt(int turn, int[] peaks)
 			{
 				int[] now = alive[turn];
@@ -270,7 +270,7 @@ namespace CivOne
 				int living = _players.Count(p => p is not null && !p.IsDestroyed()
 					&& PlayerNumber(p) != 0
 					&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing
-					                     or Civilizations.Skynet or Civilizations.Olvir));
+					                     or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir));
 				return Math.Max(2, (living + 1) / 2);
 			}
 		}
@@ -333,9 +333,9 @@ namespace CivOne
 		{
 			DecisionLogger.LogConquest(taker, victim);   // every capture, barbarians included
 			if (PlayerNumber(taker) == 0 || taker.Civilization is Civilizations.TheOthers
-			        or Civilizations.TheThing or Civilizations.Skynet) return;
+			        or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation) return;
 			if (PlayerNumber(victim) == 0 || victim.Civilization is Civilizations.TheOthers
-			        or Civilizations.TheThing or Civilizations.Skynet) return;
+			        or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation) return;
 			Conquests.Add(new[] { (int)_gameTurn, PlayerNumber(taker), PlayerNumber(victim) });
 		}
 
@@ -350,7 +350,7 @@ namespace CivOne
 
 		private Player[] EvaluatedNations() => _players.Where(p => p is not null && PlayerNumber(p) != 0
 			&& !p.IsDestroyed() && !(p.Civilization is Civilizations.TheOthers
-			                           or Civilizations.TheThing or Civilizations.Skynet)).ToArray();
+			                           or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
 
 		private bool InContact(Player a, Player b)
 		{
@@ -1668,6 +1668,18 @@ namespace CivOne
 				return;
 			}
 
+			if (destroyed is Civilizations.Federation && !pseudoPlayer)
+			{
+				HumanPlayer.AwardMilestone(200);
+				DecisionLogger.EndGame(HumanPlayer.Score, "Sovereignty", humanWon: true, turns: _gameTurn, HumanPlayer);
+				int fame = EndSequence.SaveAndGetIndex(HumanPlayer, "Sovereignty");
+				GameTask.Enqueue(Show.Screen(new FederationTransmission(FederationTransmission.Beat.Sovereignty, GameYear)));
+				GameTask ft;
+				GameTask.Enqueue(ft = Show.Screen(new FinalScore("Sovereignty")));
+				ft.Done += (s, a) => EndSequence.ChainAfterFinal(fame, () => Runtime.Quit());
+				return;
+			}
+
 			if (destroyed is Civilizations.TheOthers && !pseudoPlayer)
 			{
 				HumanPlayer.AwardMilestone(200);
@@ -2341,6 +2353,9 @@ namespace CivOne
 					OlvirArrivalTurn = (uint)(_gameTurn + ApproachTurns);
 					string gameDate = GameYear;
 					RecordTransmission("TauCetiApproach", gameDate);
+					// The Owners are the one fleet seen crossing our own system on the way in.
+					if (VisitorType == VisitorArchetype.Owners && EventArtScreen.FindPath("OthersApproach") is string approachArt)
+						GameTask.Enqueue(Show.Screen(new EventArtScreen(approachArt, "INBOUND — SATURN ORBIT")));
 					GameTask.Enqueue(Show.Screen(new TauCetiApproachWarning(gameDate, VisitorType,
 						Common.YearString((ushort)OlvirArrivalTurn), HoldsIntendedStarlab(HumanPlayer),
 						ProbeDispatched, ProbeInterimPhase)));
@@ -2425,6 +2440,13 @@ namespace CivOne
 						return;
 					}
 
+					// The Federation: an ultimatum, and the only arrival that asks for an answer.
+					if (VisitorType == VisitorArchetype.Conquerors)
+					{
+						ArriveFederation();
+						return;
+					}
+
 					// Refugees (Olvir) — and, until their own arcs are built, the other archetypes
 					// fall through to the peaceful-settlement path.
 					bool identified = VisitorsIdentified;
@@ -2468,7 +2490,7 @@ namespace CivOne
 				foreach (Player claimant in _players.Where(p => p is not null && !p.IsDestroyed()
 				         && PlayerNumber(p) != 0
 				         && !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing
-				                              or Civilizations.Skynet or Civilizations.Olvir)).ToArray())
+				                              or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir)).ToArray())
 				{
 					byte fnum = PlayerNumber(claimant);
 					PlayerProgress fp = Progress(fnum);
@@ -2606,14 +2628,14 @@ namespace CivOne
 				foreach (Player claimant in _players
 				         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0
 				                  && !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing
-				                                       or Civilizations.Skynet or Civilizations.Olvir)).ToArray())
+				                                       or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir)).ToArray())
 				{
 					byte cnum = PlayerNumber(claimant);
 					bool isHuman = claimant == HumanPlayer;
 
 					Player[] econRivals = _players.Where(p => p is not null && p != claimant
 						&& !p.IsDestroyed() && PlayerNumber(p) != 0
-						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet)).ToArray();
+						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
 
 					if (!claimant.HasAdvance<Banking>() || econRivals.Length < 3)
 					{
@@ -2649,7 +2671,7 @@ namespace CivOne
 					// there is no version of those conflicts a merchant could have declined. Same
 					// exclusion econRivals uses; deliberately NOT the one nextEconomy uses.
 					bool aggressing = _players.Any(p => p is not null && !p.IsDestroyed()
-						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet)
+						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
 						&& claimant.IsAtWar(p) && StartedWarWith(cnum, PlayerNumber(p)));
 
 					bool Bound(Player r)
@@ -2751,14 +2773,14 @@ namespace CivOne
 				foreach (Player claimant in _players
 				         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0
 				                  && !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing
-				                                       or Civilizations.Skynet or Civilizations.Olvir)).ToArray())
+				                                       or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir)).ToArray())
 				{
 					byte cnum = PlayerNumber(claimant);
 					bool isHuman = claimant == HumanPlayer;
 
 					Player[] cultRivals = _players.Where(p => p is not null && p != claimant
 						&& !p.IsDestroyed() && PlayerNumber(p) != 0
-						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet)).ToArray();
+						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
 
 					if (!claimant.HasAdvance<Philosophy>() || cultRivals.Length < 3)
 					{
@@ -2868,7 +2890,7 @@ namespace CivOne
 					// war. "Wars of our making" told a player there was a problem without
 					// telling them which war to end.
 					Player? cultVictim = _players.FirstOrDefault(p => p is not null && !p.IsDestroyed()
-						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet)
+						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
 						&& claimant.IsAtWar(p) && StartedWarWith(cnum, PlayerNumber(p)));
 					bool cultAggressing = cultVictim is not null;
 
@@ -3011,7 +3033,9 @@ namespace CivOne
 				{
 					bool humanWins = Progress(PlayerNumber(HumanPlayer)).SpaceshipArrivalTurn == bestArrival;
 
-					if (SETISignalReceived && (VisitorType == VisitorArchetype.Owners || Quarantined))
+					// The Federation's pickets take colony ships too; the launch screen has always
+					// said so (SpaceShips.cs), and until now the arrival let them through.
+					if (SETISignalReceived && (VisitorType is VisitorArchetype.Owners or VisitorArchetype.Conquerors || Quarantined))
 					{
 						// Owners timeline: nothing leaves. The recovery fleet's pickets take
 						// every colony ship — launched before or after the arrival at Earth,
@@ -3556,7 +3580,7 @@ namespace CivOne
 				{
 					bool reserved = c is Civilizations.Barbarian or Civilizations.Olvir
 					             or Civilizations.TheOthers or Civilizations.TheThing
-					             or Civilizations.Skynet;
+					             or Civilizations.Skynet or Civilizations.Federation;
 					for (int i = 0; i < c.CityNames.Length; i++) mask.Add(reserved);
 				}
 				_reservedName = mask.ToArray();
@@ -4171,7 +4195,7 @@ namespace CivOne
 		internal Player[] HumanityNations() => _players.Where(p => p is not null && !p.IsDestroyed()
 			&& PlayerNumber(p) != 0
 			&& !(p.Civilization is Civilizations.Olvir or Civilizations.TheOthers
-			                    or Civilizations.TheThing or Civilizations.Skynet))
+			                    or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation))
 			.ToArray();
 
 		// One civilization's character on a single scale: positive is enlightened, negative
@@ -4277,15 +4301,23 @@ namespace CivOne
 		// still gets a picture. ProbeContactArtTests demands all three files ship.
 		private void ShowVisitorContactArt()
 		{
-			(string art, string caption) = VisitorType switch
-			{
-				VisitorArchetype.Owners     => ("OthersIntercept",  "CONTACT LOST — TAU CETI"),
-				VisitorArchetype.Scavengers => ("ScavengerContact", "VISUAL CONTACT — TAU CETI"),
-				_                           => ("OlvirInSpace",     "VISUAL CONTACT — TAU CETI"),
-			};
+			(string art, string caption) = ContactPlate(VisitorType);
 			string? path = EventArtScreen.FindPath(art) ?? EventArtScreen.FindPath("OlvirInSpace");
 			if (path is not null)
 				GameTask.Enqueue(Show.Screen(new EventArtScreen(path, caption)));
+		}
+
+		// The Evaluators used to fall to the default and showed the player the Olvir.
+		internal static (string art, string caption) ContactPlate(VisitorArchetype archetype)
+		{
+			return archetype switch
+			{
+				VisitorArchetype.Owners     => ("OthersIntercept",  "CONTACT LOST — TAU CETI"),
+				VisitorArchetype.Scavengers => ("ScavengerContact", "VISUAL CONTACT — TAU CETI"),
+				VisitorArchetype.Evaluators => ("EvaluatorContact", "VISUAL CONTACT — TAU CETI"),
+				VisitorArchetype.Conquerors => ("FederationContact", "VISUAL CONTACT — TAU CETI"),
+				_                           => ("OlvirInSpace",     "VISUAL CONTACT — TAU CETI"),
+			};
 		}
 
 		internal bool HoldsIntendedStarlab(Player? p) =>
@@ -4355,6 +4387,8 @@ namespace CivOne
 			VisitorArchetype chosen =
 				Common.Random.Next(100) < (int)System.Math.Round(pScavengers * 100)
 					? VisitorArchetype.Scavengers
+					: FederationEarned(nations) && Common.Random.Next(100) < (int)System.Math.Round(FederationOdds * 100)
+						? VisitorArchetype.Conquerors
 					: Common.Random.Next(100) < (int)System.Math.Round(EvaluatorOdds(character) * 100)
 						? VisitorArchetype.Evaluators
 						: Common.Random.Next(100) < (int)System.Math.Round(pRefugees * 100)
@@ -4364,6 +4398,26 @@ namespace CivOne
 			DecisionLogger.LogVisitorDraw(character, pRefugees, nations.Length, larder, pScavengers, chosen.ToString());
 			return chosen;
 		}
+
+		// The Federation answers a particular kind of winner: one who exterminated other
+		// peoples and prospered on it. The game sends them themselves, one iteration further
+		// on. Gated, then rolled: a player who can drive the draw to certainty has a
+		// checklist, not a fate. Drawn after the Scavengers (who judge nothing) and before
+		// everything that judges the species as a whole, because this judges one civilization.
+		internal const int FederationBloodCount = 2;
+		internal const double FederationOdds = 0.6;
+
+		// Civilizations the player wiped out. Self-collapse is not a kill, and the horde and
+		// the story factions (ids 15 and up, bar the extended roster) are not peoples.
+		internal int CivilizationsDestroyedBy(Player p) => GetReplayData<ReplayData.CivilizationDestroyed>()
+			.Count(d => d.DestroyedById == p.Civilization.Id && d.DestroyedId != d.DestroyedById
+			         && d.DestroyedId >= 1 && d.DestroyedId <= 26 && d.DestroyedId != 15 && d.DestroyedId != 16);
+
+		// Blood, and standing: the exterminator who also built something. A ruined warlord
+		// reads as cargo, and the Owners' draw already answers that.
+		internal bool FederationEarned(Player[] nations) =>
+			CivilizationsDestroyedBy(HumanPlayer) >= FederationBloodCount
+			&& nations.Length > 0 && HumanPlayer.Score >= nations.Average(n => (double)n.Score);
 
 		// The Evaluators come for a species they cannot yet classify. The Olvir and the Owners
 		// are verdicts already reached — worth joining, worth reclaiming — and they answer the
@@ -4454,6 +4508,9 @@ namespace CivOne
 
 			// Arrival art: the fleet over Earth. Optional — plays before the transmissions
 			// in both branches when data/event_art/TheOthersArrive.png exists.
+			string? lunaArt = Screens.EventArtScreen.FindPath("OthersAtLuna");
+			if (lunaArt is not null)
+				GameTask.Enqueue(Show.Screen(new Screens.EventArtScreen(lunaArt, "THE FLEET PASSES THE MOON")));
 			string? arriveArt = Screens.EventArtScreen.FindPath("TheOthersArrive");
 			if (arriveArt is not null)
 				GameTask.Enqueue(Show.Screen(new Screens.EventArtScreen(arriveArt,
@@ -4489,6 +4546,54 @@ namespace CivOne
 				int seized = ExecuteOwnersLanding();
 				GameTask.Enqueue(Show.Screen(new Screens.OwnersLandingTransmission(gameDate, seized)));
 			}
+		}
+
+		// The Federation's arrival. Submission loses the game (the user's call, Sep 2026).
+		// Refusal without the Dome is the end of the world; with it, the Dome holds the capital
+		// ships off and refusal becomes a war: the Federation lands as the Owners do, and
+		// destroying it wins. The Dome does not defeat them. It buys the right to refuse.
+		private void ArriveFederation()
+		{
+			bool domeHeld = DomeComplete;
+			string gameDate = GameYear;
+			RecordTransmission("FederationArrival", gameDate);
+			AddReplayEvent(new ReplayData.Milestone(_gameTurn, "THE FEDERATION ARRIVES — an ultimatum"));
+
+			string? art = EventArtScreen.FindPath("FederationArrival");
+			if (art is not null)
+				GameTask.Enqueue(Show.Screen(new EventArtScreen(art, "FIRST CONTACT — ULTIMATUM")));
+			City? capital = HumanPlayer.Cities.FirstOrDefault(c => c.HasBuilding<Palace>());
+			GameTask.Enqueue(Show.Screen(new FederationTransmission(FederationTransmission.Beat.Ultimatum,
+				gameDate, domeHeld, CivilizationsDestroyedBy(HumanPlayer), capital?.Name)));
+			GameTask.Enqueue(Show.Screen(new Screens.Dialogs.EncoreChoice("THE ULTIMATUM", domeHeld
+				? new[] { "Submit to Federation command,", "or refuse?", "", "The Dome holds their capital ships.", "Refusal means war." }
+				: new[] { "Submit to Federation command,", "or refuse?", "", "Nothing stands between us and them.", "Refusal will not be survived." },
+				retire: () => AnswerFederation(refuse: false),
+				accept: () => AnswerFederation(refuse: true),
+				yesLabel: "Y / ENTER - REFUSE", noLabel: "N / ESC - SUBMIT")));
+		}
+
+		internal void AnswerFederation(bool refuse)
+		{
+			string gameDate = GameYear;
+			if (refuse && DomeComplete)
+			{
+				int seized = ExecuteFederationLanding();
+				AddReplayEvent(new ReplayData.Milestone(_gameTurn, "EARTH REFUSES — the Federation lands"));
+				GameTask.Enqueue(Show.Screen(new FederationTransmission(FederationTransmission.Beat.Landing,
+					gameDate, domeHeld: true, seized: seized)));
+				OfferPlayOn();
+				return;
+			}
+
+			string outcome = refuse ? "Annihilation" : "Compliance";
+			AddReplayEvent(new ReplayData.Milestone(_gameTurn, refuse
+				? "EARTH REFUSES — something too big to be a space station"
+				: "EARTH SUBMITS — the homeworld is recovered"));
+			GameTask.Enqueue(Show.Screen(new FederationTransmission(refuse
+				? FederationTransmission.Beat.Annihilation : FederationTransmission.Beat.Compliance, gameDate)));
+			DecisionLogger.EndGame(HumanPlayer.Score, outcome, humanWon: false, turns: _gameTurn, null);
+			GameTask.Enqueue(Turn.GameOver(HumanPlayer));
 		}
 
 		// Phase 1 of the Owners invasion: one orbital strike per surviving civilization's
@@ -4551,15 +4656,35 @@ namespace CivOne
 		{
 			ICivilization othersCiv = Common.Civilizations.First(c => c is Civilizations.TheOthers);
 			var others = new Player(othersCiv, "The Registry");
-			AddPlayer(others);
-			byte num = PlayerNumber(others);
+			int seized = LandInvader(others, () => new Units.MechInf());
+			Log($"Owners landing: {seized} cities seized");
+			return seized;
+		}
 
-			// The occupation force arrives with the full catalogue of its own science,
-			// a treasury, and no interest in constitutional experiments.
+		// The Federation refused with the Dome up: they land as the Owners do, for the same
+		// share of the world, and the war is a war rather than an execution.
+		internal int ExecuteFederationLanding()
+		{
+			ICivilization fedCiv = Common.Civilizations.First(c => c is Civilizations.Federation);
+			var federation = new Player(fedCiv, "The Commissioner");
+			int seized = LandInvader(federation, () => new Units.MechInf());
+			Log($"Federation landing: {seized} cities seized");
+			return seized;
+		}
+
+		// Shared by both landings: the invader joins with every advance, a treasury and no
+		// interest in constitutional experiments, takes the world's ports — up to a quarter
+		// of all cities, capped at half of any one civ's, capitals exempt — garrisons each,
+		// and declares war on everyone.
+		private int LandInvader(Player invader, Func<IProduction> warWork)
+		{
+			AddPlayer(invader);
+			byte num = PlayerNumber(invader);
+
 			foreach (IAdvance adv in Common.Advances.Where(a => !(a is FutureTech)))
-				if (!others.HasAdvance(adv)) others.AddAdvance(adv, false);
-			others.Government = new Governments.Communism();
-			others.Gold = 1500;
+				if (!invader.HasAdvance(adv)) invader.AddAdvance(adv, false);
+			invader.Government = new Governments.Communism();
+			invader.Gold = 1500;
 
 			// Pick the seizure list: group by owner, cap per civ, ports-first.
 			City[] world = _cities.Where(c => c.Size > 0 && c.Owner != 0 && c.Owner != num).ToArray();
@@ -4593,10 +4718,10 @@ namespace CivOne
 				_replayData.Add(new ReplayData.CityCaptured(_gameTurn, _cities.IndexOf(city), city.NameId, city.X, city.Y, num));
 				city.Owner = num;
 				city.ResetResourceTiles();
-				// The Registry does not finish the previous administration's paperwork:
+				// The invader does not finish the previous administration's paperwork:
 				// drop the inherited production queue and put the works to war material.
 				city.ClearProductionQueue();
-				city.SetProduction(new Units.MechInf());
+				city.SetProduction(warWork());
 
 				// Occupation garrison: the recovery detail, not an army.
 				CreateUnit(UnitType.FusionInf, city.X, city.Y, num);
@@ -4604,10 +4729,9 @@ namespace CivOne
 				CreateUnit(UnitType.HoverTank, city.X, city.Y, num);
 			}
 
-			foreach (Player p in _players.Where(p => p is not null && p != others && !p.IsDestroyed()))
-				others.DeclareWar(p);
+			foreach (Player p in _players.Where(p => p is not null && p != invader && !p.IsDestroyed()))
+				invader.DeclareWar(p);
 
-			Log($"Owners landing: {seizedList.Count} cities seized (quota {quota} of {world.Length})");
 			return seizedList.Count;
 		}
 
@@ -4662,7 +4786,7 @@ namespace CivOne
 				if (c.Size <= 0 || c.Owner == num || c.Owner == 0) continue;
 				Player owner = GetPlayer(c.Owner);
 				if (owner.Civilization is Civilizations.Olvir or Civilizations.TheOthers
-				                       or Civilizations.TheThing or Civilizations.Skynet) continue;
+				                       or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation) continue;
 				if (!covered.Contains((c.X, c.Y))) continue;
 				reach++;
 				// The strongest culture with a city in range — the civ the ascendancy has to
@@ -4761,7 +4885,7 @@ namespace CivOne
 		// CulturalAscendancyTests pins the two against each other.
 		internal static bool CannotClaimStreakVictory(Player p) =>
 			p?.Civilization is Civilizations.TheOthers or Civilizations.TheThing
-			                or Civilizations.Skynet or Civilizations.Olvir;
+			                or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir;
 
 		// Who is furthest into a streak victory, the human INCLUDED, for the readouts that
 		// answer "is anybody winning this?" in one line. Returns (null, 0) when nobody holds
@@ -4833,7 +4957,7 @@ namespace CivOne
 		// faction, and with people — the set the rule has always ranked.
 		internal bool CountsInCulturalAverage(Player? p) => p is not null && PlayerNumber(p) != 0
 			&& !p.IsDestroyed()
-			&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet)
+			&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
 			&& p.Cities.Any(c => c.Size > 0);
 
 		// Cultural Ascendancy's REACH clause, shared by the rule and the score graph's grey
@@ -4845,7 +4969,7 @@ namespace CivOne
 			byte cnum = PlayerNumber(claimant);
 			Player[] rivals = _players.Where(p => p is not null && p != claimant && !p.IsDestroyed()
 				&& PlayerNumber(p) != 0
-				&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet)).ToArray();
+				&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
 			bool Known(Player r)
 			{
 				byte rnum = PlayerNumber(r);
@@ -5043,7 +5167,7 @@ namespace CivOne
 				// Peace among everyone capable of it (story factions are not).
 				Player[] nations = _players.Where(p => p is not null && !p.IsDestroyed()
 					&& PlayerNumber(p) != 0
-					&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet)).ToArray();
+					&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
 				foreach (Player a in nations)
 					foreach (Player b in nations.Where(x => x != a))
 					{
@@ -6140,7 +6264,7 @@ namespace CivOne
 				if (num == 0 || p == HumanPlayer) continue;
 				if (p.Civilization is Civilizations.Barbarian or Civilizations.Olvir
 				                   or Civilizations.TheOthers or Civilizations.TheThing
-				                   or Civilizations.Skynet) continue;
+				                   or Civilizations.Skynet or Civilizations.Federation) continue;
 
 				City[] cities = _cities.Where(c => c.Owner == num && c.Size > 0).ToArray();
 				if (cities.Length == 0 || cities.Length > ColonistGrantMaxCities) continue;
@@ -6176,7 +6300,7 @@ namespace CivOne
 				.OrderBy(_ => Common.Random.Next(10000)).ToArray())
 			{
 				Player owner = GetPlayer(city.Owner);
-				if (owner.Civilization is Civilizations.Olvir or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet) continue;
+				if (owner.Civilization is Civilizations.Olvir or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation) continue;
 				if (city.HasBuilding<Palace>()) continue;
 				// Use the disorder flag recorded during the city's NewTurn, NOT live
 				// IsInDisorder: the latter recomputes ComputeCitizens (a 5x5 CityRadius
@@ -6193,7 +6317,7 @@ namespace CivOne
 					.Where(n => n.Size > 0 && n.Owner != city.Owner && n.Owner != 0
 					         && TileDistance(n.X, n.Y, city.X, city.Y) <= 5)
 					.Select(n => GetPlayer(n.Owner))
-					.Where(p => !(p.Civilization is Civilizations.Olvir or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet)
+					.Where(p => !(p.Civilization is Civilizations.Olvir or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
 					         && !p.IsAtWar(owner)
 					         && p.Culture >= 100 && p.Culture >= owner.Culture * 3)
 					.OrderByDescending(p => p.Culture)

@@ -65,7 +65,7 @@ namespace CivOne.Civilizations
 		public BaseCivilization(Civilization civilization, string name, string namePlural) : base(civilization)
 		{
 			Id = (Civilization == Civilization.Barbarians ? 15 : (int)Civilization);
-			// Barbarians and the story factions (Olvir, TheOthers, TheThing, Skynet)
+			// Barbarians and the story factions (Olvir, TheOthers, TheThing, Skynet, Federation)
 			// share slot 0 — the story factions join mid-game via AddPlayer, never at
 			// setup; original civs (1–14) cycle slots 1–7 twice, creating buddy pairs
 			// for pre-0AD respawns. Extended civs (17–26) occupy exclusive slots 8–17
@@ -73,7 +73,7 @@ namespace CivOne.Civilizations
 			PreferredPlayerNumber = (byte)(
 				Civilization == Civilization.Barbarians || Civilization == Civilization.Olvir
 					|| Civilization == Civilization.TheOthers || Civilization == Civilization.TheThing
-					|| Civilization == Civilization.Skynet ? 0 :
+					|| Civilization == Civilization.Skynet || Civilization == Civilization.Federation ? 0 :
 				(int)Civilization >= 17 && (int)Civilization <= 26 ? (int)Civilization - 9 :
 				((int)Civilization - 1) % 7 + 1);
 			Name = name;

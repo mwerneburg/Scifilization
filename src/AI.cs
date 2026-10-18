@@ -421,7 +421,7 @@ namespace CivOne
 					// meant to end (Repossession), not squat on a spare tile.
 					bool lastChance = ownCities.Length == 0
 					               && Game.PlayerNumber(Player) != 0
-					               && Player.Civilization is not (TheOthers or TheThing or Skynet)
+					               && Player.Civilization is not (TheOthers or TheThing or Skynet or Federation)
 					               && Player.Civilization is not Civilizations.Barbarian;
 					// CentreCanFeed is deliberately NOT part of lastChance. A civ down to its
 					// final settler is choosing between a poor city and not existing, and the
@@ -1020,7 +1020,7 @@ namespace CivOne
 
 			// The Registry landed knowing everything bar FutureTech (Game.ExecuteOwnersLanding),
 			// so this only ever picked the one advance left. Nothing to choose.
-			if (Player.Civilization is Civilizations.TheOthers) return;
+			if (Player.Civilization is Civilizations.TheOthers or Civilizations.Federation) return;
 
 			IAdvance[] available = Player.AvailableResearch.ToArray();
 			if (available.Length == 0) return;

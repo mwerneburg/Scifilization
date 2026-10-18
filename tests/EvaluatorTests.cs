@@ -302,12 +302,12 @@ namespace CivOne.Tests
 			Assert.Equal(8, civs[0].Cities.Single().Size);   // only the offender
 		}
 
-		// Quarantine uses the Owners' interception: no colony ship arrives.
+		// Quarantine uses the Owners' (and the Federation's) interception: no colony ship arrives.
 		[Fact]
 		public void QuarantineInterceptsTheShips()
 		{
 			string src = File.ReadAllText(Path.Combine(Sim.RepoRoot(), "src", "Game.cs"));
-			Assert.Contains("VisitorType == VisitorArchetype.Owners || Quarantined", src);
+			Assert.Contains("VisitorType is VisitorArchetype.Owners or VisitorArchetype.Conquerors || Quarantined", src);
 		}
 
 		[Fact]

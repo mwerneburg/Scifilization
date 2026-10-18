@@ -1691,7 +1691,7 @@ namespace CivOne
 			// towns rioted like anyone's, and two in disorder held Skynet's AI in Consolidate — no
 			// attack target, every Armor sent home to garrison (the user, Oct 2026: "drift right
 			// past undefended cities").
-			bool unpeopled = Player.Civilization is Civilizations.Skynet or Civilizations.TheOthers or Civilizations.TheThing;
+			bool unpeopled = Player.Civilization is Civilizations.Skynet or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Federation;
 			if (unpeopled || (HasWonder<ShakespearesTheatre>() && !Game.WonderObsolete<ShakespearesTheatre>() && !maskUponUs))
 			{
 				unhappyCount = 0;
@@ -3432,7 +3432,7 @@ namespace CivOne
 					// defang the invasion arcs — matches the culture-defection guard.
 					if (Owner == 0
 						|| Player.Civilization is Civilizations.Olvir
-							or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet)
+							or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
 						return;
 
 					City? admired = null;

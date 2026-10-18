@@ -128,7 +128,7 @@ namespace CivOne.Screens.Reports
 						// Story factions do not take meetings; everyone else answers
 						// the embassy line.
 						if (!(player.Civilization is Civilizations.Olvir
-							or Civilizations.TheOthers or Civilizations.TheThing))
+							or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Federation))
 						{
 							this.DrawButton("TALK", 0, colour, Common.ColourDark[id], OX + 239, yy + 14, 38, Resources.GetFontHeight(0) + 2);
 							_talkButtons.Add(player, new Rectangle(OX + 239, yy + 14, 38, Resources.GetFontHeight(0) + 2));

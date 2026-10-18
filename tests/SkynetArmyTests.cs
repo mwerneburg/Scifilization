@@ -103,6 +103,34 @@ namespace CivOne.Tests
 		}
 
 		[Fact]
+		public void AFederationCityDoesNotRiot()
+		{
+			(Game _, Player _, City city) = AFactionCity<Civilizations.Federation>();
+			Assert.Equal(0, city.UnhappyCitizens);
+		}
+
+		// The ordinary path marshals any civ at war, so what the story-faction line buys the
+		// Federation is the early return: no tribute, no peace roll, however badly it is losing.
+		[Fact]
+		public void ALosingFederationNeverSuesForPeace()
+		{
+			(Game g, Player federation, City _) = AFactionCity<Civilizations.Federation>();
+			Player victim = g.Players.First(p => p is not null && g.PlayerNumber(p) != 0 && p != g.HumanPlayer && p != federation);
+			for (int i = 0; i < 6; i++)
+			{
+				victim.Explore(27 + i * 4, 20, range: 2);
+				g.AddCity(victim, i, 27 + i * 4, 20);
+			}
+			federation.EstablishEmbassy(victim);
+			victim.EstablishEmbassy(federation);
+			federation.DeclareWar(victim);
+
+			for (int t = 0; t < 300; t++) AI.Instance(federation).ConsiderWar();
+
+			Assert.True(federation.IsAtWar(victim), "the Federation made peace");
+		}
+
+		[Fact]
 		public void AFortifiedRegistryArmorIsWokenForTheWar()
 		{
 			(Game g, Player registry, City _) = AFactionCity<Civilizations.TheOthers>();

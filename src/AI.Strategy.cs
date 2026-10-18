@@ -1347,7 +1347,7 @@ namespace CivOne
 		internal bool SensesDefeat()
 		{
 			Player[] field = Game.Players.Where(p => p is not null && !p.IsDestroyed() && Game.PlayerNumber(p) != 0
-				&& !(p.Civilization is Olvir or TheOthers or TheThing or Skynet)).ToArray();
+				&& !(p.Civilization is Olvir or TheOthers or TheThing or Skynet or Federation)).ToArray();
 			if (field.Length < 3) return false;
 			if (field.Count(p => p.Score > Player.Score) * 2 >= field.Length) return true;
 			return field.Any(p => p != Player
@@ -1456,7 +1456,7 @@ namespace CivOne
 		{
 			Log($"{Player.TribeName}: Fascism");
 			foreach (Player p in Game.Players.Where(p => p is not null && p != Player && !p.IsDestroyed()
-			         && Game.PlayerNumber(p) != 0 && !(p.Civilization is TheOthers or TheThing or Skynet)))
+			         && Game.PlayerNumber(p) != 0 && !(p.Civilization is TheOthers or TheThing or Skynet or Federation)))
 				p.AddGrudge(Player, FascistGrudgeTurns);
 			GameTask.Enqueue(Message.Newspaper(null, $"The {Player.TribeNamePlural} fall", "to FASCISM!", "The world is uneasy."));
 		}
@@ -1515,7 +1515,7 @@ namespace CivOne
 		internal void ConsiderGovernment()
 		{
 			if (Player.Government is Gov.Anarchy) return;
-			if (Player.Civilization is TheOthers or TheThing or Skynet) return; // administrations, organisms, and networks do not revolt
+			if (Player.Civilization is TheOthers or TheThing or Skynet or Federation) return; // administrations, organisms, and networks do not revolt
 			// Raiders do not hold constitutional conventions either. Omitted from this list
 			// (and from ChooseResearch) until a turn-750 save showed the horde governed by
 			// REPUBLIC with nine advances to its name — the same defect as the captured-city
@@ -1725,7 +1725,7 @@ namespace CivOne
 		{
 			if (Game.PlayerNumber(Player) == 0) return;
 			if (Player.Civilization is Olvir) return; // refugees seek coexistence, not negotiation
-			if (Player.Civilization is TheOthers or TheThing or Skynet) return; // the Registry does not take meetings; the Thing has nothing to say; the network does not answer
+			if (Player.Civilization is TheOthers or TheThing or Skynet or Federation) return; // the Registry does not take meetings; the Thing has nothing to say; the network does not answer
 			if (Player.Government is Governments.Anarchy) return;
 			// Nobody talks to a civ that has just used a nuclear weapon on people. Every
 			// channel closes for the duration — no gifts, no tribute, no terms.
@@ -1849,12 +1849,12 @@ namespace CivOne
 		internal void ConsiderAmbassadors()
 		{
 			if (Game.PlayerNumber(Player) == 0 || Player.IsDestroyed()) return;
-			if (Player.Civilization is Olvir or TheOthers or TheThing or Skynet) return;
+			if (Player.Civilization is Olvir or TheOthers or TheThing or Skynet or Federation) return;
 			if (Player.Government is Governments.Anarchy) return;
 
 			foreach (Player other in Game.Players.Where(p => p is not null && p != Player
 			         && Game.PlayerNumber(p) != 0 && !p.IsDestroyed()
-			         && !(p.Civilization is TheOthers or TheThing or Skynet)).ToArray())
+			         && !(p.Civilization is TheOthers or TheThing or Skynet or Federation)).ToArray())
 			{
 				bool toHuman = other == Game.HumanPlayer && !Settings.Instance.Autopilot;
 				if (Player.HasEmbassy(other) && (toHuman || other.HasEmbassy(Player))) continue;
@@ -1940,7 +1940,7 @@ namespace CivOne
 			// MarshalStrikeGroup left every attacker that ever fortified asleep for good — 25 of
 			// Skynet's 45 in a 20-turn replay of the user's turn-398 save (Oct 2026). The Thing's
 			// threat is infection, not marching, so its units are left as they were.
-			if (Player.Civilization is Skynet or TheOthers) { MarshalStrikeGroup(); return; }
+			if (Player.Civilization is Skynet or TheOthers or Federation) { MarshalStrikeGroup(); return; }
 			if (Player.Civilization is TheThing) return;
 			if (Player.Government is Governments.Anarchy) return;
 
@@ -1969,7 +1969,7 @@ namespace CivOne
 				Player[] tributeCandidates = Game.Players
 				    .Where(p => p != Player && !p.IsDestroyed()
 				             && Game.PlayerNumber(p) != 0
-				             && !(p.Civilization is TheOthers or TheThing or Skynet) // the Registry takes cities, not gold; the Thing takes people; the network takes all
+				             && !(p.Civilization is TheOthers or TheThing or Skynet or Federation) // the Registry takes cities, not gold; the Thing takes people; the network takes all
 				             && !Game.Instance.IsNuclearPariah(p)   // you do not buy off a pariah
 				             && Player.IsAtWar(p)
 				             && Player.HasEmbassy(p)
@@ -2015,7 +2015,7 @@ namespace CivOne
 				Player[] aiEnemies = Game.Players
 				    .Where(p => p != Player && !p.IsDestroyed() && !p.IsHuman
 				             && Game.PlayerNumber(p) != 0 && Player.IsAtWar(p)
-				             && !(p.Civilization is TheOthers or TheThing or Skynet) // no peace with the manifest's author, the ice, or the network
+				             && !(p.Civilization is TheOthers or TheThing or Skynet or Federation) // no peace with the manifest's author, the ice, or the network
 				             && !Game.Instance.IsNuclearPariah(p))  // ...nor with a civ under condemnation
 				    .ToArray();
 
@@ -2096,7 +2096,7 @@ namespace CivOne
 					// civs with enough army left to make a bloc worth signing.
 					Player? partner = alive
 						.Where(p => p != Player && p != hegemon && !p.IsHuman
-						         && !(p.Civilization is Olvir or TheOthers or TheThing)
+						         && !(p.Civilization is Olvir or TheOthers or TheThing or Federation)
 						         && !Player.IsAtWar(p) && Player.HasEmbassy(p)
 						         && !Player.HasDefensePact(p)
 						         && MilitaryScore(p) < threat)
@@ -4418,7 +4418,7 @@ namespace CivOne
 		internal void ConsiderWorkers()
 		{
 			if (Player.IsDestroyed() || Player.Cities.Length < LargeEmpire) return;
-			if (Player.Civilization is TheOthers or TheThing or Skynet or Olvir or Barbarian) return;
+			if (Player.Civilization is TheOthers or TheThing or Skynet or Federation or Olvir or Barbarian) return;
 			byte own = Game.PlayerNumber(Player);
 			bool Raising(City c) => c.CurrentProduction is Settlers || c.ProductionQueue.Any(p => p is Settlers);
 			int short_ = WorkerQuota(GetStance())
@@ -4593,7 +4593,7 @@ namespace CivOne
 			// HoverTank needs the occupier's own Fusion Core, which a HasAdvance check would
 			// miss. Armor is the guaranteed fallback: the landing grants every advance bar
 			// FutureTech (Game.ExecuteOwnersLanding), so it can never be unavailable to them.
-			if (Player.Civilization is TheOthers)
+			if (Player.Civilization is TheOthers or Federation)
 			{
 				byte thId = Game.PlayerNumber(Player);
 				int agents = Game.GetUnits().Count(u => u.Owner == thId && u is Diplomat);

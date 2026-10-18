@@ -29,6 +29,11 @@ namespace CivOne.Tests
 		[InlineData("OlvirInSpace")]      // Refugees, and the fallback for every other archetype
 		[InlineData("ScavengerContact")]  // Scavengers
 		[InlineData("OthersIntercept")]   // Owners: the probe does not come home
+		[InlineData("EvaluatorContact")]  // Evaluators
+		[InlineData("FederationContact")] // the Federation
+		[InlineData("OthersApproach")]    // Owners, inbound past Saturn at the approach warning
+		[InlineData("OthersAtLuna")]      // Owners, passing the Moon at arrival
+		[InlineData("FederationArrival")] // the Federation's ultimatum
 		public void EveryProbeContactPlateIsShipped(string name)
 		{
 			string? root = RepositoryRoot();

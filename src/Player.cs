@@ -1003,7 +1003,7 @@ namespace CivOne
 			// how the Registry came to be building a DOME COMPONENT in a 1900 AD game: the
 			// occupation inheriting humanity's defence against the occupation.
 			else if (Civilization is Civilizations.TheOthers or Civilizations.TheThing
-			                      or Civilizations.Skynet or Civilizations.Barbarian)
+			                      or Civilizations.Skynet or Civilizations.Federation or Civilizations.Barbarian)
 			{
 				return false;
 			}

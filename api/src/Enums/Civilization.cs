@@ -55,5 +55,9 @@ namespace CivOne.Enums
 		// Neural Lab is completed and seizes the lab cities. Joins mid-game via
 		// AddPlayer, never selected at game setup.
 		Skynet = 29,
+		// Story-arc faction: the Federation, humanity's own earlier exodus come home to find
+		// Earth non-compliant. Lands only when a Dome-holding Earth refuses the ultimatum.
+		// Joins mid-game via AddPlayer, never selected at game setup.
+		Federation = 30,
 	}
 }

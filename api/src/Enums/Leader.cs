@@ -50,5 +50,6 @@ namespace CivOne.Enums
 		Edenshaw,
 		SepeTiaraju,
 		TeRauparaha,
+		TheCommissioner,
 	}
 }

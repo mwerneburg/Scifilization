@@ -125,15 +125,14 @@ namespace CivOne.Screens
 				case VisitorArchetype.Conquerors:
 					return new[]
 					{
-						"VISITOR TYPE: IDENTIFIED.",
+						"VISITOR TYPE: IDENTIFIED — MILITARY.",
 						"",
-						">> POPULATION GENETIC MARKERS: HUMAN.",
-						">> CULTURAL LINEAGE: CONSISTENT WITH EARLY STEPPE CULTURES.",
-						">> CROSS-REFERENCE: THEY LEFT EARTH APPROXIMATELY 12,000 YEARS AGO.",
-						">> THEY DID NOT GO FAR. THEY WENT TO WAR — ELSEWHERE.",
-						">> NOW THEY ARE RETURNING.",
+						">> HULL FORM: TRIANGULAR. FORTY-PLUS UNITS IN FORMATION.",
+						">> CREW BIOLOGY: NOT RESOLVED. SHIELDING DEFEATS OUR SCAN.",
+						">> HULL MARKINGS: NUMERALS. OUR ANALYSTS CAN ALMOST READ THEM.",
+						">> THE ENGINEERING IS UNCOMFORTABLY FAMILIAR.",
 						"",
-						"ATTILA'S PEOPLE FOUND LARGER PREY. AND WON.",
+						"WHATEVER THEY ARE, THEY HAVE DONE THIS BEFORE.",
 					};
 				case VisitorArchetype.Evaluators:
 					return new[]
@@ -220,10 +219,10 @@ namespace CivOne.Screens
 				case VisitorArchetype.Conquerors:
 					lines.AddRange(new[]
 					{
-						">> THEIR RESPONSE: UNEXPECTED. A CHALLENGE PROTOCOL.",
-						">> TRANSLATION: 'PROVE YOU ARE WORTH FIGHTING ALONGSIDE.'",
-						">> THEY DO NOT OFFER PEACE. THEY OFFER ALLIANCE.",
-						"   THE DISTINCTION MATTERS TO THEM.",
+						">> THEIR RESPONSE: A FORM.",
+						">> IT ASKS FOR OUR POPULATION, OUR ARMS AND OUR COMMAND STRUCTURE.",
+						">> IT DOES NOT ASK WHETHER WE WISH TO FILL IT IN.",
+						"   OUR LINGUISTS SAY IT NEEDED NO TRANSLATION. THEY WON'T SAY WHY.",
 					});
 					break;
 				case VisitorArchetype.Evaluators:
@@ -351,9 +350,9 @@ namespace CivOne.Screens
 			    text.StartsWith("PROBE DESIGNATION"))               return CassetteTheme.PHOS_DIM;
 			if (text.StartsWith("MISSION STATUS:"))                 return CassetteTheme.INK_HIGH;
 
-			if (text == "VISITOR TYPE: IDENTIFIED.")                return CassetteTheme.PHOS_GLOW;
+			if (text.StartsWith("VISITOR TYPE: IDENTIFIED"))        return CassetteTheme.PHOS_GLOW;
 			if (text == "THE GAMMA RAY BURST WAS NOT AN ACCIDENT." ||
-			    text == "ATTILA'S PEOPLE FOUND LARGER PREY. AND WON." ||
+			    text == "WHATEVER THEY ARE, THEY HAVE DONE THIS BEFORE." ||
 			    text == "THE EVALUATION HAS ALREADY BEGUN.")        return CassetteTheme.ALERT;
 			if (text == "THEY ARE ASKING FOR PERMISSION TO LAND.")  return CassetteTheme.OK;
 

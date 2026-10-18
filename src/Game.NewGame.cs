@@ -456,7 +456,7 @@ namespace CivOne
 				// can start with the Registry raiding huts in 3000 BC.
 				bool Selectable(ICivilization civ) =>
 					!(civ is Civilizations.Olvir or Civilizations.TheOthers
-					       or Civilizations.TheThing or Civilizations.Skynet);
+					       or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation);
 
 				ICivilization[] civs = Common.Civilizations
 					.Where(civ => civ.PreferredPlayerNumber == i && Selectable(civ) && !EarthMapExcludes(civ))

@@ -23,7 +23,8 @@ namespace CivOne.Tests
 	{
 		private static bool IsReserved(ICivilization c)
 			=> c is Civilizations.Barbarian or Civilizations.Olvir
-			or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet;
+			or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet
+			or Civilizations.Federation;
 
 		// Reservation is by POSITION in the flattened array, not by spelling. The Barbarian
 		// list is real-world cities and has always shared strings with the civilizations
