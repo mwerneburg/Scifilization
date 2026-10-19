@@ -648,7 +648,7 @@ namespace CivOne
 		internal static int DiasporaAward(int arrivalOrder)
 			=> arrivalOrder <= 1 ? 400 : Math.Max(50, 400 >> Math.Min(3, arrivalOrder - 1));
 
-		// The win fires once. Not persisted: a game that reached it is over.
+		// The win fires once. Persisted, like _coexistenceFired: the finished game is saved.
 		private bool _diasporaFired;
 
 		// Timestamp of the last full-round wrap, for TurnMetrics wall-clock timing.
@@ -1356,6 +1356,10 @@ namespace CivOne
 		// to drain. Until it does, the block fires again every round: the milestone awarded
 		// again, the fame roster written again, the newspaper stacked. Found on Diaspora,
 		// where a test expecting +200 read +600, then confirmed present here.
+		//
+		// Persisted with _coexistenceFired, and for the same reason: retiring writes the finished
+		// game over the autosave, and reloading it re-fired Cultural Ascendancy as a "second
+		// victory" with its +150 again (the user, Oct 2026).
 		private bool _econVictoryFired = false;
 		private bool _cultVictoryFired = false;
 

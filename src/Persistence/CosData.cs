@@ -171,6 +171,11 @@ namespace CivOne.Persistence
 		public List<int[]> DomeAssignments { get; set; } = null!;
 		public bool DomeVictoryFired { get; set; }
 		public bool CoexistenceFired { get; set; }
+		public bool EconVictoryFired { get; set; }
+		public bool CultVictoryFired { get; set; }
+		public bool ScoreVictoryFired { get; set; }
+		public bool ConquestVictoryFired { get; set; }
+		public bool DiasporaFired { get; set; }
 		// Each inner list: [gameTurn, score0, score1, ..., scoreN]
 		public List<List<int>> ScoreHistory { get; set; } = null!;
 		public List<List<int>> CultureHistory { get; set; } = null!;

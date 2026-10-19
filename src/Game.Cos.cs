@@ -414,6 +414,11 @@ namespace CivOne
 					                          .ToList(),
 					DomeVictoryFired        = _domeVictoryFired,
 					CoexistenceFired        = _coexistenceFired,
+					EconVictoryFired        = _econVictoryFired,
+					CultVictoryFired        = _cultVictoryFired,
+					ScoreVictoryFired       = _scoreVictoryFired,
+					ConquestVictoryFired    = _conquestVictoryFired,
+					DiasporaFired           = _diasporaFired,
 					ScoreHistory         = _scoreHistory.Select(s => s.ToList()).ToList(),
 					CultureHistory       = _cultureHistory.Select(s => s.ToList()).ToList(),
 					PopulaceHistory      = _populaceHistory.Select(s => s.ToList()).ToList(),
@@ -766,6 +771,11 @@ namespace CivOne
 			NanobotCursed     = g.NanobotCursed;
 			_domeVictoryFired     = g.DomeVictoryFired;
 			_coexistenceFired     = g.CoexistenceFired;
+			_econVictoryFired     = g.EconVictoryFired;
+			_cultVictoryFired     = g.CultVictoryFired;
+			_scoreVictoryFired    = g.ScoreVictoryFired;
+			_conquestVictoryFired = g.ConquestVictoryFired;
+			_diasporaFired        = g.DiasporaFired;
 			if (g.DomeAssignments is not null)
 				foreach (var pair in g.DomeAssignments)
 					if (pair.Length == 2)

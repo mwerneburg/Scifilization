@@ -114,5 +114,31 @@ namespace CivOne.Tests
 
 			Assert.Contains("!" + latch, line);
 		}
+
+		// Retiring writes the finished game over the autosave (EndSequence.SaveFinishedGame), so
+		// every latch must survive a save: a condition that stays true fires again on reload,
+		// milestone and all. Cultural Ascendancy did, as a "second victory" (the user, Oct 2026).
+		[Theory]
+		[InlineData("_econVictoryFired")]
+		[InlineData("_cultVictoryFired")]
+		[InlineData("_scoreVictoryFired")]
+		[InlineData("_conquestVictoryFired")]
+		[InlineData("_diasporaFired")]
+		[InlineData("_coexistenceFired")]
+		[InlineData("_domeVictoryFired")]
+		public void EveryVictoryLatchSurvivesASave(string field)
+		{
+			var latch = typeof(Game).GetField(field,
+				System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+			Sim.NewGame(width: 80, height: 50);
+			latch.SetValue(Game.Instance, true);
+			string path = System.IO.Path.Combine(Settings.Instance.SavesDirectory, "latch.cos");
+			Game.Instance.SaveCos(path);
+
+			Sim.ResetState();
+			Assert.True(Game.LoadCos(path));
+
+			Assert.True((bool)latch.GetValue(Game.Instance)!, $"{field} was lost in the save");
+		}
 	}
 }
