@@ -407,10 +407,19 @@ namespace CivOne
 			// both in Consolidate. The riots still cost it the production; that is the regime's price.
 			bool fascistAtWar = Player.Government is Governments.Fascism
 				&& Game.Players.Any(p => p != Player && !p.IsDestroyed() && Player.IsAtWar(p));
+			// An invader on our own ground outranks discontent. The user's Democracy, at war with
+			// the Federation in turn 394, sat in Consolidate on 51 of 74 cities merely unhappy —
+			// none rioting — so MarshalStrikeGroup never ran: twelve Hover Tanks idle in Cyrene
+			// beside an undefended Federation city (Oct 2026). Real rioting still consolidates,
+			// and the footing ends when the invader holds nothing on a continent of ours.
+			bool invaded = cities.Length > 0 && Game.GetCities().Any(c => c.Size > 0 && c.Tile is not null
+				&& c.Player is Player inv && inv.Civilization is Federation or TheOthers or Skynet
+				&& Player.IsAtWar(inv)
+				&& cities.Any(own => own.Tile?.ContinentId == c.Tile.ContinentId));
 			if (!fascistAtWar && cities.Length > 0 && (
-			        (Player.RepublicDemocratic && cities.Count(c => c.UnhappyCitizens > 0) > cities.Length * tolerance)
+			        (!invaded && Player.RepublicDemocratic && cities.Count(c => c.UnhappyCitizens > 0) > cities.Length * tolerance)
 			        || cities.Count(c => c.IsInDisorder) >= disorderLimit
-			        || Player.LuxuriesRate >= 4))
+			        || (!invaded && Player.LuxuriesRate >= 4)))
 				return StrategyStance.Consolidate;
 
 			// Militarize: already at war.
@@ -3319,6 +3328,32 @@ namespace CivOne
 			if (home is not null && (home.X != unit.X || home.Y != unit.Y)) unit.Goto = new Point(home.X, home.Y);
 		}
 
+		// Aircraft and missiles strike what they can reach, or wait at home. They used to be
+		// handed the ground troops' order — gather on the staging tile beside the target — and a
+		// missile with one turn of fuel ran dry on that empty square, or over the sea on the way
+		// (the user, Oct 2026). A missile is spent either way, so it may use its whole range;
+		// anything that has to come back may use half.
+		private void FlyStrike(IUnit unit)
+		{
+			int fuel = (unit as BaseUnitAir)?.FuelLeft ?? unit.MovesLeft;
+			int reach = CruiseMissile.IsExpendable(unit) ? fuel : fuel / 2;
+			byte own = unit.Owner;
+			bool Enemy(byte o) => o != own && (o == 0 || Player.IsAtWar(Game.GetPlayer(o)));
+			IUnit? mark = Game.GetUnits()
+				.Where(u => u.Tile is not null && Enemy(u.Owner) && Player.Visible(u.X, u.Y)
+				         && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= reach)
+				.OrderBy(u => _attackTarget is not null && u.X == _attackTarget.X && u.Y == _attackTarget.Y ? 0 : 1)
+				.ThenBy(u => Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y))
+				.FirstOrDefault();
+			if (mark is not null) { unit.Goto = new Point(mark.X, mark.Y); return; }
+
+			if (unit.Tile?.City is not null) { unit.SkipTurn(); return; }
+			City? home = Player.Cities.Where(c => c.Tile is not null)
+				.OrderBy(c => Common.DistanceToTile(unit.X, unit.Y, c.X, c.Y)).FirstOrDefault();
+			if (home is not null) unit.Goto = new Point(home.X, home.Y);
+			else unit.SkipTurn();
+		}
+
 		private City PickAttackTarget()
 		{
 			// Prefer the weakest (fewest defenders) visible enemy city closest to our empire.
@@ -3632,6 +3667,8 @@ namespace CivOne
 			StrategyStance stance = GetStance();
 
 			if (unit is Dirigible) { FlyAirlift(unit); return; }
+			// Nuclear weapons keep the path they had: when the AI uses one is not this rule's call.
+			if (unit.Class == UnitClass.Air && unit is not Nuclear) { FlyStrike(unit); return; }
 
 			// Naval units
 			if (unit.Class == UnitClass.Water)
