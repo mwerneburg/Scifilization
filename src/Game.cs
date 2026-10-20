@@ -1144,13 +1144,14 @@ namespace CivOne
 			&& TryGetPlayerNumber(player, out byte n)
 			&& NuclearPariah.TryGetValue(n, out int t) && t > 0;
 
-		// The organism, the Registry and the machines are not people, and the barbarians keep
-		// no embassies. A strike on any of them is pest control and costs nothing.
+		// The organism, the Registry and the machines are not people. A strike on any of them
+		// is pest control and costs nothing. The barbarians ARE people — late in a game they are
+		// whole cities that broke away (the user, Oct 2026) — but they keep no embassies, so
+		// they are struck-at, never witnesses (CondemnNuclearStrike).
 		private static bool IsPeople(Player? p)
 			=> p is not null && p.Civilization is not (Civilizations.TheThing
 			                                        or Civilizations.TheOthers
-			                                        or Civilizations.Skynet
-			                                        or Civilizations.Barbarian);
+			                                        or Civilizations.Skynet);
 
 		// ── grievances ──────────────────────────────────────────────────────
 		// Turns of grudge, on the same scale as the goodwill a gift buys (a large city is
@@ -1183,7 +1184,7 @@ namespace CivOne
 
 			foreach (Player witness in _players.Where(p => p is not null && p != detonator))
 			{
-				if (!IsPeople(witness)) continue;   // the factions do not hold hearings
+				if (!IsPeople(witness) || witness.Civilization is Civilizations.Barbarian) continue;   // the factions do not hold hearings
 
 				// Goodwill bought with gifts does not survive a mushroom cloud — and now it
 				// does not merely lapse, it inverts. Zeroing was all the scale could express

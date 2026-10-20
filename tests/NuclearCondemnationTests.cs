@@ -12,8 +12,8 @@
 // The rule: nukes is nukes. Every civ that keeps embassies cuts the detonator off — trade
 // severed, treaties torn up, pacts ended, goodwill spent — for twenty turns, doubled to forty
 // where a United Nations exists to condemn them in. Already being at war is neither an excuse
-// nor an exemption. Striking the organism, the Registry, the machines or the barbarians is pest
-// control and costs nothing.
+// nor an exemption. Striking the organism, the Registry or the machines is pest control and
+// costs nothing. The barbarians count (the user, Oct 2026): late on they are revolted cities.
 
 using System.Linq;
 using CivOne;
@@ -117,6 +117,20 @@ namespace CivOne.Tests
 				Assert.False(g.IsNuclearPariah(bomber),
 					$"striking {faction.Civilization.Name} is pest control");
 			}
+		}
+
+		// Late in a game the barbarians are whole cities that broke away. They count — as
+		// victims; they keep no embassies, so they never sit in judgement.
+		[Fact]
+		public void TheBarbariansCount()
+		{
+			(Game g, Player bomber, Player victim, Player witness) = AWorld();
+			Player barbarians = g.Players.First(p => p is not null && p.Civilization is Barbarian);
+
+			g.CondemnNuclearStrike(bomber, barbarians);
+
+			Assert.True(g.IsNuclearPariah(bomber), "the barbarians are people");
+			Assert.False(barbarians.HasGrudge(bomber), "they hold no hearings");
 		}
 
 		// The Olvir are refugees, not vermin. They count.
