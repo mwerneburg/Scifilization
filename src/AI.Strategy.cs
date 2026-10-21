@@ -3283,8 +3283,20 @@ namespace CivOne
 		// Four turns' flight. Farther, and the group is at sea level for a war's worth of turns.
 		internal const int AirReach = 64;
 
+		// ...and on our own continent, past two turns' march for armour: the Franks walked 24
+		// tiles through Federation country to Thionville and lost the column to the cities on
+		// the way (Oct 2026). The airship covers 16 tiles a turn, the walk lasts six.
+		internal const int WalkReach = 8;
+
 		private bool Airlift(City target) => Player.HasAdvance<Flight>() && target.Tile is not null
-			&& !Player.Cities.Any(c => c.Tile?.ContinentId == target.Tile.ContinentId);
+			&& !Player.Cities.Any(c => c.Tile?.ContinentId == target.Tile.ContinentId
+			                        && Common.DistanceToTile(c.X, c.Y, target.X, target.Y) <= WalkReach)
+			&& Player.Cities.Any(c => Common.DistanceToTile(c.X, c.Y, target.X, target.Y) <= AirReach);
+
+		// Who walks rather than boards: already on the target's ground and within a march of it,
+		// which is every unit the airship has just set down.
+		private static bool WithinMarch(IUnit u, City target) => u.Tile?.ContinentId == target.Tile.ContinentId
+			&& Common.DistanceToTile(u.X, u.Y, target.X, target.Y) <= WalkReach;
 
 		private City? Muster(City target) => Player.Cities.Where(c => c.Tile is not null)
 			.OrderBy(c => Common.DistanceToTile(c.X, c.Y, target.X, target.Y)).FirstOrDefault();
@@ -3814,7 +3826,7 @@ namespace CivOne
 				}
 
 				// ...and overseas it boards at the muster city, to be set down with them.
-				if (_attackTarget is not null && !sameContinent(_attackTarget) && Airlift(_attackTarget)
+				if (_attackTarget is not null && !WithinMarch(unit, _attackTarget) && Airlift(_attackTarget)
 				    && Muster(_attackTarget) is City dock && dock.Tile.ContinentId == myContinent)
 				{
 					Point at = new Point(dock.X, dock.Y);
@@ -4030,7 +4042,7 @@ namespace CivOne
 					RefreshAttackTarget();
 
 					if (_attackTarget is not null && unit.Class == UnitClass.Land && Airlift(_attackTarget)
-					    && unit.Tile?.ContinentId != _attackTarget.Tile.ContinentId && Muster(_attackTarget) is City muster)
+					    && !WithinMarch(unit, _attackTarget) && Muster(_attackTarget) is City muster)
 					{
 						if (unit.X == muster.X && unit.Y == muster.Y) unit.Sentry = true;   // aboard
 						else unit.Goto = new Point(muster.X, muster.Y);

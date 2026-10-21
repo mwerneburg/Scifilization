@@ -24,7 +24,7 @@ namespace CivOne.Tests
 		public void Dispose() => Settings.Instance.Autopilot = _auto;
 
 		// Two islands: ours (cities at 24,25 and 28,25 — the muster) and theirs (target at 52,25).
-		private static (Game g, Player us, City muster, City target, AI ai) AnIslandWar(bool flight = true, int east = 48)
+		private static (Game g, Player us, City muster, City target, AI ai) AnIslandWar(bool flight = true, int east = 48, bool joined = false)
 		{
 			Sim.NewGame(width: east + 32 > 80 ? 200 : 80, height: 50);
 			Settings.Instance.Autopilot = false;
@@ -32,7 +32,7 @@ namespace CivOne.Tests
 			for (int y = 10; y <= 40; y++)
 			for (int x = 10; x <= east + 22; x++)
 			{
-				bool land = y >= 20 && y <= 30 && ((x >= 20 && x <= 32) || (x >= east && x <= east + 12));
+				bool land = y >= 20 && y <= 30 && ((x >= 20 && x <= 32) || (x >= east && x <= east + 12) || (joined && x > 32 && x < east));
 				Map.Instance.ChangeTileType(x, y, land ? Terrain.Grassland1 : Terrain.Ocean);
 			}
 			Map.Instance.RecalculateContinentsIfDirty();
@@ -49,7 +49,7 @@ namespace CivOne.Tests
 			City target = g.AddCity(them, 2, east + 4, 25)!;
 			target.Size = 4;
 			g.CreateUnit(UnitType.Phalanx, east + 4, 25, g.PlayerNumber(them));
-			Assert.NotEqual(muster.Tile.ContinentId, target.Tile.ContinentId);
+			Assert.Equal(joined, muster.Tile.ContinentId == target.Tile.ContinentId);
 			Assert.True(Map.NamedContinent(target.Tile.ContinentId), "fixture: the target island has no continent");
 			us.DeclareWar(them);
 			Sim.ClearTasks();
@@ -343,6 +343,65 @@ namespace CivOne.Tests
 			Assert.All(armor, a => Assert.False(a.Sentry, "still aboard"));
 			Assert.Equal(target.Tile.ContinentId, armor[0].Tile.ContinentId);
 			Assert.Equal(new Point(muster.X, muster.Y), ship.Goto);   // and home for the next lift
+		}
+
+		// ── on our own ground ────────────────────────────────────────────────
+		//
+		// The Franks walked 24 tiles through Federation country to an empty Thionville and lost
+		// the column on the way (Oct 2026). Same landmass, but past a march: fly it.
+
+		[Fact]
+		public void AFarTargetOnOurOwnGroundIsFlown()
+		{
+			(Game g, Player us, City muster, City target, AI ai) = AnIslandWar(joined: true);
+			ai.ConsiderWar();
+			Assert.Same(target, Target(ai));
+			IUnit there = Make(g, us, UnitType.Armor, muster.X, muster.Y);
+
+			Assign(ai, there);
+
+			Assert.True(there.Sentry, "an attacker in the muster city set off on foot");
+		}
+
+		// From farther back on the same ground, it walks to the muster, not at the target.
+		[Fact]
+		public void AnAttackerFartherBackGoesToTheMuster()
+		{
+			(Game g, Player us, City muster, City _, AI ai) = AnIslandWar(joined: true);
+			ai.ConsiderWar();
+			IUnit walker = Make(g, us, UnitType.Armor, 24, 25);
+
+			Assign(ai, walker);
+
+			Assert.Equal(new Point(muster.X, muster.Y), walker.Goto);
+		}
+
+		// Set down beside the walls, it goes in; it is not flown back to the muster.
+		[Fact]
+		public void ATankSetDownBesideItStaysThere()
+		{
+			(Game g, Player us, City muster, City target, AI ai) = AnIslandWar(joined: true);
+			ai.ConsiderWar();
+			IUnit landed = Make(g, us, UnitType.Armor, target.X - 1, target.Y - 1);
+
+			Assign(ai, landed);
+
+			Assert.False(landed.Sentry);
+			Assert.NotEqual(new Point(muster.X, muster.Y), landed.Goto);
+		}
+
+		// Within a march it walks, as before.
+		[Fact]
+		public void ANearTargetIsWalked()
+		{
+			(Game g, Player us, City muster, City target, AI ai) = AnIslandWar(east: 32, joined: true);
+			Assert.True(Common.DistanceToTile(muster.X, muster.Y, target.X, target.Y) <= AI.WalkReach, "fixture: past a march");
+			ai.ConsiderWar();
+			IUnit there = Make(g, us, UnitType.Armor, muster.X, muster.Y);
+
+			Assign(ai, there);
+
+			Assert.False(there.Sentry, "boarded for a target within a march");
 		}
 	}
 }
