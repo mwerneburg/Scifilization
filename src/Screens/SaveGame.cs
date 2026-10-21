@@ -20,7 +20,7 @@ namespace CivOne.Screens
 	[Modal, Expand]
 	internal class SaveGame : BaseScreen
 	{
-		private const int SLOT_COUNT = 8;
+		private const int SLOT_COUNT = 14;
 
 		// ── layout ───────────────────────────────────────────────────────────────
 		private int RowH    => Resources.GetFontHeight(0) + 2;

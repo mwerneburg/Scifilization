@@ -19,8 +19,8 @@ namespace CivOne.Screens
 	[Modal, Expand]
 	internal class LoadGame : BaseScreen
 	{
-		private const int MANUAL_SLOTS = 8;
-		private const int SLOT_COUNT   = 9; // 8 manual + 1 autosave
+		private const int MANUAL_SLOTS = 14;
+		private const int SLOT_COUNT   = MANUAL_SLOTS + 1; // + autosave
 
 		// ── layout ───────────────────────────────────────────────────────────────
 		private int RowH    => Resources.GetFontHeight(0) + 2;
@@ -88,10 +88,10 @@ namespace CivOne.Screens
 
 			// AutoSave slot
 			string autoPath = Settings.Instance.AutoSavePath;
-			slots[8].CosFile = autoPath;
-			slots[8].IsAuto  = true;
-			slots[8].Label   = "AutoSave";
-			slots[8].Year    = "";
+			slots[MANUAL_SLOTS].CosFile = autoPath;
+			slots[MANUAL_SLOTS].IsAuto  = true;
+			slots[MANUAL_SLOTS].Label   = "AutoSave";
+			slots[MANUAL_SLOTS].Year    = "";
 			if (File.Exists(autoPath))
 			{
 				try
@@ -99,14 +99,14 @@ namespace CivOne.Screens
 					var meta = CosSerializer.DeserializeMeta(File.ReadAllText(autoPath));
 					if (meta is not null)
 					{
-						slots[8].Exists = true;
-						slots[8].Label  = $"AUTO: {meta.Name ?? "autosave"}";
-						slots[8].Year   = Common.YearString((ushort)meta.Turn);
+						slots[MANUAL_SLOTS].Exists = true;
+						slots[MANUAL_SLOTS].Label  = $"AUTO: {meta.Name ?? "autosave"}";
+						slots[MANUAL_SLOTS].Year   = Common.YearString((ushort)meta.Turn);
 					}
 				}
 				catch (Exception ex)
 				{
-					slots[8].Label = $"AUTO: (unreadable: {ex.GetType().Name})";
+					slots[MANUAL_SLOTS].Label = $"AUTO: (unreadable: {ex.GetType().Name})";
 					Log($"LoadGame: {autoPath} unreadable: {ex.GetType().Name}: {ex.Message}");
 				}
 			}
