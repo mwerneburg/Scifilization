@@ -3199,7 +3199,12 @@ namespace CivOne
 		internal const int StrikeGroupSize = 3;
 		// An empty city needs no group: one attacker walks in.
 		private static int StrikeThreshold(City target) => !target.Tile.Units.Any() ? 1 :
-			Math.Max(StrikeGroupSize, target.Tile.Units.Count(u => u.Role == UnitRole.Defense) + 1);
+			Math.Max(StrikeGroupSize, Garrison(target) + 1);
+
+		// Everything in the city that fights back. Defenders only, as this was, read Jinan
+		// holding a dozen Chinese Armor as a three-tank job (Oct 2026): the best defender
+		// meets each attack, and each win kills one unit.
+		private static int Garrison(City c) => c.Tile.Units.Count(u => u.Role is UnitRole.Defense or UnitRole.LandAttack);
 
 		// Keep the civ-wide attack target valid, picking a new one when it has gone stale.
 		// Tile can be null when a city is mid-capture / in transient sentinel state (X==Y==255).
@@ -3421,12 +3426,27 @@ namespace CivOne
 				if (humanCity is not null) return humanCity;
 			}
 
-			return candidates
-			    .OrderBy(c => reachable(c) ? 0 : 1)
-			    .ThenBy(c => c.Tile.Units.Count(u => u.Role == UnitRole.Defense))
-			    .ThenBy(c => Player.Cities.Min(oc => Common.DistanceToTile(oc.X, oc.Y, c.X, c.Y)))
-			    .FirstOrDefault();
+			// The frontier first, and only then the weakest or the richest on it. Weakest-first
+			// anywhere sent the Federation's army past held border towns to whichever city
+			// stood empty that turn, twenty tiles deep, and it spent its turns marching
+			// (Oct 2026). A Wonder is known to everyone and worth the fight — on the frontier.
+			City[] pool = candidates.Where(reachable).ToArray();
+			if (pool.Length == 0) pool = candidates.ToArray();
+			if (pool.Length == 0) return null!;
+			int Front(City c) => Player.Cities.Length == 0 ? 0 : Player.Cities.Min(oc => Common.DistanceToTile(oc.X, oc.Y, c.X, c.Y));
+			int nearest = pool.Min(Front);
+			return pool
+			    .Where(c => Front(c) <= nearest + FrontierBand)
+			    .OrderBy(c => Garrison(c) - WonderWorth * c.Wonders.Length)
+			    .ThenBy(Front)
+			    .First();
 		}
+
+		// How far past the nearest enemy city a target may lie: the next ring of towns, not
+		// the far side of their country.
+		private const int FrontierBand = 3;
+		// A Wonder is worth fighting through this many more of the garrison.
+		private const int WonderWorth = 4;
 
 		// Where to mass for an assault: the neighbouring tile of `target` that already holds
 		// the most of our attackers and none of theirs.
