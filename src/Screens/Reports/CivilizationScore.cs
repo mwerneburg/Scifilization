@@ -420,6 +420,10 @@ namespace CivOne.Screens.Reports
 			byte TraceColour(Player p) => InTheRunning(p)
 				? Common.ColourLight[(byte)p % Common.ColourLight.Length]
 				: CassetteTheme.INK_LOW;
+			// The banner's accent, a third of each trace (see Common.CivPattern).
+			byte TraceAccent(Player p) => InTheRunning(p)
+				? Common.BannerSecondary[(byte)p % Common.BannerSecondary.Length]
+				: CassetteTheme.INK_LOW;
 
 			// ── score traces ─────────────────────────────────────────────────
 
@@ -429,6 +433,7 @@ namespace CivOne.Screens.Reports
 			{
 				int  pIdx = (byte)players[pi];
 				byte col  = TraceColour(players[pi]);
+				byte acc  = TraceAccent(players[pi]);
 
 				int lastX = int.MinValue, lastY = int.MinValue;
 				int prevX = int.MinValue, prevY = int.MinValue;
@@ -445,7 +450,7 @@ namespace CivOne.Screens.Reports
 					screenY = Math.Max(GraphTop, Math.Min(GraphBottom, screenY));
 
 					if (prevX != int.MinValue)
-						DrawLine(prevX, prevY, screenX, screenY, col);
+						DrawLine(prevX, prevY, screenX, screenY, col, acc);
 
 					prevX = screenX;
 					prevY = screenY;
@@ -477,7 +482,7 @@ namespace CivOne.Screens.Reports
 					liveY = Math.Max(GraphTop, Math.Min(GraphBottom, liveY));
 					if (liveY != lastY)
 					{
-						DrawLine(lastX, lastY, lastX, liveY, col);
+						DrawLine(lastX, lastY, lastX, liveY, col, acc);
 						lastY = liveY;
 					}
 				}
@@ -525,7 +530,9 @@ namespace CivOne.Screens.Reports
 				// matched to a name, so a row that disagreed with its own curve would be worse
 				// than no marking at all.
 				byte col = TraceColour(p);
-				this.DrawText($"{rank++}. {p.TribeNamePlural}: {LiveValue(p)}", 0, col, lx, ly, TextAlign.Left);
+				// A swatch in the trace's 2:1 mix; the text alone carries only the primary.
+				this.FillRectangle(lx, ly + 1, 4, 4, col).FillRectangle(lx + 4, ly + 1, 2, 4, TraceAccent(p));
+				this.DrawText($"{rank++}. {p.TribeNamePlural}: {LiveValue(p)}", 0, col, lx + 8, ly, TextAlign.Left);
 				ly += fh + 1;
 			}
 
@@ -623,15 +630,19 @@ namespace CivOne.Screens.Reports
 
 		// ── Bresenham line ────────────────────────────────────────────────────
 
-		private void DrawLine(int x0, int y0, int x1, int y1, byte col)
+		// `accent` dashes a third of the line, two pixels in six along its major axis — screen
+		// coordinates rather than a step count, so the dashes run on unbroken across segments.
+		private void DrawLine(int x0, int y0, int x1, int y1, byte col, byte? accent = null)
 		{
 			int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
 			int dy = -Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
 			int err = dx + dy;
+			bool alongX = dx >= -dy;
 			while (true)
 			{
 				if (x0 >= GraphLeft && x0 <= GraphRight && y0 >= GraphTop && y0 <= GraphBottom)
-					this.FillRectangle(x0, y0, 1, 1, col);
+					this.FillRectangle(x0, y0, 1, 1,
+						accent is byte a && ((alongX ? x0 : y0) / 2) % 3 == 2 ? a : col);
 				if (x0 == x1 && y0 == y1) break;
 				int e2 = err * 2;
 				if (e2 >= dy) { if (x0 == x1) break; err += dy; x0 += sx; }

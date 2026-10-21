@@ -378,6 +378,27 @@ namespace CivOne
 			return best;
 		}
 
+		// An invader on our own ground outranks discontent. The user's Democracy, at war with
+		// the Federation in turn 394, sat in Consolidate on 51 of 74 cities merely unhappy —
+		// none rioting — so MarshalStrikeGroup never ran: twelve Hover Tanks idle in Cyrene
+		// beside an undefended Federation city (Oct 2026). Real rioting still consolidates,
+		// and the footing ends when the invader holds nothing on a continent of ours.
+		private bool Invaded()
+		{
+			var cities = Player.Cities;
+			return cities.Length > 0 && Game.GetCities().Any(c => c.Size > 0 && c.Tile is not null
+				&& c.Player is Player inv && inv.Civilization is Federation or TheOthers or Skynet
+				&& Player.IsAtWar(inv)
+				&& cities.Any(own => own.Tile?.ContinentId == c.Tile.ContinentId));
+		}
+
+		// The Senate raises no army for a war abroad, but an invader on our own ground is
+		// another matter. Without this the war footing above was all a Democracy got: the
+		// Malians, Ethiopians, Indians and four more fought the Federation for 44 turns
+		// (1840-1889, the user's encore) with missiles and drones alone, which cannot take
+		// a city, and not one Federation city fell to them.
+		private bool SenateRaisesArmies => !Player.RepublicDemocratic || Invaded();
+
 		private StrategyStance GetStance()
 		{
 			var cities = Player.Cities;
@@ -407,15 +428,7 @@ namespace CivOne
 			// both in Consolidate. The riots still cost it the production; that is the regime's price.
 			bool fascistAtWar = Player.Government is Governments.Fascism
 				&& Game.Players.Any(p => p != Player && !p.IsDestroyed() && Player.IsAtWar(p));
-			// An invader on our own ground outranks discontent. The user's Democracy, at war with
-			// the Federation in turn 394, sat in Consolidate on 51 of 74 cities merely unhappy —
-			// none rioting — so MarshalStrikeGroup never ran: twelve Hover Tanks idle in Cyrene
-			// beside an undefended Federation city (Oct 2026). Real rioting still consolidates,
-			// and the footing ends when the invader holds nothing on a continent of ours.
-			bool invaded = cities.Length > 0 && Game.GetCities().Any(c => c.Size > 0 && c.Tile is not null
-				&& c.Player is Player inv && inv.Civilization is Federation or TheOthers or Skynet
-				&& Player.IsAtWar(inv)
-				&& cities.Any(own => own.Tile?.ContinentId == c.Tile.ContinentId));
+			bool invaded = Invaded();
 			if (!fascistAtWar && cities.Length > 0 && (
 			        (!invaded && Player.RepublicDemocratic && cities.Count(c => c.UnhappyCitizens > 0) > cities.Length * tolerance)
 			        || cities.Count(c => c.IsInDisorder) >= disorderLimit
@@ -3252,7 +3265,7 @@ namespace CivOne
 				foreach (IUnit d in Game.GetUnits().Where(u => u.Owner == own && u is Dirigible && (u.Sentry || u.Fortify)))
 					d.Busy = false;
 
-			if (Player.RepublicDemocratic) return;   // the Senate's armies are not raised for this
+			if (!SenateRaisesArmies) return;   // the Senate's armies are not raised for this
 			if (muster is not null)
 			{
 				if (!Game.GetUnits().Any(u => u.Owner == own && u is Dirigible) && !Raising<Dirigible>(muster))
@@ -5161,7 +5174,7 @@ namespace CivOne
 				    && mzSettlers < Math.Max(2, ownCities / 3))
 					Consider(new Settlers());
 				if (!city.HasBuilding<Barracks>()) Consider(new Barracks());
-				if (!Player.RepublicDemocratic) Consider(BestAttacker());
+				if (SenateRaisesArmies) Consider(BestAttacker());
 
 				// Unmanned strike. BestAttacker returns land units only, so before this the
 				// AI never deliberately built ANY aircraft — every Fighter and Bomber in a
@@ -5424,7 +5437,7 @@ namespace CivOne
 			if (defenders < 2) Consider(BestDefender());
 
 			// Soft units by government / stance
-			if (stance == StrategyStance.Militarize && !Player.RepublicDemocratic)
+			if (stance == StrategyStance.Militarize && SenateRaisesArmies)
 			{
 				Consider(BestAttacker());
 			}

@@ -48,16 +48,43 @@ namespace CivOne.Tests
 		public void TabPaintsTheCityAndItsRingInTheOwnersColour()
 		{
 			(WorldMap screen, Func<int, int, byte> tile, City city) = AMapWithACity();
-			byte colour = Common.ColourLight[city.Owner];
-			Assert.NotEqual(colour, tile(41, 26));   // terrain page: the ring is just land
+			Assert.NotEqual(Common.ColourLight[city.Owner], tile(41, 26));   // terrain page: the ring is just land
 
 			screen.KeyDown(new KeyboardEventArgs(Key.Tab, KeyModifier.None));
 
-			Assert.Equal(colour, tile(40, 25));
-			Assert.Equal(colour, tile(39, 24));
-			Assert.Equal(colour, tile(41, 26));
+			Assert.Equal(Common.CivPattern(city.Owner, 40, 25), tile(40, 25));
+			Assert.Equal(Common.CivPattern(city.Owner, 39, 24), tile(39, 24));
+			Assert.Equal(Common.CivPattern(city.Owner, 41, 26), tile(41, 26));
 			Assert.Equal(CassetteTheme.BG3, tile(43, 25));   // plain known land beyond the ring
 			Assert.Equal(CassetteTheme.BG0, tile(46, 25));   // and the fog stays fog
+		}
+
+		// The block is the banner's pair, two tiles of primary to one of accent: six primaries
+		// for 17 civs had put Russia, Mali and the Mongols in one orange.
+		[Fact]
+		public void TheBlockShowsTheBannerPair()
+		{
+			(WorldMap screen, Func<int, int, byte> tile, City city) = AMapWithACity();
+			screen.KeyDown(new KeyboardEventArgs(Key.Tab, KeyModifier.None));
+
+			byte[] block = (from dy in new[] { -1, 0, 1 } from dx in new[] { -1, 0, 1 }
+			                select tile(city.X + dx, city.Y + dy)).ToArray();
+			Assert.Equal(6, block.Count(c => c == Common.ColourLight[city.Owner]));
+			Assert.Equal(3, block.Count(c => c == Common.BannerSecondary[city.Owner]));
+		}
+
+		// Every civ slot reads differently by eye: compared as colour PROPORTIONS over an area,
+		// since that is what a dither looks like. A 1:1 mix fails this — 13/14 and 14/13 are
+		// both half amber, half green.
+		[Fact]
+		public void NoTwoCivsShareAMix()
+		{
+			string Mix(int slot) => string.Join(",",
+				(from y in Enumerable.Range(0, 6) from x in Enumerable.Range(0, 6) select Common.CivPattern(slot, x, y))
+				.GroupBy(c => c).OrderBy(g => g.Key).Select(g => $"{g.Key}x{g.Count()}"));
+
+			var mixes = Enumerable.Range(1, Common.ColourLight.Length - 1).Select(Mix).ToArray();
+			Assert.Equal(mixes.Length, mixes.Distinct().Count());
 		}
 
 		[Fact]

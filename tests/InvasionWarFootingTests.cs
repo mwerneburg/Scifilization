@@ -61,6 +61,66 @@ namespace CivOne.Tests
 			Assert.Equal("Consolidate", StanceOf(p));
 		}
 
+		// ── the Senate's army ───────────────────────────────────────────────
+		//
+		// A Democracy raises no army for a war abroad, but the 1840-1889 encore showed what
+		// that rule did to an invaded one: seven Earth democracies fought the Federation for
+		// 44 turns with missiles and drones, and took nothing.
+
+		// A contented Democracy with Automobile (Armor) and a hostile city 20 tiles east, on
+		// the same land. `federation`: the hostile city is the invader's; otherwise a rival's.
+		private static (Player p, City home) ADemocracyAtWar(bool federation)
+		{
+			Sim.NewGame(width: 80, height: 50);
+			Settings.Instance.Autopilot = false;
+			Game g = Game.Instance;
+			for (int y = 20; y <= 30; y++)
+			for (int x = 20; x <= 60; x++)
+				Map.Instance.ChangeTileType(x, y, Terrain.Grassland1);
+			Map.Instance.RecalculateContinentsIfDirty();
+			Player p = g.Players.First(x => x is not null && x != g.HumanPlayer && g.PlayerNumber(x) != 0);
+			p.Government = new Governments.Democracy();
+			p.AddAdvance(new CivOne.Advances.Automobile(), false);
+			p.Explore(40, 25, range: 30);
+			City home = g.AddCity(p, 0, 25, 25)!;
+			home.Size = 4;
+
+			Player enemy = federation
+				? new Player(Common.Civilizations.First(c => c is Civilizations.Federation), "Federation")
+				: g.Players.First(x => x is not null && x != p && x != g.HumanPlayer && g.PlayerNumber(x) != 0);
+			if (federation) g.AddPlayer(enemy);
+			g.AddCity(enemy, 1, 45, 25)!.Size = 4;
+			enemy.DeclareWar(p);
+			Sim.ClearTasks();
+			return (p, home);
+		}
+
+		private static bool RaisingArmor(City c)
+			=> c.CurrentProduction is Armor || c.ProductionQueue.FirstOrDefault() is Armor;
+
+		[Fact]
+		public void AnInvadedDemocracyRaisesAnArmy()
+		{
+			(Player p, City home) = ADemocracyAtWar(federation: true);
+			Assert.Equal("Militarize", StanceOf(p));
+
+			AI.Instance(p).MarshalStrikeGroup();
+
+			Assert.True(RaisingArmor(home), $"producing {home.CurrentProduction?.GetType().Name}, queue {string.Join(",", home.ProductionQueue.Select(x => x.GetType().Name))}");
+		}
+
+		// A war with another Earth civ is a war of choice: the Senate's rule stands.
+		[Fact]
+		public void ADemocracyAtWarAbroadStillRaisesNone()
+		{
+			(Player p, City home) = ADemocracyAtWar(federation: false);
+			Assert.Equal("Militarize", StanceOf(p));
+
+			AI.Instance(p).MarshalStrikeGroup();
+
+			Assert.False(RaisingArmor(home));
+		}
+
 		// ── missiles ────────────────────────────────────────────────────────
 
 		private static (Player p, IUnit missile) AMissileAtHome()

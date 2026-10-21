@@ -127,13 +127,12 @@ namespace CivOne.Screens
 			foreach (City city in Game.GetCities())
 			{
 				if (city.Size == 0 || !Known(city.X, city.Y)) continue;
-				byte colour = Common.ColourLight[city.Owner];
 				for (int dy = -1; dy <= 1; dy++)
 				for (int dx = -1; dx <= 1; dx++)
 				{
 					int x = (city.X + dx + Map.WIDTH) % Map.WIDTH, y = city.Y + dy;
 					if (y < 0 || y >= Map.HEIGHT || !Known(x, y)) continue;
-					this.FillRectangle(ox + x * px, oy + y * px, px, px, colour);
+					this.FillRectangle(ox + x * px, oy + y * px, px, px, Common.CivPattern(city.Owner, x, y));
 				}
 			}
 			DrawHint("[ TAB terrain ]");

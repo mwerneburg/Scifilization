@@ -66,6 +66,13 @@ namespace CivOne
 		// civ to disambiguate it from, so it stays solid red (classic Civ) rather than red/white.
 		public static byte[] BannerSecondary = [16, 17, 14, 13, 16, 11, 17, 15, 16, 15, 13, 14, 13, 14, 17, 16, 15, 16, 17, 16];
 		public static byte[] ColourDark      = [ 4,  7,  2,  1, 10,  3,  4,  8,  5,  4,  3,  4,  4,  3,  5,  3,  1, 10,  3,  4];
+
+		// A surface too small for the quartered banner (the political map, the score traces)
+		// shows the pair as a 2:1 mix, a third of tiles in the accent. Not 1:1: several slots
+		// are the same two colours swapped (13/14 and 14/13), and an even mix makes them one
+		// civ. Six primaries for 17 civs put Russia, Mali and the Mongols in a single orange.
+		public static byte CivPattern(int owner, int x, int y)
+			=> (x + 2 * y) % 3 == 0 ? BannerSecondary[owner] : ColourLight[owner];
 		
 		internal static IEnumerable<string> AllCityNames => Civilizations.Select(x => x.CityNames).SelectMany(x => x);
 
