@@ -3366,12 +3366,22 @@ namespace CivOne
 		private void FlyStrike(IUnit unit)
 		{
 			int fuel = (unit as BaseUnitAir)?.FuelLeft ?? unit.MovesLeft;
-			int reach = CruiseMissile.IsExpendable(unit) ? fuel : fuel / 2;
+			bool expendable = CruiseMissile.IsExpendable(unit);
 			byte own = unit.Owner;
 			bool Enemy(byte o) => o != own && (o == 0 || Player.IsAtWar(Game.GetPlayer(o)));
+			// Out AND home again from the mark — half the fuel from HERE stranded a second
+			// sortie: a Bomber eight tiles out with eight left took a mark four further on.
+			// And struck THIS turn: anything may attack an aircraft on the ground, and of 22
+			// Federation Bombers all 22 died, nearly every one parked in the open a turn short
+			// of its mark (Oct 2026). A Bomber still sits out the night after it strikes —
+			// winning ends its turn (BaseUnit.Confront) — but not the night before too.
+			int HomeFrom(IUnit u) => Player.Cities.Length == 0 ? 0
+				: Player.Cities.Min(c => Common.DistanceToTile(c.X, c.Y, u.X, u.Y));
 			IUnit? mark = Game.GetUnits()
 				.Where(u => u.Tile is not null && Enemy(u.Owner) && Player.Visible(u.X, u.Y)
-				         && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= reach)
+				         && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= fuel
+				         && (expendable || (Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= unit.MovesLeft
+				                            && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) + HomeFrom(u) <= fuel)))
 				.OrderBy(u => _attackTarget is not null && u.X == _attackTarget.X && u.Y == _attackTarget.Y ? 0 : 1)
 				.ThenBy(u => Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y))
 				.FirstOrDefault();
@@ -4327,6 +4337,20 @@ namespace CivOne
 			return new Militia();
 		}
 
+		// Bombers, one to every four cities. They go over City Walls (Bomber.IgnoresCityWalls)
+		// and nothing chose to build one until Oct 2026. They are manned — war weariness
+		// counts them, unlike missiles and drones — so the general plan asks the Senate.
+		// Counts the ones on order too: every city replans alone, and a cap on the finished
+		// units alone lets a 119-city empire start 119 at once.
+		private bool BombersShort()
+		{
+			if (!Player.ProductionAvailable(new Bomber())) return false;
+			byte id = Game.PlayerNumber(Player);
+			int have = Game.GetUnits().Count(u => u.Owner == id && u is Bomber)
+				+ Player.Cities.Count(c => c.CurrentProduction is Bomber);
+			return have < Math.Max(1, Player.Cities.Length / 4);
+		}
+
 		private IProduction BestAttacker()
 		{
 			if (Player.HasAdvance<Automobile>())       return new Armor();
@@ -4682,6 +4706,7 @@ namespace CivOne
 				int agents = Game.GetUnits().Count(u => u.Owner == thId && u is Diplomat);
 
 				if (Player.ProductionAvailable(new HoverTank())) Consider(new HoverTank());
+				if (BombersShort()) Consider(new Bomber());
 				// Sabotage is a tool, not a doctrine — one agent per two cities is plenty.
 				// They were building them regardless of use: 84 Diplomats produced by a
 				// faction that returns early from every diplomatic path (AI.Strategy:1072),
@@ -5213,6 +5238,7 @@ namespace CivOne
 					if (Player.HasAdvance<Rocketry>()) Consider(new CruiseMissile());
 					if (Player.HasAdvance<Robotics>()) Consider(new ReaperDrone());
 				}
+				if (SenateRaisesArmies && BombersShort()) Consider(new Bomber());
 			}
 
 			// Expand: infrastructure before settlers, then settlers when city is large enough.

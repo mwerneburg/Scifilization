@@ -191,7 +191,11 @@ namespace CivOne.Units
 					                  : 4;
 					// /4 because the fortification modifier carries a factor of 4 already
 					// (see step 3 below); this keeps an unfortified defender at baseDefend.
-					baseDefend = baseDefend * fortification / 4;
+					// Then x3: once a Bomber's strike became a year-long campaign (Bombard),
+					// the graded SAM alone took a fortified Mech Inf from 12 to 18 against 96
+					// and cost the Bomber nothing — 10 rounds won on average, against 15
+					// without. Tripled, it gets two or three (the user's call, Oct 2026).
+					baseDefend = baseDefend * fortification / 4 * 3;
 				}
 				if (defendUnit.Veteran) baseDefend += baseDefend / 2;
 				return baseDefend;
@@ -255,10 +259,10 @@ namespace CivOne.Units
 		internal IUnit Defender(ITile defendTile) =>
 			defendTile.Units.OrderByDescending(x => DefendStrength(x, this)).ThenBy(x => (int)x.Type).First();
 
-		private bool AttackOutcome(IUnit attackUnit, ITile defendTile)
-		{
-			IUnit defendUnit = Defender(defendTile);
+		private bool AttackOutcome(IUnit attackUnit, ITile defendTile) => AttackOutcome(attackUnit, Defender(defendTile));
 
+		private bool AttackOutcome(IUnit attackUnit, IUnit defendUnit)
+		{
 			int attackStrength = AttackStrength(defendUnit);
 			int defenseStrength = DefendStrength(defendUnit, attackUnit);
 			int randomAttack = Common.Random.Next(attackStrength);
@@ -570,7 +574,9 @@ namespace CivOne.Units
 					    && !Screens.DestroyUnit.ResolveIfUnseen(this, false))
 						GameTask.Insert(Show.DestroyUnit(this, false));
 
-					if (Map[X, Y][relX, relY].City is not null)
+					if (Map[X, Y][relX, relY].City is not null && this is Bomber)
+						Bombard(Map[X, Y][relX, relY].City, unit);
+					else if (Map[X, Y][relX, relY].City is not null)
 					{
 						City cc = Map[X, Y][relX, relY].City;
 						bool wallProtected = cc.HasBuilding<CityWalls>()
@@ -603,6 +609,70 @@ namespace CivOne.Units
 			.ToList();
 		}
 
+		// A Bomber's strike is a year of raids, not one (the user, Oct 2026: Dresden, Tokyo).
+		// It fights the garrison defender by defender at the ordinary air odds — a SAM Battery
+		// makes every round harder — and each round it wins kills that defender, destroys one
+		// improvement and costs the city a citizen. It stops at its first loss, which costs
+		// the Bomber, or when the city is empty; it cannot take one. A survivor ends the year
+		// at its base. Wonders are spared: taking the city is the only way to win or lose one.
+		// `first` is the defender the opening round already beat — its death may still be
+		// on screen, so it is passed over rather than fought again.
+		private void Bombard(City city, IUnit? first)
+		{
+			ITile tile = city.Tile;
+			int killed = 0;
+			var lost = new List<string>();
+			bool alive = true;
+			void Raze()
+			{
+				// ponytail: the Palace is spared too, so bombing never moves a capital.
+				IBuilding[] standing = city.Buildings.Where(b => b is not Palace).ToArray();
+				if (standing.Length > 0)
+				{
+					IBuilding b = standing[Common.Random.Next(standing.Length)];
+					city.RemoveBuilding(b);
+					lost.Add(b.Name);
+				}
+				if (city.Size > 1) city.Size--;
+			}
+
+			killed++;
+			Raze();
+			// The opening win ended the turn (a Bomber's does), and an attack on no moves left
+			// is multiplied by the part-moves, here 0 — every later round was fought at
+			// strength 0. The year's raids fly fresh; the turn ends again below.
+			MovesLeft = Move;
+			while (true)
+			{
+				IUnit? next = tile.Units.Where(u => u != first && u.Owner != Owner)
+					.OrderByDescending(u => DefendStrength(u, this)).ThenBy(u => (int)u.Type).FirstOrDefault();
+				if (next is null) break;
+				if (!AttackOutcome(this, next)) { alive = false; break; }
+				Game.DisbandUnit(next);
+				killed++;
+				Raze();
+			}
+
+			Player victim = Game.GetPlayer(city.Owner);
+			if (Human == Owner || Human == city.Owner)
+				GameTask.Enqueue(Message.Newspaper(city,
+					$"{Player.TribeNamePlural} bombers struck {city.Name}.",
+					$"{killed} defender{(killed == 1 ? "" : "s")} and {lost.Count} building{(lost.Count == 1 ? "" : "s")} lost.",
+					alive ? "The bombers returned to base." : $"The {victim.TribeName} defences shot one down."));
+
+			if (!alive)
+			{
+				if (!Screens.DestroyUnit.ResolveIfUnseen(this, false))
+					GameTask.Insert(Show.DestroyUnit(this, false));
+				return;
+			}
+			City? baseCity = Home is City h && h.Owner == Owner && h.Size > 0 ? h
+				: Player.Cities.OrderBy(c => Common.DistanceToTile(c.X, c.Y, X, Y)).FirstOrDefault();
+			if (baseCity is not null) { X = baseCity.X; Y = baseCity.Y; }
+			if (this is BaseUnitAir air) air.FuelLeft = air.TotalFuel;
+			MovesLeft = 0;
+		}
+
 		public virtual bool MoveTo(int relX, int relY)
 		{
 			if (Movement is not null)
@@ -618,6 +688,15 @@ namespace CivOne.Units
 				if (Class == UnitClass.Land && Tile.IsOcean)
 				{
 					if (Human == Owner) GameTask.Enqueue(Message.Error("-- Civilization Note --", TextFile.Instance.GetGameText($"ERROR/AMPHIB")));
+					return false;
+				}
+				// Only aircraft reach aircraft in the open — Civ 1's rule, with the Reaper Drone
+				// and the missiles where the retired Fighter stood. A Bomber that had struck sat
+				// at defence 1 beside its target and anything killed it: 19 of 21 Federation
+				// Bombers died that way (Oct 2026). In a city they are garrison like any other.
+				if (Class != UnitClass.Air && moveTarget.City is null && moveTarget.Units.All(u => u.Class == UnitClass.Air))
+				{
+					if (Human == Owner) GameTask.Enqueue(Message.Error("-- Civilization Note --", "Only aircraft can", "attack aircraft."));
 					return false;
 				}
 				return Confront(relX, relY);

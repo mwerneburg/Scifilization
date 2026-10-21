@@ -28,11 +28,16 @@ namespace CivOne.Buildings
 			"A SAM BATTERY rings the city with",
 			"surface-to-air missiles.",
 			"",
-			"Aircraft attacking the city no",
-			"longer strip its defenders of",
-			"their FORTIFICATION — though the",
-			"terrain still counts for nothing",
-			"from the air.",
+			"Its defenders stand at THREE times",
+			"their strength against aircraft,",
+			"and keep their FORTIFICATION —",
+			"though the terrain still counts",
+			"for nothing from the air.",
+			"",
+			"Against a BOMBER's year of raids,",
+			"that is the difference between",
+			"losing a building or two and",
+			"losing the city's heart.",
 		};
 
 		private static readonly string[] _page2 =
