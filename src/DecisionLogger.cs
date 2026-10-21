@@ -146,6 +146,10 @@ namespace CivOne
 		private static Task _writerTask = null!;
 		private static volatile bool _active;
 
+		// True once this session has written a game_outcome. The sweep harness stops on it
+		// (Sim.GameDecided); it used to read _active, which EndGame cleared.
+		internal static bool OutcomeLogged { get; private set; }
+
 		// ── lifecycle ────────────────────────────────────────────────────────────
 
 		// `resumeId` is the id recovered from a save. Null (a new game, or a save written
@@ -170,6 +174,7 @@ namespace CivOne
 				? Guid.NewGuid().ToString("N").Substring(0, 8)
 				: resumeId!;
 			_sessionId = Guid.NewGuid().ToString("N").Substring(0, 8);
+			OutcomeLogged = false;
 			try
 			{
 				string dir  = Settings.Instance.DataDirectory;
@@ -190,9 +195,14 @@ namespace CivOne
 		// victory TYPE, and reading a finished game meant inferring the winner from whichever
 		// civ's streak was longest in the last standings row and then confirming it in the
 		// save — which is how a 1987 AD Cultural Ascendancy was traced back to Tokugawa.
+		//
+		// Logging goes on after the outcome: a banked win's encore (the Federation war, Oct
+		// 2026) is still the game, and closing the writer here lost all of it. One outcome per
+		// game — a second win, or a rival's, during the encore writes none, since the banked
+		// win is what EndSequence records too.
 		internal static void EndGame(int score, string victory, bool humanWon, int turns, Player? winner)
 		{
-			if (!_active) return;
+			if (!_active || OutcomeLogged || Game.Instance?.BankedVictory is not null) return;
 			Enqueue(Fmt(new[] {
 				KV("type",      "game_outcome"),
 				KV("game_id",   _gameId),
@@ -203,12 +213,7 @@ namespace CivOne
 				KV("winner",    winner?.Civilization?.NamePlural ?? "?"),
 				KV("winner_leader", winner?.LeaderName ?? "?"),
 			}));
-			_active = false;
-			_signal.Release();
-			_writerTask?.Wait(3000);
-			_writer?.Flush();
-			_writer?.Dispose();
-			_writer = null;
+			OutcomeLogged = true;
 		}
 
 		// ── decision log points ──────────────────────────────────────────────────

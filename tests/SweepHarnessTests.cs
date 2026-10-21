@@ -20,20 +20,40 @@ namespace CivOne.Tests
 {
 	public class SweepHarnessTests
 	{
-		// The reflection target exists and tracks the game, rather than reading false always.
+		// The sweep's stop condition follows the game: off at the start, on at the outcome.
 		[Fact]
 		public void GameDecidedFollowsTheLoggersLifecycle()
 		{
-			var field = typeof(DecisionLogger).GetField("_active",
-				BindingFlags.NonPublic | BindingFlags.Static);
-			Assert.NotNull(field);   // renamed field = a stop condition that never fires
-
 			Sim.NewGame(width: 40, height: 30, competition: 3);
 			Assert.False(Sim.GameDecided(), "a game that just started is not over");
 
 			DecisionLogger.EndGame(0, "Test", humanWon: false, turns: 1, null);
 
 			Assert.True(Sim.GameDecided(), "the run did not notice the game ending");
+		}
+
+		// A win no longer closes the log: the encore after a banked win was never recorded,
+		// the 84-year Federation war included (Oct 2026).
+		[Fact]
+		public void LoggingGoesOnAfterTheOutcome()
+		{
+			Sim.NewGame(width: 40, height: 30, competition: 3);
+			DecisionLogger.EndGame(0, "Test", humanWon: true, turns: 1, null);
+
+			var active = typeof(DecisionLogger).GetField("_active", BindingFlags.NonPublic | BindingFlags.Static);
+			Assert.True((bool)active!.GetValue(null)!, "the log closed at the victory");
+		}
+
+		// A second win during the encore writes no second outcome: the banked win is the game's.
+		[Fact]
+		public void AnEncoreWinWritesNoOutcome()
+		{
+			Sim.NewGame(width: 40, height: 30, competition: 3);
+			Game.Instance.BankedVictory = "Cultural Ascendancy";
+
+			DecisionLogger.EndGame(0, "Economic Dominance", humanWon: true, turns: 1, null);
+
+			Assert.False(DecisionLogger.OutcomeLogged, "the encore wrote a second game_outcome");
 		}
 
 		// Earth loads, at the size that makes it Earth. A sweep that silently generated a

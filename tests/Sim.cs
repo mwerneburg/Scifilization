@@ -164,17 +164,11 @@ namespace CivOne.Tests
 			AI.Instance(human).ChooseResearch();
 		}
 
-		// True once a victory has been recorded — DecisionLogger.EndGame is the one thing that
-		// clears the active flag, and every victory path calls it. Without this a sweep run
-		// keeps grinding turns after the game is decided: the win enqueues a GameOver task,
-		// which cannot complete with no renderer, so the loop drops it and plays on to the turn
-		// cap. On an epic map that is an hour of nothing.
-		public static bool GameDecided()
-		{
-			var f = typeof(DecisionLogger).GetField("_active",
-				BindingFlags.NonPublic | BindingFlags.Static);
-			return f is not null && !(bool)f.GetValue(null)!;
-		}
+		// True once a victory has been recorded — every victory path calls DecisionLogger.EndGame.
+		// Without this a sweep run keeps grinding turns after the game is decided: the win
+		// enqueues a GameOver task, which cannot complete with no renderer, so the loop drops it
+		// and plays on to the turn cap. On an epic map that is an hour of nothing.
+		public static bool GameDecided() => DecisionLogger.OutcomeLogged;
 
 		// Drive N game turns headlessly.
 		//
