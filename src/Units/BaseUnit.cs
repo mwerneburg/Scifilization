@@ -249,9 +249,15 @@ namespace CivOne.Units
 			return defendStrength;
 		}
 
+		// Civ 1 sends out the stack's best DEFENDER against this attacker. Ranking by attack
+		// (as this did since 2017) put a Hover Tank in front of the Fusion Infantry it shared
+		// a city with, and a Catapult in front of its Phalanx.
+		internal IUnit Defender(ITile defendTile) =>
+			defendTile.Units.OrderByDescending(x => DefendStrength(x, this)).ThenBy(x => (int)x.Type).First();
+
 		private bool AttackOutcome(IUnit attackUnit, ITile defendTile)
 		{
-			IUnit defendUnit = defendTile.Units.OrderByDescending(x => x.Attack * (x.Veteran ? 1.5 : 1)).ThenBy(x => (int)x.Type).First();
+			IUnit defendUnit = Defender(defendTile);
 
 			int attackStrength = AttackStrength(defendUnit);
 			int defenseStrength = DefendStrength(defendUnit, attackUnit);

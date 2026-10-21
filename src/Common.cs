@@ -464,7 +464,9 @@ namespace CivOne
 			// the plan expires on arrival anyway. A unit moving onto our next tile is different:
 			// a non-combat unit refuses to enter it, so the step is one the unit will not take.
 			// Mirrors the `blocked` test in GotoStepInner, goal-tile exemption included.
-			if (!(nx == gx && ny == gy) && tile.City is null && StepBlocked(unit, tile)) return null;
+			if (!(nx == gx && ny == gy)
+			    && (tile.City is null ? StepBlocked(unit, tile)
+			        : tile.City.Owner != unit.Owner && tile.Units.Any(u => u.Owner != unit.Owner))) return null;
 			if (Trespass(unit, Game.Instance.GetPlayer(unit.Owner), nx, ny)) return null;
 
 			return tile;
@@ -777,8 +779,13 @@ namespace CivOne
 					// trespass through them. Enemy (at-war) or barbarian tiles are NOT
 					// blocked: at war their units are targets to advance on and attack,
 					// which is the whole point of a war. The goal tile is exempt either way.
+					// A foreign city with anyone in it is blocked: stepping in is an assault on
+					// its garrison, and a route that merely passes through sent the Franks' Hover
+					// Tanks into Izibia's veteran Mech Inf one at a time on the way to an empty
+					// Thionville (Oct 2026). An empty one stays open — taken in passing.
 					bool blocked = tile.City is null
-						&& (OwnerMask(nx, ny) & blockingMask) != 0;
+						? (OwnerMask(nx, ny) & blockingMask) != 0
+						: tile.City.Owner != unit.Owner && (OwnerMask(nx, ny) & ~selfBit) != 0;
 
 					// Zone of control (Civ 1): may not move directly from one tile under
 					// enemy ZOC to another tile under enemy ZOC. Exempt: air units, leaving
