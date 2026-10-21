@@ -36,6 +36,9 @@ namespace CivOne.Wonders
 			"gates to orbit. The Core is the reactor",
 			"behind them all: compact, limitless, and",
 			"finally tamed.",
+			"",
+			"Only its holder can build Hover",
+			"Tanks and Fusion Infantry.",
 		};
 
 		public override string[] GetPageText(byte pageNumber)

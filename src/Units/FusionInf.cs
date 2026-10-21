@@ -29,7 +29,9 @@ namespace CivOne.Units
 
 		private static readonly string[] _page2 =
 		{
-			"Requires FUSION POWER.",
+			"Requires FUSION POWER, and the",
+			"FUSION CORE in one of your cities.",
+			"Lose the Core and you build no more.",
 			"",
 			"Garrison your cities with Fusion",
 			"Infantry to hold them against the",

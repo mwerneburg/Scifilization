@@ -34,6 +34,10 @@ namespace CivOne.Units
 		{
 			"A late-age war machine.",
 			"",
+			"Requires FUSION POWER, and the",
+			"FUSION CORE in one of your cities.",
+			"Lose the Core and you build no more.",
+			"",
 			"Spearhead your offensives with",
 			"Hover Tanks — they cross rough",
 			"country as easily as open plain.",
