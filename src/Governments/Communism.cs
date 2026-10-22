@@ -46,10 +46,13 @@ namespace CivOne.Governments
 			"democracy would collapse into",
 			"ANARCHY.",
 			"",
-			"The government of a very large",
-			"empire that intends to out-think",
-			"its rivals rather than out-trade",
-			"them.",
+			"The government of a very large empire",
+			"that intends to out-think its rivals",
+			"rather than out-trade them.",
+			"",
+			"REVOLUTION: a town of eight or fewer,",
+			"three turns in riot, may join a Communist",
+			"neighbour at peace with its owner.",
 		};
 
 		public override string[] GetPageText(byte pageNumber) => pageNumber == 1 ? _page1 : _page2;

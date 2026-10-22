@@ -90,6 +90,7 @@ using CivOne.Units;
 //   to            string   the civilization whose culture pulled it
 //   from_cult     int      accumulated culture, loser
 //   to_cult       int      accumulated culture, winner
+//   cause         string   "culture" | "revolution" (chronic disorder beside a Communist)
 //
 //   --- war fields ---
 //   aggressor     string   civilization that declared, NamePlural
@@ -471,7 +472,7 @@ namespace CivOne
 		// happens" and "it happens quietly" look identical in a finished save. The Artist
 		// specialist raises exactly the number this rule reads, which is the question the
 		// next run is meant to answer.
-		internal static void LogDefection(City city, Player from, Player to)
+		internal static void LogDefection(City city, Player from, Player to, string cause = "culture")
 		{
 			if (!_active) return;
 			Enqueue(Fmt(new[] {
@@ -484,6 +485,7 @@ namespace CivOne
 				KV("to",        to?.Civilization?.NamePlural ?? "?"),
 				KV("from_cult", from?.Culture ?? 0),
 				KV("to_cult",   to?.Culture ?? 0),
+				KV("cause",     cause),
 			}));
 		}
 

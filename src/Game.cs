@@ -6314,10 +6314,16 @@ namespace CivOne
 		// garrisoned city in the cultural shadow of a far more admired neighbour
 		// may choose the other flag. Peaceful only — an enemy's culture doesn't
 		// flip cities, armies do. Rare and headline-worthy: at most one per turn.
+		//
+		// And revolution: a city of up to 8 in disorder for three turns running may go over
+		// to a Communist neighbour at peace with its owner, culture or no (the user, Oct
+		// 2026). Bigger than the culture rule's 5 because chronic unrest is a big city's
+		// problem; the same 8% roll.
+		private const int RevolutionDisorderTurns = 3;
 		private void ProcessCultureDefections()
 		{
 			foreach (City city in _cities
-				.Where(c => c.Size > 0 && c.Size <= 5 && c.Owner != 0)
+				.Where(c => c.Size > 0 && c.Size <= 8 && c.Owner != 0)
 				.OrderBy(_ => Common.Random.Next(10000)).ToArray())
 			{
 				Player owner = GetPlayer(city.Owner);
@@ -6334,15 +6340,23 @@ namespace CivOne
 
 				// The pull: the strongest nearby foreign culture, at peace with the
 				// owner, with at least triple the owner's accumulated culture.
-				Player? magnet = _cities
+				Player[] near = _cities
 					.Where(n => n.Size > 0 && n.Owner != city.Owner && n.Owner != 0
 					         && TileDistance(n.X, n.Y, city.X, city.Y) <= 5)
 					.Select(n => GetPlayer(n.Owner))
 					.Where(p => !(p.Civilization is Civilizations.Olvir or Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
-					         && !p.IsAtWar(owner)
-					         && p.Culture >= 100 && p.Culture >= owner.Culture * 3)
+					         && !p.IsAtWar(owner))
+					.ToArray();
+				Player? magnet = city.Size > 5 ? null : near
+					.Where(p => p.Culture >= 100 && p.Culture >= owner.Culture * 3)
 					.OrderByDescending(p => p.Culture)
 					.FirstOrDefault();
+				bool revolution = false;
+				if (magnet is null && city.DisorderTurns >= RevolutionDisorderTurns)
+				{
+					magnet = near.FirstOrDefault(p => p.Government is Governments.Communism);
+					revolution = magnet is not null;
+				}
 				if (magnet is null) continue;
 				if (Common.Random.Next(100) >= 8) continue;
 
@@ -6354,7 +6368,7 @@ namespace CivOne
 				foreach (IUnit u in city.Units.ToArray())
 					u.SetHome(null);
 				_replayData.Add(new ReplayData.CityCaptured(_gameTurn, _cities.IndexOf(city), city.NameId, city.X, city.Y, mnum));
-				DecisionLogger.LogDefection(city, owner, magnet);
+				DecisionLogger.LogDefection(city, owner, magnet, revolution ? "revolution" : "culture");
 				string oldTribe = owner.TribeNamePlural;
 				city.Owner = mnum;
 				city.ResetResourceTiles();
@@ -6363,9 +6377,13 @@ namespace CivOne
 
 				if (owner.IsHuman || magnet.IsHuman
 				    || HumanPlayer.HasEmbassy(owner) || HumanPlayer.HasEmbassy(magnet))
-					GameTask.Enqueue(Message.Newspaper(null!, $"{city.Name} defects!",
-						$"Citizens abandon the {oldTribe}",
-						$"for {magnet.TribeName} culture."));
+					GameTask.Enqueue(revolution
+						? Message.Newspaper(null!, $"{city.Name} rises for the revolution!",
+							$"Citizens abandon the {oldTribe}",
+							$"for the {magnet.TribeName} people's government.")
+						: Message.Newspaper(null!, $"{city.Name} defects!",
+							$"Citizens abandon the {oldTribe}",
+							$"for {magnet.TribeName} culture."));
 				break; // at most one defection per turn
 			}
 		}

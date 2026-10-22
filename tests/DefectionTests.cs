@@ -114,6 +114,82 @@ namespace CivOne.Tests
 			Assert.Equal(g.PlayerNumber(owner), town.Owner);
 		}
 
+		// The revolution rule reaches size 8; culture alone still stops at 5.
+		[Fact]
+		public void CultureAloneStillTakesOnlySmallTowns()
+		{
+			(Game g, City town, Player owner, Player _) = ATownReadyToLeave();
+			town.Size = 6;
+			for (int i = 0; i < 300; i++) Defections(g);
+			Assert.Equal(g.PlayerNumber(owner), town.Owner);
+		}
+
+		// ── revolution ───────────────────────────────────────────────────────
+
+		// A size-7 town (over the culture rule's 5) three turns into its riot, beside a
+		// Communist neighbour with no more culture than its own.
+		private static (Game game, City town, Player owner, Player magnet) ATownReadyToRise()
+		{
+			(Game g, City town, Player owner, Player magnet) = ATownReadyToLeave();
+			magnet.SetCulture(owner.Culture);
+			magnet.Government = new Communism();
+			town.Size = 7;
+			town.DisorderTurns = 3;
+			return (g, town, owner, magnet);
+		}
+
+		private static void Rounds(Game g, City town)
+		{
+			byte before = town.Owner;
+			for (int i = 0; i < 300 && town.Owner == before; i++) Defections(g);
+		}
+
+		[Fact]
+		public void AChronicRiotGoesOverToACommunistNeighbour()
+		{
+			(Game g, City town, Player _, Player magnet) = ATownReadyToRise();
+			Rounds(g, town);
+			Assert.Equal(g.PlayerNumber(magnet), town.Owner);
+			Assert.Contains(Sim.PendingMessageLines(), l => l == $"{town.Name} rises for the revolution!");
+		}
+
+		[Fact]
+		public void TwoTurnsOfRiotIsNotYetChronic()
+		{
+			(Game g, City town, Player owner, Player _) = ATownReadyToRise();
+			town.DisorderTurns = 2;
+			Rounds(g, town);
+			Assert.Equal(g.PlayerNumber(owner), town.Owner);
+		}
+
+		[Fact]
+		public void AMonarchyNeighbourDoesNotPull()
+		{
+			(Game g, City town, Player owner, Player magnet) = ATownReadyToRise();
+			magnet.Government = new Monarchy();
+			Rounds(g, town);
+			Assert.Equal(g.PlayerNumber(owner), town.Owner);
+		}
+
+		[Fact]
+		public void NotToACommunistAtWarWithTheOwner()
+		{
+			(Game g, City town, Player owner, Player magnet) = ATownReadyToRise();
+			magnet.DeclareWar(owner);
+			Sim.ClearTasks();
+			Rounds(g, town);
+			Assert.Equal(g.PlayerNumber(owner), town.Owner);
+		}
+
+		[Fact]
+		public void NineIsTooBigToRise()
+		{
+			(Game g, City town, Player owner, Player _) = ATownReadyToRise();
+			town.Size = 9;
+			Rounds(g, town);
+			Assert.Equal(g.PlayerNumber(owner), town.Owner);
+		}
+
 		// The log call must be inside the branch that actually moves the city — a record
 		// emitted from anywhere else would count intentions, not flips.
 		[Fact]
@@ -142,6 +218,7 @@ namespace CivOne.Tests
 		[InlineData("to")]
 		[InlineData("from_cult")]
 		[InlineData("to_cult")]
+		[InlineData("cause")]
 		public void TheRecordCarriesBothSides(string field)
 		{
 			string src = System.IO.File.ReadAllText(
