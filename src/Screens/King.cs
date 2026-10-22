@@ -705,7 +705,8 @@ namespace CivOne.Screens
 		private void SeekPeace(object sender, EventArgs args)
 		{
 			CloseMenus();
-			if (AIAccepts(50))
+			// Likelier while outsiders hold cities: Earth has a bigger problem (Game.OutsidersAbroad).
+			if (AIAccepts(Game.OutsidersAbroad ? 80 : 50))
 			{
 				Human.MakePeace(_enemy);
 				SetResponse(FaceState.Smiling,

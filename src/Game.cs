@@ -1144,6 +1144,13 @@ namespace CivOne
 			&& TryGetPlayerNumber(player, out byte n)
 			&& NuclearPariah.TryGetValue(n, out int t) && t > 0;
 
+		// The machines, the Federation, the Registry and the organism. While any of them holds
+		// a city, Earth's nations stop fighting one another (AI.ConsiderWar): run 3ee31bef had
+		// the Federation take 104 cities while Earth spent its armies on Earth (the user, Oct 2026).
+		internal static bool IsOutsider(Player p)
+			=> p.Civilization is TheOthers or TheThing or Skynet or Federation;
+		internal bool OutsidersAbroad => _players.Any(p => p is not null && IsOutsider(p) && p.Cities.Length > 0);
+
 		// The organism, the Registry and the machines are not people. A strike on any of them
 		// is pest control and costs nothing. The barbarians ARE people — late in a game they are
 		// whole cities that broke away (the user, Oct 2026) — but they keep no embassies, so

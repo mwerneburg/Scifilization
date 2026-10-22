@@ -2056,9 +2056,12 @@ namespace CivOne
 					// Militarize stance for the rest of the game.
 					bool stalemate = _turnsAtWar > 30 && Player.Cities.Length >= _peacetimeCities;
 
-					if (losingTerritory || exhausted || stalemate)
+					// Outsiders abroad: Earth's quarrels wait (Game.OutsidersAbroad).
+					bool united = Game.OutsidersAbroad;
+
+					if (losingTerritory || exhausted || stalemate || united)
 					{
-						int peaceChance = losingTerritory ? 30 : stalemate ? 25 : 20;
+						int peaceChance = losingTerritory ? 30 : stalemate || united ? 25 : 20;
 						foreach (Player enemy in aiEnemies)
 						{
 							if (Common.Random.Next(100) < peaceChance)
@@ -2153,9 +2156,11 @@ namespace CivOne
 			}
 
 			ConsiderFascism(atWar);
+			// Only the outsiders are fair game while they hold cities (Game.OutsidersAbroad).
+			bool outsidersAbroad = Game.OutsidersAbroad;
 			if (Player.RepublicDemocratic)
 			{
-				ConsiderWarFooting();
+				if (!outsidersAbroad) ConsiderWarFooting();
 				return;
 			}
 
@@ -2192,6 +2197,7 @@ namespace CivOne
 			{
 				if (enemy == Player || enemy.IsDestroyed()) continue;
 				if (Player.IsAtWar(enemy)) continue;
+				if (outsidersAbroad && !Game.IsOutsider(enemy)) continue;
 				if (!IsNeighbor(enemy)) continue;
 				bool fascist = Player.Government is Gov.Fascism;
 				if (enemy.HasWonder<UnitedNations>() && !fascist) continue;   // the UN does not shield you from it
