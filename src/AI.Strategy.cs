@@ -3377,8 +3377,11 @@ namespace CivOne
 			// winning ends its turn (BaseUnit.Confront) — but not the night before too.
 			int HomeFrom(IUnit u) => Player.Cities.Length == 0 ? 0
 				: Player.Cities.Min(c => Common.DistanceToTile(c.X, c.Y, u.X, u.Y));
+			// Not under a SAM: it triples the defence against air (BaseUnit.DefendStrength), and
+			// 33 of 37 Federation Bombers died flying into Earth's 177 of them (Oct 2026).
 			IUnit? mark = Game.GetUnits()
 				.Where(u => u.Tile is not null && Enemy(u.Owner) && Player.Visible(u.X, u.Y)
+				         && u.Tile.City?.HasBuilding<SamBattery>() != true
 				         && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= fuel
 				         && (expendable || (Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= unit.MovesLeft
 				                            && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) + HomeFrom(u) <= fuel)))
@@ -4753,6 +4756,7 @@ namespace CivOne
 						if (!Game.WonderBuilt(w) && Player.ProductionAvailable(w)) { Consider(w); break; }
 
 				if (Player.ProductionAvailable(new HoverTank())) Consider(new HoverTank());
+				if (BombersShort()) Consider(new Bomber());
 				if (Player.ProductionAvailable(new Armor()))     Consider(new Armor());
 				if (plan.Count == 0) Consider(new Militia());
 				return plan;

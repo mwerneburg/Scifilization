@@ -66,6 +66,13 @@ namespace CivOne.Tests
 			Assert.Contains(AI.Instance(p).ProductionPlan(cities[3]), x => x is Bomber);
 		}
 
+		[Fact]
+		public void SkynetPlansABomber()
+		{
+			(Game _, Player p, City[] cities) = AnAirPowerAtWar(Common.Civilizations.First(c => c is Civilizations.Skynet));
+			Assert.Contains(AI.Instance(p).ProductionPlan(cities[3]), x => x is Bomber);
+		}
+
 		private static void FlyStrike(Player p, IUnit unit) =>
 			typeof(AI).GetMethod("FlyStrike", BindingFlags.NonPublic | BindingFlags.Instance)!
 				.Invoke(AI.Instance(p), new object[] { unit });
@@ -114,7 +121,22 @@ namespace CivOne.Tests
 
 			Assert.Equal(new Point(38, 25), bomber.Goto);
 		}
-	
+
+		// The same strike, but the city has a SAM: the Bomber stays home.
+		[Fact]
+		public void ABomberLeavesASamCityAlone()
+		{
+			(Game g, Player p, City[] _) = AnAirPowerAtWar();
+			var bomber = (Bomber)g.CreateUnit(UnitType.Bomber, 32, 25, g.PlayerNumber(p))!;
+			Player rival = g.Players.First(x => x is not null && x != p && p.IsAtWar(x));
+			g.CreateUnit(UnitType.Armor, 38, 25, g.PlayerNumber(rival));
+			g.GetCities().First(c => c.X == 38 && c.Y == 25).AddBuilding(new SamBattery());
+
+			FlyStrike(p, bomber);
+
+			Assert.True(bomber.Goto.IsEmpty, $"sent to {bomber.Goto}");
+		}
+
 		// ── only aircraft reach aircraft ─────────────────────────────────────
 
 		private static (Game g, Player p, Player rival) TwoSides()
