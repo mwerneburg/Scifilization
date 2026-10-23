@@ -38,6 +38,7 @@ namespace CivOne.Buildings
 		private static readonly string[] _page2 =
 		{
 			"Requires SPACE FLIGHT.",
+			"Needs COPPER: +50% shields without.",
 			"",
 			"A colony beyond the solar system",
 			"depends on the city that flies it.",

@@ -437,6 +437,7 @@ namespace CivOne.Screens
 				case Terrain.Desert:
 					DrawTerrainTextValues(ref yy, "Desert", "0", "1", "0", "2*", "2", "1%");
 					DrawTerrainTextValues(ref yy, "Oil", "0", "4", "0", "2*", "5", "1%");
+					DrawTerrainTextValues(ref yy, "Salt", "0", "1", "2%", "2*", "2", "3%");
 					break;
 				case Terrain.Forest:
 					DrawTerrainTextValues(ref yy, "Forest", "1", "2");
@@ -451,12 +452,14 @@ namespace CivOne.Screens
 				case Terrain.Hills:
 					DrawTerrainTextValues(ref yy, "Hills", "1", "0", null, "2", "3*");
 					DrawTerrainTextValues(ref yy, "Coal", "1", "2", null, "2", "5*");
+					DrawTerrainTextValues(ref yy, "Copper", "1", "2", null, "2", "5*");
 					move = 2;
 					defense = 100;
 					break;
 				case Terrain.ForestedHills:
 					DrawTerrainTextValues(ref yy, "Forested Hills", "1", "2");
 					DrawTerrainTextValues(ref yy, "Coal", "1", "4");
+					DrawTerrainTextValues(ref yy, "Copper", "1", "4");
 					move = 2;
 					defense = 100;
 					break;

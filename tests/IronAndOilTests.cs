@@ -60,17 +60,21 @@ namespace CivOne.Tests
 			Assert.Equal(1, well.Food);
 		}
 
-		// Exactly half the lattice blocks keep their deposit, and evenly — a
-		// checkerboard, not a clump. 16 blocks in, 8 out.
+		// Exactly half the lattice blocks carry oil, and evenly — a checkerboard, not a
+		// clump. The other half used to lose their special; they are salt now.
 		[Fact]
 		public void HalfTheDesertLatticeCarriesOil()
 		{
-			int kept = 0;
+			int oil = 0, salt = 0;
 			for (int by = 0; by < 4; by++)
 			for (int bx = 0; bx < 4; bx++)
-				if (new Desert(bx * 4, by * 4, special: true).Special) kept++;
+			{
+				StrategicResource r = Game.ResourceAt(new Desert(bx * 4, by * 4, special: true));
+				if (r == StrategicResource.Oil) oil++;
+				if (r == StrategicResource.Salt) salt++;
+			}
 
-			Assert.Equal(8, kept);
+			Assert.Equal((8, 8), (oil, salt));
 		}
 
 		// Mountains keep the same lattice as before: the halving is desert-only,
@@ -235,7 +239,7 @@ namespace CivOne.Tests
 				if (!named) missing.Add($"{pedia.Name} (needs {material})");
 			}
 
-			Assert.Equal(13, checkedItems);   // scenario: the gate still covers thirteen
+			Assert.Equal(27, checkedItems);   // scenario: thirteen industrial, thirteen copper, the Granary
 			Assert.Empty(missing);
 		}
 
@@ -262,9 +266,9 @@ namespace CivOne.Tests
 			int food, int shield, int trade)
 		{
 			City city = ATownUnder(new Monarchy());
-			ITile t = Map.Instance[45, 25];
-			Map.Instance.ChangeTileType(45, 25, terrain);
-			t = Map.Instance[45, 25];
+			// Off BaseTile.SecondSeam, so a desert special is oil and a hill special coal.
+			Map.Instance.ChangeTileType(48, 25, terrain);
+			ITile t = Map.Instance[48, 25];
 			t.Irrigation = irrigate;
 			t.Mine = mine;
 			((BaseTile)t).Special = special;
@@ -294,8 +298,8 @@ namespace CivOne.Tests
 			Map.Instance.ChangeTileType(45, 25, Terrain.Hills);
 			ITile hills = Map.Instance[45, 25];
 			hills.Mine = true;
-			Map.Instance.ChangeTileType(46, 25, Terrain.Desert);
-			ITile oil = Map.Instance[46, 25];
+			Map.Instance.ChangeTileType(48, 25, Terrain.Desert);   // off SecondSeam: oil, not salt
+			ITile oil = Map.Instance[48, 25];
 			((BaseTile)oil).Special = true;
 
 			Assert.Equal(2, city.ShieldValue(hills));   // 3 under Monarchy: the starred cell

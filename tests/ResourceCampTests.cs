@@ -20,9 +20,12 @@ namespace CivOne.Tests
 			Sim.NewGame(width: 80, height: 50);
 			Game g = Game.Instance;
 			// Specials are position-derived, so lay hills down until one comes up special.
-			for (int x = 25; x < 40; x++) Map.Instance.ChangeTileType(x, 20, Terrain.Hills);
+			// A full block row (one special per 4x4 block), so it reaches the coal half of the
+			// seams; the other half is copper (BaseTile.SecondSeam).
+			for (int y = 20; y < 24; y++)
+			for (int x = 25; x < 40; x++) Map.Instance.ChangeTileType(x, y, Terrain.Hills);
 			Map.Instance.RecalculateContinentsIfDirty();
-			ITile coal = Enumerable.Range(25, 15).Select(x => Map.Instance[x, 20])
+			ITile coal = Enumerable.Range(20, 4).SelectMany(y => Enumerable.Range(25, 15).Select(x => Map.Instance[x, y]))
 				.First(t => Game.ResourceAt(t) == StrategicResource.Coal);
 
 			Player p = human

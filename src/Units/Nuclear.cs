@@ -33,6 +33,7 @@ namespace CivOne.Units
 		{
 			"Requires ROCKETRY and THE",
 			"MANHATTAN PROJECT.",
+			"Needs COPPER: +50% shields without.",
 			"",
 			"The Manhattan Project lets EVERY",
 			"civilization build these, not only",

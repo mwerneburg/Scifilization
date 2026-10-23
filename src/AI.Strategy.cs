@@ -2874,8 +2874,8 @@ namespace CivOne
 		private StrategicResource[] MissingResources()
 		{
 			var missing = new List<StrategicResource>();
-			foreach (StrategicResource r in new[] { StrategicResource.Iron, StrategicResource.Coal, StrategicResource.Oil })
-				if (!Game.Instance.HasResource(Player, r)) missing.Add(r);
+			foreach (StrategicResource r in (StrategicResource[])System.Enum.GetValues(typeof(StrategicResource)))
+				if (r != StrategicResource.None && !Game.Instance.HasResource(Player, r)) missing.Add(r);
 			return missing.ToArray();
 		}
 

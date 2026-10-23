@@ -23,8 +23,10 @@ namespace CivOne.Tiles
 		// where a river or oasis is adjacent; a moisture farm is what the deep interior gets
 		// instead, and the two stack for the rare tile that can have both.
 		public override sbyte Food => (sbyte)((Irrigation ? 1 : 0) + (MoistureFarm ? 1 : 0));
-		public override sbyte Shield => (sbyte)(1 + (Special ? 3 : 0) + (Mine ? 1 : 0));
-		public override sbyte Trade => (sbyte)(HasTransportLink ? 1 : 0);
+		public override sbyte Shield => (sbyte)(1 + (Oil ? 3 : 0) + (Mine ? 1 : 0));
+		// Salt pays in trade: the caravans came for it.
+		public override sbyte Trade => (sbyte)((HasTransportLink ? 1 : 0) + (Special && !Oil ? 2 : 0));
+		private bool Oil => Special && !SecondSeam(X, Y);
 		public override sbyte IrrigationFoodBonus => -2;
 		public override byte IrrigationCost => 5;
 		public override sbyte MiningShieldBonus => -2;
@@ -34,18 +36,10 @@ namespace CivOne.Tiles
 		{
 			Type = Terrain.Desert;
 			Name = "Desert";
-			// Half of them. Map.TileIsSpecial plants one special per 4x4 block, which
-			// is right for a scattered oasis and far too much for an oilfield: the
-			// Sahara came out as continuous derricks. This is a second, orthogonal
-			// sieve over the same blocks, keeping a checkerboard half.
-			//
-			// It lives in the constructor, not at the call sites, because there are six
-			// places that build a Desert (generation, both loaders, ChangeTileType) and
-			// missing one would give the same tile a different answer depending on how
-			// it was made. And it must stay a pure function of (x,y): Special is
-			// recomputed from the coordinates on every load and every terrain change,
-			// so anything remembered rather than derived comes straight back.
-			if (special && ((x / 4) + (y / 4)) % 2 != 0) Special = false;
+			// Half of them are oil. Map.TileIsSpecial plants one special per 4x4 block,
+			// which is far too much for an oilfield: the Sahara came out as continuous
+			// derricks. The blocks off the oil checkerboard (BaseTile.SecondSeam) used to
+			// lose their special here; they are salt pans now.
 		}
 		public Desert() : this(-1, -1, false)
 		{

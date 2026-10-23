@@ -35,6 +35,7 @@ namespace CivOne.Units
 		{
 			"Requires ROBOTICS, and makes the",
 			"FIGHTER obsolete.",
+			"Needs COPPER: +50% shields without.",
 			"",
 			"There is no one aboard, so its",
 			"absence troubles no one at home.",

@@ -37,7 +37,8 @@ namespace CivOne.Tests
 			ITile? found = null;
 			for (int y = 10; y <= 40 && found is null; y++)
 			for (int x = 10; x <= 70 && found is null; x++)
-				if (Map.Instance[x, y].Special && Map.Instance[x, y].Type == terrain)
+				if (Map.Instance[x, y].Special && Map.Instance[x, y].Type == terrain
+				    && !BaseTile.SecondSeam(x, y))   // the coal half; the other is copper
 					found = Map.Instance[x, y];
 			Assert.NotNull(found);
 			Sim.ClearTasks();

@@ -5931,7 +5931,7 @@ namespace CivOne
 		// map state. Possession = any of your cities works the tile, or you
 		// hold a camp on it. Missing the material soft-gates industrial
 		// production at +50% shields (City.ProductionCost); nothing is ever
-		// unbuildable. Planned expansion: Copper, luxuries, Salt.
+		// unbuildable. Salt is a luxury as well (City: +1 content). Planned: luxuries.
 
 		internal static StrategicResource ResourceAt(ITile? tile)
 		{
@@ -5939,7 +5939,9 @@ namespace CivOne
 			return tile.Type switch
 			{
 				Terrain.Mountains     => StrategicResource.Iron,
-				Terrain.Hills         => StrategicResource.Coal,
+				// Half the seams are copper and half the desert specials salt, on the same
+				// checkerboard (BaseTile.SecondSeam). The yields are unchanged for hills.
+				Terrain.Hills         => Seam(StrategicResource.Copper, StrategicResource.Coal),
 				// Trees on a coal seam do not move the coal. ForestedHills was added after
 				// this switch and missed it, so a special wooded hill was labelled "Coal" by
 				// the map overlay AND documented as Coal in the Civilopedia while being worth
@@ -5948,17 +5950,27 @@ namespace CivOne
 				// destroyed the resource — including under a camp already standing there,
 				// since HasResource reads this live — and chopping it back restored it.
 				// Reported from a game: "I can't build resource camps on forested hills."
-				Terrain.ForestedHills => StrategicResource.Coal,
-				Terrain.Desert        => StrategicResource.Oil,
+				Terrain.ForestedHills => Seam(StrategicResource.Copper, StrategicResource.Coal),
+				Terrain.Desert        => Seam(StrategicResource.Salt, StrategicResource.Oil),
 				Terrain.Swamp         => StrategicResource.Oil,
 				_                     => StrategicResource.None,
 			};
+			StrategicResource Seam(StrategicResource second, StrategicResource first)
+				=> Tiles.BaseTile.SecondSeam(tile.X, tile.Y) ? second : first;
 		}
 
-		// The industrial tier that wants materials. Ancient and medieval
-		// production is untouched — nobody's start is ruined at 3000 BC.
+		// What wants materials. The industrial tier, and since Oct 2026 the bronze age too:
+		// copper is the one material an ancient army needed, so a start with none in reach
+		// pays half again for its first spearmen until a settler camps some. Copper returns
+		// with the wire: electronics, guidance and the signal-tech buildings. Salt preserved
+		// the stores a Granary keeps.
 		internal static StrategicResource RequiredResource(IProduction production) => production switch
 		{
+			Units.Phalanx or Units.Chariot or Units.Catapult or Units.Trireme
+				or Units.MechInf or Units.CruiseMissile or Units.ReaperDrone or Units.Nuclear
+				or Buildings.HydroPlant or Buildings.Observatory or Buildings.SamBattery
+				or Buildings.NeuralLab or Buildings.MissionControl => StrategicResource.Copper,
+			Buildings.Granary                                 => StrategicResource.Salt,
 			Units.Cannon or Units.Artillery or Units.Ironclad => StrategicResource.Iron,
 			Buildings.Factory or Buildings.PowerPlant         => StrategicResource.Coal,
 			Units.Armor or Units.Fighter or Units.Bomber

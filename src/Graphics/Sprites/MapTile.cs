@@ -535,6 +535,8 @@ namespace CivOne.Graphics.Sprites
 		public static readonly ISprite Oil = new CachedSprite(GetSpecial<Swamp>);
 		public static readonly ISprite TundraGame = new CachedSprite(GetSpecial<Tundra>);
 		public static readonly ISprite RiverGold = new CachedSprite(GetSpecial<River>);
+		public static readonly ISprite Copper = new CachedSprite(() => Free.Special("special_copper", Terrain.Hills));
+		public static readonly ISprite Salt = new CachedSprite(() => Free.Special("special_salt", Terrain.Desert));
 
 		public static Bytemap? LandCoastErosion(ITile tile)
 		{
@@ -671,7 +673,7 @@ namespace CivOne.Graphics.Sprites
 				// improvement overlays sourced from the tile files
 				Irrigation, Mine, Fortress, Hut, Road, RailRoad, Pollution,
 				// special-resource sprites
-				Seals, DesertOil, Game, Shield, Coal, WoodedCoal, Gems, Iron, Fish, Horses, Oil, TundraGame, RiverGold,
+				Seals, DesertOil, Game, Shield, Coal, WoodedCoal, Gems, Iron, Fish, Horses, Oil, TundraGame, RiverGold, Copper, Salt,
 			})
 				(o as ICached)?.Clear();
 		}
@@ -693,11 +695,11 @@ namespace CivOne.Graphics.Sprites
 			switch (tile)
 			{
 				case Arctic _: return Seals;
-				case Desert _: return DesertOil;
+				case Desert _: return BaseTile.SecondSeam(tile.X, tile.Y) ? Salt : DesertOil;
 				case Forest _: return FaunaSprite(Terrain.Forest, tile.ContinentId);
 				case Grassland _: return Shield;
-				case Hills _: return Coal;
-				case ForestedHills _: return WoodedCoal;
+				case Hills _: return BaseTile.SecondSeam(tile.X, tile.Y) ? Copper : Coal;
+				case ForestedHills _: return BaseTile.SecondSeam(tile.X, tile.Y) ? Copper : WoodedCoal;
 				case Jungle _: return Gems;
 				case Mountains _: return Iron;
 				case Ocean _: return Fish;

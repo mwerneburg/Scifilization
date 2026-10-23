@@ -1622,6 +1622,9 @@ namespace CivOne
 			// exactly the one whose floor has already gone negative, and the bonus would be
 			// swallowed whole.
 			contentFloor += Player.CultureContentBonus;
+			// Salt, the luxury half of it: held anywhere, it tempers every city.
+			// ponytail: HasResource scans the civ's cities once per citizen recompute; cache per turn if it shows in a profile.
+			if (Game.HasResource(Player, StrategicResource.Salt)) contentFloor++;
 
 			int unhappyCount = Size - contentFloor - happyCount;
 

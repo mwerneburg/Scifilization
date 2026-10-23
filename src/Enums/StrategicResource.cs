@@ -11,11 +11,11 @@ namespace CivOne.Enums
 {
 	/// <summary>
 	/// Strategic resources, derived from existing special tiles (Game.ResourceAt):
-	/// Iron on Mountains specials, Coal on Hills specials, Oil on Desert/Swamp
-	/// specials. Possession (worked tile or owned camp) soft-gates industrial
-	/// production: without the material, shields cost +50% (City.ProductionCost).
-	/// Planned expansion: Copper (electronics), luxury resources, and Salt —
-	/// the mineral that trades like a luxury; millennia of caravans agree.
+	/// Iron on Mountains specials, Coal or Copper on Hills specials, Oil or Salt on
+	/// Desert specials, Oil on Swamp specials. Possession (worked tile or owned camp)
+	/// soft-gates production: without the material, shields cost +50%
+	/// (City.ProductionCost). Salt is also a luxury: +1 content in every city.
+	/// Planned expansion: luxury resources.
 	/// </summary>
 	public enum StrategicResource
 	{
@@ -23,5 +23,7 @@ namespace CivOne.Enums
 		Iron = 1,
 		Coal = 2,
 		Oil  = 3,
+		Copper = 4,
+		Salt = 5,
 	}
 }

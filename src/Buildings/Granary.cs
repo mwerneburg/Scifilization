@@ -27,6 +27,7 @@ namespace CivOne.Buildings
 		private static readonly string[] _page2 =
 		{
 			"Requires POTTERY.",
+			"Needs SALT: +50% shields without.",
 			"",
 			"Cheap, and its value rises with",
 			"every food surplus the city can",

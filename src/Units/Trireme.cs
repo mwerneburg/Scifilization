@@ -60,6 +60,7 @@ namespace CivOne.Units
 		private static readonly string[] _page2 =
 		{
 			"Requires MAP MAKING.",
+			"Needs COPPER: +50% shields without.",
 			"Made obsolete by NAVIGATION.",
 			"",
 			"The risk is real; end each turn",

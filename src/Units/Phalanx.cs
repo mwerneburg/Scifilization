@@ -28,6 +28,7 @@ namespace CivOne.Units
 		private static readonly string[] _page2 =
 		{
 			"Requires BRONZE WORKING.",
+			"Needs COPPER: +50% shields without.",
 			"Made obsolete by GUNPOWDER.",
 			"",
 			"FORTIFY them in your cities and",

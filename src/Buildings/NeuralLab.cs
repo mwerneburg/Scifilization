@@ -27,6 +27,8 @@ namespace CivOne.Buildings
 
 		private static readonly string[] _page2 =
 		{
+			"Needs COPPER: +50% shields without.",
+			"",
 			"Neural interfaces were among the",
 			"most controversial Olvir gifts.",
 			"Critics feared the loss of a",

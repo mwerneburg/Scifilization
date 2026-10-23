@@ -27,6 +27,7 @@ namespace CivOne.Buildings
 		private static readonly string[] _page2 =
 		{
 			"Requires COMPUTERS.",
+			"Needs COPPER: +50% shields without.",
 			"",
 			"When enough Observatories watch",
 			"the sky across the world, together",

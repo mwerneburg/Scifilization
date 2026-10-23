@@ -9,8 +9,10 @@ always a price.
 
 - **Deposits are derived, not placed.** `Game.ResourceAt(tile)` reads the
   map's existing special tiles: Mountains special = **Iron**, Hills special
-  = **Coal**, Desert/Swamp special = **Oil**. No new map state, no mapgen
-  changes; distribution follows the classic special pattern.
+  = **Coal** or **Copper**, Desert special = **Oil** or **Salt**, Swamp
+  special = **Oil**. The split is a checkerboard over the lattice's 4x4
+  blocks (`BaseTile.SecondSeam`). No new map state, no mapgen changes;
+  distribution follows the classic special pattern.
 - **Possession** = any of your cities *works* the deposit tile, **or** you
   hold a **camp** on it (`Game.ResourceCamps`, tile → owner, .cos-saved).
 - **Camps**: a Settlers order ("Build <Resource> Camp", 3 turns) on any
@@ -24,7 +26,13 @@ always a price.
   material, applied to the completion target, rush-buy pricing, AI
   rush-buy math, the bond pool cap, and every city-screen progress display
   — the higher target is *visible*, not hidden.
-- **The industrial tier only** — ancient/medieval play is untouched:
+- **What wants what** (`Game.RequiredResource`):
+  - **Copper** (Oct 2026, reaching back to the bronze age by the user's
+    choice): Phalanx, Chariot, Catapult, Trireme, Mech Inf, Cruise Missile,
+    Reaper Drone, Nuclear; Hydro Plant, Observatory, SAM Battery, Neural Lab,
+    Mission Control
+  - **Salt** (Oct 2026): Granary. Also a luxury: held anywhere, +1 content
+    in every city. Salt pans pay +2 trade.
   - **Iron**: Cannon, Artillery, Ironclad
   - **Coal**: Factory, Power Plant
   - **Oil**: Armor, Fighter, Bomber, Cruiser, Battleship, Submarine,
@@ -45,11 +53,7 @@ always a price.
 
 ## Planned expansion (user roadmap)
 
-- **Copper** — required by the electronics tier (Observatory-era buildings,
-  late signal-tech), per the user's Civ III mod heritage.
+- **Copper** and **Salt** — BUILT Oct 2026, see above. Salt is the bridge
+  between the strategic and luxury systems: a mineral that trades like a
+  luxury and preserved the food of every empire that ever moved an army.
 - **Luxury resources** — happiness-side twins of the strategic trio.
-- **Salt** — the user's open question: luxury or mineral? The historically
-  correct answer is *both*, which suggests Salt as the bridge resource
-  between the strategic and luxury systems when both exist: a mineral that
-  trades like a luxury and preserved the food of every empire that ever
-  moved an army. Millennia of caravans agree.

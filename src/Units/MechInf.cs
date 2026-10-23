@@ -29,6 +29,7 @@ namespace CivOne.Units
 		private static readonly string[] _page2 =
 		{
 			"Requires LABOR UNION.",
+			"Needs COPPER: +50% shields without.",
 			"",
 			"Their speed matters as much as",
 			"their armour: a few of them can",

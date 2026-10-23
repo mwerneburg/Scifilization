@@ -28,6 +28,7 @@ namespace CivOne.Units
 		private static readonly string[] _page2 =
 		{
 			"Requires THE WHEEL.",
+			"Needs COPPER: +50% shields without.",
 			"Made obsolete by CHIVALRY.",
 			"",
 			"Costly for the age, and poor in",

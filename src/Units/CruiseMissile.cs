@@ -41,6 +41,7 @@ namespace CivOne.Units
 		private static readonly string[] _page2 =
 		{
 			"Requires ROCKETRY.",
+			"Needs COPPER: +50% shields without.",
 			"",
 			"Set a destination and it flies",
 			"there on its own. The strike",

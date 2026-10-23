@@ -43,6 +43,7 @@ namespace CivOne.Buildings
 		private static readonly string[] _page2 =
 		{
 			"Requires ROCKETRY.",
+			"Needs COPPER: +50% shields without.",
 			"",
 			"It answers BOMBERS, REAPER DRONES",
 			"and CRUISE MISSILES alike.",

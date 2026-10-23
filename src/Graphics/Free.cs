@@ -373,6 +373,14 @@ namespace CivOne.Graphics
 			return Special(type);
 		}
 
+		// Copper and salt share their terrain with coal and oil (BaseTile.SecondSeam), so they
+		// are keyed by art section, not Terrain. Missing art falls back to the terrain's own.
+		public Bytemap Special(string section, Terrain fallback)
+		{
+			byte[]? loaded = TryLoadTile(section);
+			return loaded is not null ? new Bytemap(16, 16).FromByteArray(loaded) : Special(fallback);
+		}
+
 		public Bytemap Special(Terrain type)
 		{
 			string? specialSection = type switch

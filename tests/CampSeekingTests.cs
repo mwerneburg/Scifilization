@@ -49,7 +49,8 @@ namespace CivOne.Tests
 				Map.Instance.ChangeTileType(x, y, Terrain.Grassland1);
 				((BaseTile)Map.Instance[x, y]).Special = false;
 			}
-			// Hills carrying a special is Coal (Game.ResourceAt). Set AFTER the type change,
+			// Hills carrying a special is a deposit (Game.ResourceAt; at these coordinates
+			// copper, on BaseTile.SecondSeam). Set AFTER the type change,
 			// which would otherwise recompute it away.
 			Map.Instance.ChangeTileType(46, 25, Terrain.Hills);
 			((BaseTile)Map.Instance[46, 25]).Special = true;

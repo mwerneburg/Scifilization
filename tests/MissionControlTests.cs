@@ -48,7 +48,7 @@ namespace CivOne.Tests
 		private static void Complete(City city, IBuilding building)
 		{
 			city.SetProduction(building);
-			city.Shields = (short)((int)building.Price * 10);
+			city.Shields = (short)city.ProductionCost(building);   // +50% without copper
 			city.NewTurn();
 			Sim.Settle();
 		}

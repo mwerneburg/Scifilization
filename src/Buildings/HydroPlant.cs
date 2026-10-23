@@ -27,6 +27,7 @@ namespace CivOne.Buildings
 		private static readonly string[] _page2 =
 		{
 			"Requires ELECTRONICS.",
+			"Needs COPPER: +50% shields without.",
 			"",
 			"Clean and safe, but it may only be",
 			"built by a city beside a river or",

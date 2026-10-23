@@ -285,6 +285,12 @@ namespace CivOne.Tiles
 		
 		// This method is used to calculate whether a river or grassland tile is special.
 		protected bool AlternateSpecial() => ((X + Y) % 4 == 0) || ((X + Y) % 4 == 3);
+
+		// The second seam: a checkerboard over Map.TileIsSpecial's 4x4 blocks. A Hills special
+		// on it is Copper rather than Coal, a Desert special Salt rather than Oil
+		// (Game.ResourceAt). It must stay a pure function of (x,y), like Special itself, which
+		// is recomputed from the coordinates on every load and every terrain change.
+		internal static bool SecondSeam(int x, int y) => ((x / 4) + (y / 4)) % 2 != 0;
 		public City City => (Game?.GetCity(X, Y))!;
 		public IUnit[] Units => (Game?.GetUnits(X, Y))!;
 
