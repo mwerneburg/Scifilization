@@ -83,6 +83,7 @@ namespace CivOne.Persistence
 		public uint NextKoanTurn { get; set; }
 		public uint MourningUntilTurn { get; set; }
 		public uint OlvirArrivalTurn { get; set; }
+		public uint OlvirPlagueTurn { get; set; }
 		// The Evaluators' observation window (Game.EvaluationStartTurn/EndTurn); 0 = none.
 		public uint EvaluationStartTurn { get; set; }
 		public uint EvaluationEndTurn { get; set; }

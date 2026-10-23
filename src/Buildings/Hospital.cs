@@ -41,6 +41,10 @@ namespace CivOne.Buildings
 			"",
 			"Its effect stacks with the TEMPLE,",
 			"the COLOSSEUM and the CATHEDRAL.",
+			"",
+			// The Crossing Fever's one quiet warning (Game.StrikeOlvirPlague; CursedWonders, rule 4).
+			"Medicine knows the fevers of one",
+			"world. Pray it never meets a second.",
 		};
 
 		public override string[] GetPageText(byte pageNumber)

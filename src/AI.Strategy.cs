@@ -4681,6 +4681,15 @@ namespace CivOne
 
 			int defenders = city.Tile.Units.Count(u => u.Role == UnitRole.Defense);
 
+			// The Olvir have warned of the Crossing Fever (Game.ProcessOlvirPlague): a Hospital,
+			// then a Sewer, ahead of everything — past EarnsItsKeep, which refuses a Hospital
+			// to a content city.
+			if (Game.PlagueWarned && !Game.ImmuneToPlague(Player))
+			{
+				if (!city.HasBuilding<Hospital>() && Player.ProductionAvailable(new Hospital())) plan.Add(new Hospital());
+				if (!city.HasBuilding<SewerSystem>() && Player.ProductionAvailable(new SewerSystem())) plan.Add(new SewerSystem());
+			}
+
 			// The Others: an occupation, not a civilisation. Cephalopods incapable of sympathy
 			// or of recognising their captives as anything but stock — so they build nothing
 			// that serves a population. No temples, no aqueducts, no marketplaces, and above

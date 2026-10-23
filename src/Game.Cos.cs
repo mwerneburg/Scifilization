@@ -341,6 +341,7 @@ namespace CivOne
 					NextKoanTurn            = NextKoanTurn,
 					MourningUntilTurn       = MourningUntilTurn,
 					OlvirArrivalTurn        = OlvirArrivalTurn,
+					OlvirPlagueTurn         = OlvirPlagueTurn,
 					EvaluationStartTurn     = EvaluationStartTurn,
 					EvaluationEndTurn       = EvaluationEndTurn,
 					OlvirProximityAlarmTurn = OlvirProximityAlarmTurn,
@@ -674,6 +675,7 @@ namespace CivOne
 			NextKoanTurn            = g.NextKoanTurn;
 			MourningUntilTurn       = g.MourningUntilTurn;
 			OlvirArrivalTurn        = g.OlvirArrivalTurn;
+			OlvirPlagueTurn         = g.OlvirPlagueTurn;
 			EvaluationStartTurn     = g.EvaluationStartTurn;
 			EvaluationEndTurn       = g.EvaluationEndTurn;
 			OlvirProximityAlarmTurn = g.OlvirProximityAlarmTurn;

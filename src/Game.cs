@@ -295,6 +295,9 @@ namespace CivOne
 		// Turn on which the Olvir arrival scene fires (0 = not yet scheduled).
 		internal uint OlvirArrivalTurn;
 
+		// Turn the Crossing Fever strikes (0 = none coming). See ProcessOlvirPlague.
+		internal uint OlvirPlagueTurn;
+
 		// Approach warning to landfall. Was 80, sized for a source at Tau Ceti; the signal now
 		// comes from a vessel already in the outer Oort Cloud (23 Sep 2026), and at 80 a
 		// cultural win at ~turn 394 ended the game 32 turns before anyone met the Olvir.
@@ -2488,6 +2491,7 @@ namespace CivOne
 						}
 						: "UNANNOUNCED CONTACT";
 					SpawnOlvir();
+					RollOlvirPlague();
 					string gameDate = GameYear;
 					string landfallYear = Common.YearString((ushort)Math.Min(_gameTurn + 30, ushort.MaxValue));
 					RecordTransmission("OlvirArrival", gameDate);
@@ -3325,6 +3329,8 @@ namespace CivOne
 							"is being collected."));
 				}
 
+				// The Crossing Fever: the Olvir's warning, then the plague (a cursed landfall).
+				Tick("OlvirPlague", ProcessOlvirPlague);
 				// The Thing: advance the outbreak clocks (South Pole Expedition curse).
 				Tick("ThingOutbreaks", ProcessThingOutbreaks);
 				// ...and, once it holds enough of the world, the third act: it stops spreading
@@ -6682,6 +6688,68 @@ namespace CivOne
 					"shows what came for them."));
 				Log("The Vessel reached Alpha Centauri II: the colony is lost");
 			}
+		}
+
+		// ── The Crossing Fever (a cursed Olvir landfall) ─────────────────────
+		// Their DNA and ours make a plague neither world has met (the user, Oct 2026). One
+		// landfall in four, and only with curses on. The Olvir are carriers, not victims, and
+		// they see it coming: their physicians warn ten turns ahead, and the AI turns to
+		// Hospitals and Sewers. Then a city with both is spared, one with either loses half
+		// its people, and one with neither falls to a single citizen. Settlers homed in a
+		// stricken city die. The machines have no blood to carry it.
+		internal const int PlagueChance = 4;
+		internal const int PlagueOnsetTurns = 15;
+		internal const int PlagueWarningTurns = 10;
+
+		internal void RollOlvirPlague()
+		{
+			if (Settings.Instance.CursedWonders && Common.Random.Next(PlagueChance) == 0)
+				OlvirPlagueTurn = (uint)(_gameTurn + PlagueOnsetTurns);
+		}
+
+		internal static bool ImmuneToPlague(Player p) => p.Civilization is Civilizations.Olvir or Civilizations.Skynet;
+
+		// True from the warning until the plague strikes (AI.PlanProductionInto reads it).
+		internal bool PlagueWarned => OlvirPlagueTurn > 0 && _gameTurn + PlagueWarningTurns >= OlvirPlagueTurn;
+
+		private void ProcessOlvirPlague()
+		{
+			if (OlvirPlagueTurn == 0) return;
+			if (_gameTurn + PlagueWarningTurns == OlvirPlagueTurn)
+			{
+				GameTask.Enqueue(Message.Newspaper(null!, "Olvir physicians sound alarm!",
+					"A fever born of both worlds:",
+					"build HOSPITALS and SEWERS."));
+				foreach (City c in _cities.Where(c => c.Size > 0).ToArray())
+				{
+					Player owner = GetPlayer(c.Owner);
+					if (!owner.IsHuman && !ImmuneToPlague(owner)) owner.AI?.CityProduction(c);
+				}
+				return;
+			}
+			if (_gameTurn >= OlvirPlagueTurn) StrikeOlvirPlague();
+		}
+
+		internal void StrikeOlvirPlague()
+		{
+			OlvirPlagueTurn = 0;
+			int fell = 0, halved = 0, settlers = 0;
+			foreach (City c in _cities.Where(c => c.Size > 0).ToArray())
+			{
+				if (ImmuneToPlague(GetPlayer(c.Owner))) continue;
+				int guards = (c.HasBuilding<Hospital>() ? 1 : 0) + (c.HasBuilding<SewerSystem>() ? 1 : 0);
+				if (guards == 2) continue;
+				if (guards == 1) { c.Size = (byte)Math.Max(1, c.Size - c.Size / 2); halved++; }
+				else { c.Size = 1; fell++; }
+				foreach (IUnit u in c.Units.Where(u => u is Settlers).ToArray()) { DisbandUnit(u); settlers++; }
+			}
+			DecisionLogger.LogPlague(fell, halved, settlers);
+			string? art = EventArtScreen.FindPath("OlvirPlague");
+			if (art is not null)
+				GameTask.Enqueue(Show.Screen(new EventArtScreen(art, "THE CROSSING FEVER")));
+			GameTask.Enqueue(Message.Newspaper(null!, "The Crossing Fever strikes!",
+				$"{fell} cities fall to a handful;",
+				"the Olvir grieve with us."));
 		}
 
 		private void SpawnOlvir()

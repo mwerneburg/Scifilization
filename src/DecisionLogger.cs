@@ -23,7 +23,7 @@ using CivOne.Units;
 //
 // Schema (flat, intentionally simple for easy pandas/numpy ingestion):
 //
-//   type          string   "settler" | "city_prod" | "game_outcome" | "salvage" | "defection"
+//   type          string   "settler" | "city_prod" | "game_outcome" | "salvage" | "defection" | "plague"
 //   game_id       string   8-char hex, one per GAME — survives save/load, so a resumed
 //                          run keeps one identity and its game_outcome scores all of it
 //   session_id    string   8-char hex, one per LOAD. Two sessions sharing a game_id are a
@@ -91,6 +91,11 @@ using CivOne.Units;
 //   from_cult     int      accumulated culture, loser
 //   to_cult       int      accumulated culture, winner
 //   cause         string   "culture" | "revolution" (chronic disorder beside a Communist)
+//
+//   --- plague fields (the Crossing Fever, a cursed Olvir landfall) ---
+//   fell          int      cities with neither Hospital nor Sewer, now size 1
+//   halved        int      cities with one of the two, now half their size
+//   settlers      int      Settlers homed in stricken cities, all dead
 //
 //   --- war fields ---
 //   aggressor     string   civilization that declared, NamePlural
@@ -472,6 +477,21 @@ namespace CivOne
 		// happens" and "it happens quietly" look identical in a finished save. The Artist
 		// specialist raises exactly the number this rule reads, which is the question the
 		// next run is meant to answer.
+		// The Crossing Fever (Game.StrikeOlvirPlague): how many cities fell to one citizen,
+		// how many lost half, and how many Settlers died with them.
+		internal static void LogPlague(int fell, int halved, int settlers)
+		{
+			if (!_active) return;
+			Enqueue(Fmt(new[] {
+				KV("type",     "plague"),
+				KV("game_id",  _gameId),
+				KV("turn",     Game.Instance?.GameTurn ?? 0),
+				KV("fell",     fell),
+				KV("halved",   halved),
+				KV("settlers", settlers),
+			}));
+		}
+
 		internal static void LogDefection(City city, Player from, Player to, string cause = "culture")
 		{
 			if (!_active) return;
