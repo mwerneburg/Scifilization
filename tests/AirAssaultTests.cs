@@ -403,5 +403,58 @@ namespace CivOne.Tests
 
 			Assert.False(there.Sentry, "boarded for a target within a march");
 		}
+
+		// ── the warhead ──────────────────────────────────────────────────────
+		//
+		// Nukes took the ground troops' order and flew toward a staging square overseas until
+		// their one turn of fuel ran out over the Atlantic (the user, Oct 2026).
+
+		private static IUnit ANuke(Game g, Player us, City muster)
+		{
+			IUnit nuke = Make(g, us, UnitType.Nuclear, muster.X, muster.Y);
+			nuke.MovesLeft = nuke.Move;
+			return nuke;
+		}
+
+		// 24 tiles of sea; the warhead has 16.
+		[Fact]
+		public void ANukeOutOfReachWaitsAtHome()
+		{
+			(Game g, Player us, City muster, City target, AI ai) = AnIslandWar();
+			ai.ConsiderWar();
+			Assert.Same(target, Target(ai));
+			IUnit nuke = ANuke(g, us, muster);
+
+			Assign(ai, nuke);
+
+			Assert.True(nuke.Goto.IsEmpty, $"sent to {nuke.Goto}");
+		}
+
+		[Fact]
+		public void ANukeInReachFliesStraightAtTheTarget()
+		{
+			(Game g, Player us, City muster, City target, AI ai) = AnIslandWar(east: 36);
+			ai.ConsiderWar();
+			Assert.Same(target, Target(ai));
+			IUnit nuke = ANuke(g, us, muster);
+
+			Assign(ai, nuke);
+
+			Assert.Equal(new Point(target.X, target.Y), nuke.Goto);
+		}
+
+		// An enemy ship within reach is a cruise missile's mark, not a warhead's.
+		[Fact]
+		public void ANukeIsNotSpentOnAPassingShip()
+		{
+			(Game g, Player us, City muster, City target, AI ai) = AnIslandWar();
+			ai.ConsiderWar();
+			Make(g, target.Player, UnitType.Ironclad, 34, 25);
+			IUnit nuke = ANuke(g, us, muster);
+
+			Assign(ai, nuke);
+
+			Assert.True(nuke.Goto.IsEmpty, $"sent to {nuke.Goto}");
+		}
 	}
 }

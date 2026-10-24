@@ -3372,7 +3372,12 @@ namespace CivOne
 		private void FlyStrike(IUnit unit)
 		{
 			int fuel = (unit as BaseUnitAir)?.FuelLeft ?? unit.MovesLeft;
-			bool expendable = CruiseMissile.IsExpendable(unit);
+			// A warhead strikes only the city this civ is at war over, and only from where it
+			// can arrive. It used to take the ground troops' order instead, and flew off over the
+			// Atlantic toward a staging square a continent away until its one turn of fuel ran
+			// out (the user, Oct 2026). WHEN to use one is still the attack target's call.
+			bool warhead = unit is Nuclear;
+			bool expendable = CruiseMissile.IsExpendable(unit) || warhead;
 			byte own = unit.Owner;
 			bool Enemy(byte o) => o != own && (o == 0 || Player.IsAtWar(Game.GetPlayer(o)));
 			// Out AND home again from the mark — half the fuel from HERE stranded a second
@@ -3387,7 +3392,9 @@ namespace CivOne
 			// 33 of 37 Federation Bombers died flying into Earth's 177 of them (Oct 2026).
 			IUnit? mark = Game.GetUnits()
 				.Where(u => u.Tile is not null && Enemy(u.Owner) && Player.Visible(u.X, u.Y)
-				         && u.Tile.City?.HasBuilding<SamBattery>() != true
+				         && (warhead
+				             ? _attackTarget is not null && u.X == _attackTarget.X && u.Y == _attackTarget.Y
+				             : u.Tile.City?.HasBuilding<SamBattery>() != true)   // a SAM cannot stop a warhead
 				         && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= fuel
 				         && (expendable || (Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= unit.MovesLeft
 				                            && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) + HomeFrom(u) <= fuel)))
@@ -3731,8 +3738,7 @@ namespace CivOne
 			StrategyStance stance = GetStance();
 
 			if (unit is Dirigible) { FlyAirlift(unit); return; }
-			// Nuclear weapons keep the path they had: when the AI uses one is not this rule's call.
-			if (unit.Class == UnitClass.Air && unit is not Nuclear) { FlyStrike(unit); return; }
+			if (unit.Class == UnitClass.Air) { FlyStrike(unit); return; }
 
 			// Naval units
 			if (unit.Class == UnitClass.Water)
