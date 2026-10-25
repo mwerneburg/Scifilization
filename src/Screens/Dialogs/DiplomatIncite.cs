@@ -56,6 +56,7 @@ namespace CivOne.Screens.Dialogs
 				int lost = _cityToIncite.Size;
 				_cityToIncite.Owner = _diplomat.Owner;
 				_cityToIncite.TechStolen = false;
+				Game.AddReplayEvent(new ReplayData.CityCaptured(Game.GameTurn, System.Array.IndexOf(Game.GetCities(), _cityToIncite), _cityToIncite.NameId, _cityToIncite.X, _cityToIncite.Y, _diplomat.Owner));
 				previousOwner.AddGrudge(_diplomat.Player,
 					Game.GrudgeIncitedBase + Game.GrudgeIncitedPerSize * lost);
 

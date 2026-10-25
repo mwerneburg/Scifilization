@@ -192,6 +192,7 @@ namespace CivOne.Units
 						int lost = target.Size;
 						target.Owner       = this.Owner;
 						target.TechStolen  = false;
+						Game.AddReplayEvent(new ReplayData.CityCaptured(Game.GameTurn, System.Array.IndexOf(Game.GetCities(), target), target.NameId, target.X, target.Y, Owner));
 						oldOwnerPlayer?.AddGrudge(Player,
 							Game.GrudgeIncitedBase + Game.GrudgeIncitedPerSize * lost);
 						Player.Gold       -= (short)inciteCost;
