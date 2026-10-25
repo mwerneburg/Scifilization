@@ -607,6 +607,21 @@ namespace CivOne
 		internal void SetImplacable(byte playerNumber) => _implacable.Add(playerNumber);
 		internal IEnumerable<KeyValuePair<byte, int>> DefensePactEntries  => _defensePact;
 
+		// Everything this civ holds about a player SLOT. A buddy respawn hands a dead civ's
+		// slot to a newcomer, and these are keyed by slot, so without this the Russians
+		// arrived owing the Romans' tribute and hated for the Romans' crimes.
+		internal void ForgetSlot(byte k)
+		{
+			_embassies.Remove(k);
+			_warWith.Remove(k);
+			_peaceTreaty.Remove(k);
+			_attitudeBonus.Remove(k);
+			_implacable.Remove(k);
+			_defensePact.Remove(k);
+			_tributeTo.Remove(k);
+			_tributeFrom.Remove(k);
+		}
+
 		// ── tribute ─────────────────────────────────────────────────────────────────
 		// A tribute pact is established when a militarily outclassed civ sues for survival
 		// from a stronger neighbour with whom it has an embassy. The weaker civ pays a

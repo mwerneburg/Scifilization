@@ -9,6 +9,9 @@
 // PLAYER SLOT — rewriting the list any caller was walking. About thirty loops over the
 // players call IsDestroyed, the start of EndTurn among them. The swap is now queued and
 // applied at the top of EndTurn and Update, where nothing is iterating.
+//
+// The newcomer also inherited the dead civ's standing: grudges, embassies, treaties, pacts,
+// tribute and Senate grievances are all keyed by slot, and only the war state was cleared.
 
 using System.Linq;
 using CivOne.Enums;
@@ -66,6 +69,31 @@ namespace CivOne.Tests
 			g.EndTurn();
 
 			Assert.Equal(buddyId, g.GetPlayer(slot).Civilization.Id);
+		}
+
+		// The Romans' crimes are not the Russians'.
+		[Fact]
+		public void TheBuddyInheritsNoneOfTheDeadCivsStanding()
+		{
+			(Game g, byte slot, int buddyId) = ACivAboutToFall();
+			Player dead = g.GetPlayer(slot);
+			Player survivor = g.Players.First(p => p is not null && g.PlayerNumber(p) != 0
+				&& p != g.HumanPlayer && p != dead);
+			survivor.AddGrudge(dead, 100);
+			survivor.SetImplacable(slot);
+			survivor.EstablishEmbassy(dead);
+			g.Provocations[slot] = 3;
+			Assert.True(survivor.HasGrudge(dead), "fixture: the grudge must be there to forget");
+			g.StreakLeader(p => p.CultureStreak);   // finds it destroyed
+
+			g.EndTurn();
+
+			Player buddy = g.GetPlayer(slot);
+			Assert.Equal(buddyId, buddy.Civilization.Id);
+			Assert.Equal(0, survivor.AttitudeToward(buddy));
+			Assert.False(survivor.IsImplacableToward(buddy));
+			Assert.False(survivor.HasEmbassy(buddy));
+			Assert.False(g.Provocations.ContainsKey(slot));
 		}
 	}
 }

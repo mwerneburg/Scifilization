@@ -1766,6 +1766,12 @@ namespace CivOne
 				foreach (City stale in _cities.Where(c => c.OriginalOwner == playerSlot && c.Owner != playerSlot))
 					stale.OriginalOwner = stale.Owner;
 
+				// Its relations die with it too: every survivor's grudges, embassies,
+				// treaties, pacts and tribute are keyed by the slot the newcomer takes.
+				foreach (Player p in _players.Where(p => p is not null))
+					p.ForgetSlot(playerSlot);
+				Provocations.Remove(playerSlot);
+
 				_players[playerSlot] = new Player(buddyCiv);
 				_players[playerSlot].Destroyed += PlayerDestroyed;
 				AddStartingUnits(playerSlot);
