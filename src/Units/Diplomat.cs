@@ -114,6 +114,38 @@ namespace CivOne.Units
 			}
 		}
 
+		// The city changes hands for gold. Both incite paths call this, the AI's in Confront and
+		// the human's DiplomatIncite dialog, so a rule added to one cannot miss the other — the
+		// replay entry and the cache refresh were each missing from both copies once. Each
+		// caller keeps its own checks and its own messages.
+		internal void Incite(City target, int cost)
+		{
+			byte oldOwner = target.Owner;
+			Player? victim = Game.GetPlayer(oldOwner);
+
+			// Disband resident units and a random ~half of the buildings.
+			target.RehomeAwayCaravans();
+			foreach (IUnit u in target.Units.Concat(target.Tile.Units.Where(u => u.Owner == oldOwner)).Distinct().ToArray())
+				Game.DisbandUnit(u);
+			foreach (IBuilding b in target.Buildings.Where(b => Common.Random.Next(0, 2) == 0).ToList())
+				target.RemoveBuilding(b);
+
+			// The victim remembers it. Scaled by what was taken: this is the same
+			// scale a gift of a city buys goodwill on, so the two are comparable.
+			int lost = target.Size;
+			target.Owner       = Owner;
+			target.TechStolen  = false;
+			Game.AddReplayEvent(new ReplayData.CityCaptured(Game.GameTurn, System.Array.IndexOf(Game.GetCities(), target), target.NameId, target.X, target.Y, Owner));
+			victim?.AddGrudge(Player, Game.GrudgeIncitedBase + Game.GrudgeIncitedPerSize * lost);
+			// The Owner setter refreshes only this city; its trade partners, at home and
+			// abroad, still hold what the route paid before. Capture by arms does the same.
+			victim?.InvalidateCityCaches();
+			Player.InvalidateCityCaches();
+			Player.Gold       -= cost;
+			Game.DisbandUnit(this);
+			victim?.IsDestroyed();
+		}
+
 		protected override bool Confront(int relX, int relY)
 		{
 			ITile moveTarget = Map[X, Y][relX, relY];
@@ -176,28 +208,8 @@ namespace CivOne.Units
 					// Skips size-1 starter towns (the conversion isn't worth the diplomat).
 					if (CanIncite(target, Player.Gold) && target.Size >= 2)
 					{
-						int inciteCost = InciteCost(target);
-						byte oldOwner = target.Owner;
-						Player oldOwnerPlayer = Game.GetPlayer(oldOwner);
-
-						// Disband resident units and a random ~half of the buildings.
-						target.RehomeAwayCaravans();
-						foreach (IUnit u in target.Units.Concat(target.Tile.Units.Where(u => u.Owner == oldOwner)).Distinct().ToArray())
-							Game.DisbandUnit(u);
-						foreach (IBuilding b in target.Buildings.Where(b => Common.Random.Next(0, 2) == 0).ToList())
-							target.RemoveBuilding(b);
-
-						// The victim remembers it. Scaled by what was taken: this is the same
-						// scale a gift of a city buys goodwill on, so the two are comparable.
-						int lost = target.Size;
-						target.Owner       = this.Owner;
-						target.TechStolen  = false;
-						Game.AddReplayEvent(new ReplayData.CityCaptured(Game.GameTurn, System.Array.IndexOf(Game.GetCities(), target), target.NameId, target.X, target.Y, Owner));
-						oldOwnerPlayer?.AddGrudge(Player,
-							Game.GrudgeIncitedBase + Game.GrudgeIncitedPerSize * lost);
-						Player.Gold       -= (short)inciteCost;
-						Game.DisbandUnit(this);
-						oldOwnerPlayer?.IsDestroyed();
+						Player oldOwnerPlayer = Game.GetPlayer(target.Owner);
+						Incite(target, InciteCost(target));
 						bool humanVictim = oldOwnerPlayer == Human;
 
 						// Use oldOwnerPlayer / humanVictim, NOT target.Player: target.Owner was

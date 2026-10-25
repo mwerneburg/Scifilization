@@ -1,8 +1,11 @@
 // CivOne tests
 //
 // A city taken by a diplomat's bribe changed hands with no replay entry: both incite sites
-// (the AI branch in Diplomat.Confront and the human's DiplomatIncite dialog) flip the owner
-// by hand, and only conquest by arms went through BaseUnit's CityCaptured line.
+// (the AI branch in Diplomat.Confront and the human's DiplomatIncite dialog) flipped the owner
+// by hand, and only conquest by arms went through BaseUnit's CityCaptured line. Both now call
+// Diplomat.Incite, which also refreshes both empires' cities the way capture by arms does:
+// the Owner setter refreshes only the city that changed hands, so its trade partner went on
+// reporting what the route used to pay.
 
 using System.Linq;
 using System.Reflection;
@@ -68,6 +71,32 @@ namespace CivOne.Tests
 
 			Assert.Equal(spy.Owner, city.Owner);
 			Assert.Equal(spy.Owner, Logged(city)?.NewOwnerId);
+		}
+
+		[Fact]
+		public void ATradePartnerSeesTheRouteChangeHands()
+		{
+			(City city, Diplomat spy) = ABribe(humanBribes: false);
+			Game g = Game.Instance;
+			for (int x = 30; x <= 56; x++)
+			for (int y = 23; y <= 27; y++)
+				if (x != 39 || y != 25) Map.Instance.ChangeTileType(x, y, Terrain.River);
+			Map.Instance.RecalculateContinentsIfDirty();
+			city.Player.Explore(52, 25, range: 4);
+			City partner = g.AddCity(city.Player, 66, 52, 25)!;
+			city.Size = partner.Size = 16;
+			city.InvalidateCache();
+			partner.InvalidateCache();
+			city.AddTradeRoute(partner, "Silk");
+			partner.AddTradeRoute(city, "Silk");
+			int before = partner.TradeRouteBonus;   // read now, so it is cached
+
+			spy.Incite(city, Diplomat.InciteCost(city));
+
+			int seen = partner.TradeRouteBonus;
+			partner.InvalidateCache();
+			Assert.NotEqual(before, partner.TradeRouteBonus);   // the fixture's route must move
+			Assert.Equal(partner.TradeRouteBonus, seen);
 		}
 	}
 }

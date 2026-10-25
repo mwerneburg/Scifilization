@@ -36,39 +36,12 @@ namespace CivOne.Screens.Dialogs
 
 		private void Incite(object sender, EventArgs args)
 		{
-			Player previousOwner = Game.GetPlayer(_cityToIncite.Owner);
-
 			// Show the incite-rebellion art for a diplomat-caused flip; falls back to the
 			// generic city-capture view if the art file isn't present.
 			Show captureCity = Show.IncitedCity(_cityToIncite, _diplomat.Player);
 			captureCity.Done += (s1, a1) =>
 			{
-				byte oldOwner = _cityToIncite.Owner;
-				_cityToIncite.RehomeAwayCaravans();
-				IUnit[] toDisband = _cityToIncite.Units
-					.Concat(_cityToIncite.Tile.Units.Where(u => u.Owner == oldOwner))
-					.Distinct()
-					.ToArray();
-				foreach (IUnit unit in toDisband)
-					Game.DisbandUnit(unit);
-				Game.DisbandUnit(_diplomat);
-				// The victim remembers it — see the AI path in Diplomat.cs for the scale.
-				int lost = _cityToIncite.Size;
-				_cityToIncite.Owner = _diplomat.Owner;
-				_cityToIncite.TechStolen = false;
-				Game.AddReplayEvent(new ReplayData.CityCaptured(Game.GameTurn, System.Array.IndexOf(Game.GetCities(), _cityToIncite), _cityToIncite.NameId, _cityToIncite.X, _cityToIncite.Y, _diplomat.Owner));
-				previousOwner.AddGrudge(_diplomat.Player,
-					Game.GrudgeIncitedBase + Game.GrudgeIncitedPerSize * lost);
-
-				// remove half the buildings at random
-				foreach (IBuilding building in _cityToIncite.Buildings.Where(b => Common.Random.Next(0, 2) == 1).ToList())
-				{
-					_cityToIncite.RemoveBuilding(building);
-				}
-
-				_diplomat.Player.Gold -= _inciteCost;
-
-				previousOwner.IsDestroyed();
+				_diplomat.Incite(_cityToIncite, _inciteCost);   // the price the player was quoted
 
 				if (Human == _cityToIncite.Owner || Human == _diplomat.Owner)
 				{
