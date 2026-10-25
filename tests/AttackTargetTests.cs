@@ -45,7 +45,7 @@ namespace CivOne.Tests
 		{
 			Sim.ClearTasks();
 			return (City)typeof(AI).GetMethod("PickAttackTarget", BindingFlags.NonPublic | BindingFlags.Instance)!
-				.Invoke(AI.Instance(p), null)!;
+				.Invoke(AI.Instance(p), new object?[] { null })!;   // continent: null = anywhere
 		}
 
 		[Fact]

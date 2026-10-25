@@ -388,120 +388,122 @@ namespace CivOne.Screens
 			return false;
 		}
 
-		private void DrawTerrainTextValues(ref int y, string name, string? food = null, string? production = null, string? trade = null, string? foodIrrigation = null, string? productionMining = null, string? tradeRoads = null)
+		// One block of a terrain page: the name, then its yields. Shared with the website export
+		// (tests/SiteExport.cs) so the book and the site cannot disagree.
+		private static string[] TerrainRowText(string name, string? food = null, string? production = null, string? trade = null, string? foodIrrigation = null, string? productionMining = null, string? tradeRoads = null)
 		{
-
-			this.DrawText(name, 0, CassetteTheme.INK_HIGH, OX + 12, y);
-			y += 8;
+			var lines = new List<string> { name };
 			if (food is not null)
-			{
-				if (foodIrrigation is not null)
-					food = $"{food} ({foodIrrigation} with Irrigation)";
-				this.DrawText($"Food: {food} units.", 0, CassetteTheme.INK_MID, OX + 16, y);
-				y += 8;
-			}
+				lines.Add($"Food: {(foodIrrigation is not null ? $"{food} ({foodIrrigation} with Irrigation)" : food)} units.");
 			if (production is not null)
-			{
-				if (productionMining is not null)
-					production = $"{production} ({productionMining} with Mining)";
-				this.DrawText($"Production: {production} units.", 0, CassetteTheme.INK_MID, OX + 16, y);
-				y += 8;
-			}
+				lines.Add($"Production: {(productionMining is not null ? $"{production} ({productionMining} with Mining)" : production)} units.");
 			if (trade is not null)
-			{
-				if (tradeRoads is not null)
-					trade = $"{trade} ({tradeRoads} with Roads)";
-				this.DrawText($"Trade: {trade}", 0, CassetteTheme.INK_MID, OX + 16, y);
-				y += 8;
-			}
+				lines.Add($"Trade: {(tradeRoads is not null ? $"{trade} ({tradeRoads} with Roads)" : trade)}");
 			if (food is null && production is null && trade is null)
-			{
-				this.DrawText("nothing", 0, CassetteTheme.INK_MID, OX + 16, y);
-				y += 8;
-			}
-			y += 4;
+				lines.Add("nothing");
+			return lines.ToArray();
 		}
 
-		private void DrawTerrainText(ref int yy)
+		internal static List<string[]> TerrainTable(ITile tile, out int move, out int defense)
 		{
-			ITile tile = (ITile)_singlePage;
-			int move = 1, defense = 0;
-
+			var rows = new List<string[]>();
+			move = 1; defense = 0;
 			switch (tile.Type)
 			{
 				case Terrain.Arctic:
-					DrawTerrainTextValues(ref yy, "Arctic");
-					DrawTerrainTextValues(ref yy, "Seals", "2");
+					rows.Add(TerrainRowText("Arctic"));
+					rows.Add(TerrainRowText("Seals", "2"));
 					move = 2;
 					break;
 				case Terrain.Desert:
-					DrawTerrainTextValues(ref yy, "Desert", "0", "1", "0", "2*", "2", "1%");
-					DrawTerrainTextValues(ref yy, "Oil", "0", "4", "0", "2*", "5", "1%");
-					DrawTerrainTextValues(ref yy, "Salt", "0", "1", "2%", "2*", "2", "3%");
+					rows.Add(TerrainRowText("Desert", "0", "1", "0", "2*", "2", "1%"));
+					rows.Add(TerrainRowText("Oil", "0", "4", "0", "2*", "5", "1%"));
+					rows.Add(TerrainRowText("Salt", "0", "1", "2%", "2*", "2", "3%"));
 					break;
 				case Terrain.Forest:
-					DrawTerrainTextValues(ref yy, "Forest", "1", "2");
-					DrawTerrainTextValues(ref yy, "Game", "2", "2");
+					rows.Add(TerrainRowText("Forest", "1", "2"));
+					rows.Add(TerrainRowText("Game", "2", "2"));
 					move = 2;
 					defense = 50;
 					break;
 				case Terrain.Grassland1:
 				case Terrain.Grassland2:
-					DrawTerrainTextValues(ref yy, "Grassland", "2", "0/1", "0", "3*", null, "1%");
+					rows.Add(TerrainRowText("Grassland", "2", "0/1", "0", "3*", null, "1%"));
 					break;
 				case Terrain.Hills:
-					DrawTerrainTextValues(ref yy, "Hills", "1", "0", null, "2", "3*");
-					DrawTerrainTextValues(ref yy, "Coal", "1", "2", null, "2", "5*");
-					DrawTerrainTextValues(ref yy, "Copper", "1", "2", null, "2", "5*");
+					rows.Add(TerrainRowText("Hills", "1", "0", null, "2", "3*"));
+					rows.Add(TerrainRowText("Coal", "1", "2", null, "2", "5*"));
+					rows.Add(TerrainRowText("Copper", "1", "2", null, "2", "5*"));
 					move = 2;
 					defense = 100;
 					break;
 				case Terrain.ForestedHills:
-					DrawTerrainTextValues(ref yy, "Forested Hills", "1", "2");
-					DrawTerrainTextValues(ref yy, "Coal", "1", "4");
-					DrawTerrainTextValues(ref yy, "Copper", "1", "4");
+					rows.Add(TerrainRowText("Forested Hills", "1", "2"));
+					rows.Add(TerrainRowText("Coal", "1", "4"));
+					rows.Add(TerrainRowText("Copper", "1", "4"));
 					move = 2;
 					defense = 100;
 					break;
 				case Terrain.Jungle:
-					DrawTerrainTextValues(ref yy, "Jungle", "1");
-					DrawTerrainTextValues(ref yy, "Gems", "1", null, "4%*");
+					rows.Add(TerrainRowText("Jungle", "1"));
+					rows.Add(TerrainRowText("Gems", "1", null, "4%*"));
 					move = 2;
 					defense = 50;
 					break;
 				case Terrain.Mountains:
-					DrawTerrainTextValues(ref yy, "Mountains", null, "1", null, null, "2");
-					DrawTerrainTextValues(ref yy, "Iron", null, "3", null, null, "4");
+					rows.Add(TerrainRowText("Mountains", null, "1", null, null, "2"));
+					rows.Add(TerrainRowText("Iron", null, "3", null, null, "4"));
 					move = 3;
 					defense = 200;
 					break;
 				case Terrain.Ocean:
-					DrawTerrainTextValues(ref yy, "Ocean", "1", null, "2%");
-					DrawTerrainTextValues(ref yy, "Fish", "3*", null, "2%");
+					rows.Add(TerrainRowText("Ocean", "1", null, "2%"));
+					rows.Add(TerrainRowText("Fish", "3*", null, "2%"));
 					break;
 				case Terrain.Plains:
-					DrawTerrainTextValues(ref yy, "Plains", "1", "1", "0", "2", null, "1%");
-					DrawTerrainTextValues(ref yy, "Horses", "1", "2", "0", "2", null, "1%");
+					rows.Add(TerrainRowText("Plains", "1", "1", "0", "2", null, "1%"));
+					rows.Add(TerrainRowText("Horses", "1", "2", "0", "2", null, "1%"));
 					break;
 				case Terrain.River:
-					DrawTerrainTextValues(ref yy, "River", "2", "0/1", "2%", "3*");
-					DrawTerrainTextValues(ref yy, "Gold", "2", "0/1", "5%", "3*");
+					rows.Add(TerrainRowText("River", "2", "0/1", "2%", "3*"));
+					rows.Add(TerrainRowText("Gold", "2", "0/1", "5%", "3*"));
 					defense = 50;
 					break;
 				case Terrain.Swamp:
-					DrawTerrainTextValues(ref yy, "Wetland", "1");
-					DrawTerrainTextValues(ref yy, "Oil", "1", "4");
+					rows.Add(TerrainRowText("Wetland", "1"));
+					rows.Add(TerrainRowText("Oil", "1", "4"));
 					move = 2;
 					defense = 50;
 					break;
 				case Terrain.Tundra:
-					DrawTerrainTextValues(ref yy, "Tundra", "1");
-					DrawTerrainTextValues(ref yy, "Game", "3*");
+					rows.Add(TerrainRowText("Tundra", "1"));
+					rows.Add(TerrainRowText("Game", "3*"));
 					break;
 			}
 
-			this.DrawText("*  -1 if government is Despotism/Anarchy.", 0, CassetteTheme.INK_LOW, OX + 16, yy); yy += 8;
-			this.DrawText("%  +1 if government is Republic/Democracy.", 0, CassetteTheme.INK_LOW, OX + 16, yy); yy += 12;
+			return rows;
+		}
+
+		internal const string TerrainNoteDespotism = "*  -1 if government is Despotism/Anarchy.";
+		internal const string TerrainNoteRepublic = "%  +1 if government is Republic/Democracy.";
+
+		private void DrawTerrainText(ref int yy)
+		{
+			List<string[]> rows = TerrainTable((ITile)_singlePage, out int move, out int defense);
+			foreach (string[] row in rows)
+			{
+				this.DrawText(row[0], 0, CassetteTheme.INK_HIGH, OX + 12, yy);
+				yy += 8;
+				foreach (string line in row.Skip(1))
+				{
+					this.DrawText(line, 0, CassetteTheme.INK_MID, OX + 16, yy);
+					yy += 8;
+				}
+				yy += 4;
+			}
+
+			this.DrawText(TerrainNoteDespotism, 0, CassetteTheme.INK_LOW, OX + 16, yy); yy += 8;
+			this.DrawText(TerrainNoteRepublic, 0, CassetteTheme.INK_LOW, OX + 16, yy); yy += 12;
 
 			this.DrawText($"Movement cost: {move} MP", 0, CassetteTheme.INK_MID, OX + 12, yy); yy += 8;
 			this.DrawText($"Defense bonus: +{defense}%", 0, CassetteTheme.INK_MID, OX + 12, yy);

@@ -3235,6 +3235,26 @@ namespace CivOne
 				_attackTarget = PickAttackTarget();
 		}
 
+		// A front on every landmass. The civ-wide target is one city, and an attacker on another
+		// continent with no airlift called for was sent to a staging tile it could not walk to,
+		// failed, fortified — and, off the target's continent, was never woken again. Measured
+		// on the user's turn-365 save (Oct 2026): the Federation's target was Jaipur, and five
+		// Hover Tanks sat fortified two tiles from Lakota towns on full moves, turn after turn.
+		// Picked by the same rule as the main target, once per continent per turn.
+		private readonly Dictionary<byte, City?> _localTargets = new Dictionary<byte, City?>();
+		private int _localTargetsTurn = -1;
+
+		private City? TargetFor(IUnit unit)
+		{
+			City? main = _attackTarget;
+			if (main?.Tile is null || unit.Tile is null || main.Tile.ContinentId == unit.Tile.ContinentId) return main;
+			if (_localTargetsTurn != Game.GameTurn) { _localTargets.Clear(); _localTargetsTurn = Game.GameTurn; }
+			byte here = unit.Tile.ContinentId;
+			if (!_localTargets.TryGetValue(here, out City? local))
+				_localTargets[here] = local = PickAttackTarget(here);
+			return local ?? main;
+		}
+
 		// Once a turn at war: assemble a strike group against the target.
 		//
 		// WAKE the attackers that can reach it. A fortified unit never gets a turn again — the
@@ -3270,6 +3290,11 @@ namespace CivOne
 				u.Busy = false;
 				if (muster is not null && u.X == muster.X && u.Y == muster.Y) u.Sentry = true;   // aboard
 			}
+			// ...and those with a front of their own on another landmass (TargetFor).
+			foreach (IUnit u in Game.GetUnits().Where(u => u.Owner == own && u.Role == UnitRole.LandAttack && u.Class == UnitClass.Land
+				&& u.Tile is not null && u.Tile.ContinentId != front && u.Tile.ContinentId != home && (u.Fortify || u.Sentry)
+				&& TargetFor(u)?.Tile?.ContinentId == u.Tile.ContinentId))
+				u.Busy = false;
 
 			// The airships too: an AI unit put to sleep never wakes, and older ones were.
 			if (muster is not null)
@@ -3410,7 +3435,8 @@ namespace CivOne
 			else unit.SkipTurn();
 		}
 
-		private City PickAttackTarget()
+		// `continent`: only cities on that landmass (TargetFor's local fronts).
+		private City PickAttackTarget(byte? continent = null)
 		{
 			// Prefer the weakest (fewest defenders) visible enemy city closest to our empire.
 			// Barbarians (P0) are treated as always hostile even without a formal war state.
@@ -3433,6 +3459,7 @@ namespace CivOne
 			    .Where(c => c.Player != Player
 			             && (Player.IsAtWar(c.Player) || c.Owner == 0)
 			             && Player.Visible(c.X, c.Y)
+			             && (continent is null || c.Tile?.ContinentId == continent)
 			             && (reachable(c) || (flight && c.Tile is not null
 			                 && Player.Cities.Any(oc => Common.DistanceToTile(oc.X, oc.Y, c.X, c.Y) <= AirReach)
 			                 // Somewhere dry to set them down. An Olvir city on open water has
@@ -4110,9 +4137,10 @@ namespace CivOne
 					// Too few to take it, even with every attacker we have on that ground: raid its
 					// fields while the group is raised (the user, Oct 2026: "try to take the town
 					// or sabotage its surroundings"). Never land our own cities work.
-					if (_attackTarget?.Tile is not null && unit.Class == UnitClass.Land)
+					City? aim = TargetFor(unit);
+					if (aim?.Tile is not null && unit.Class == UnitClass.Land)
 					{
-						City t = _attackTarget;
+						City t = aim;
 						byte ownR = Game.PlayerNumber(Player);
 						int army = Game.GetUnits().Count(u => u.Owner == ownR && u.Role == UnitRole.LandAttack
 							&& u.Class == UnitClass.Land && u.Tile?.ContinentId == t.Tile.ContinentId);
@@ -4133,9 +4161,9 @@ namespace CivOne
 						}
 					}
 
-					if (_attackTarget is not null)
+					if (aim is not null)
 					{
-						ITile? staging = StagingTile(_attackTarget);
+						ITile? staging = StagingTile(aim);
 						byte own = Game.PlayerNumber(Player);
 
 						// How many attackers are already at the staging tile?
@@ -4149,8 +4177,8 @@ namespace CivOne
 						// assault arrived as a trickle (the user, Oct 2026: "I never see an NPC
 						// put three of them in a little group and target a city").
 						bool onStaging = staging is not null && unit.X == staging.X && unit.Y == staging.Y;
-						Point dest = staging is null || (onStaging && staged >= StrikeThreshold(_attackTarget))
-						    ? new Point(_attackTarget.X, _attackTarget.Y)
+						Point dest = staging is null || (onStaging && staged >= StrikeThreshold(aim))
+						    ? new Point(aim.X, aim.Y)
 						    : new Point(staging.X, staging.Y);
 						unit.Goto = dest;
 						return;
