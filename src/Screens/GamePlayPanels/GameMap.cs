@@ -650,8 +650,7 @@ namespace CivOne.Screens.GamePlayPanels
 					IUnit sleeping = Game.GetUnits().FirstOrDefault(u => Human == u.Owner && (u.Sentry || u.Fortify));
 					if (sleeping is not null)
 					{
-						sleeping.Busy    = false;
-						sleeping.MovesLeft = sleeping.Move;
+						sleeping.Busy    = false;   // hands back what sleep took, not a fresh turn
 						Game.ActiveUnit  = sleeping;
 						return true;
 					}

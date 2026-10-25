@@ -86,7 +86,11 @@ namespace CivOne.Screens
 					IUnit waking = _units[uid];
 					bool wasAsleep = waking.Busy;
 					waking.Busy = false;
-					if (wasAsleep) waking.MovesLeft = waking.Move;
+					// Waking hands back what sleep took (BaseUnit.Sentry). A Settler's job
+					// zeroes its moves every turn it works, so pulling one off a job is the
+					// one case that refills. ponytail: a settler that moved, then started a
+					// job, gains a move back — not worth a per-turn "has moved" flag.
+					if (wasAsleep && waking is Settlers) waking.MovesLeft = waking.Move;
 					waking.Goto = Point.Empty;
 					Game.ActiveUnit = waking;
 					return true;

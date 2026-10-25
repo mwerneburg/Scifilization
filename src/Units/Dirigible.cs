@@ -90,8 +90,7 @@ namespace CivOne.Units
 			if (here.IsOcean && here.City is null && !here.TransportTube) return;
 			foreach (IUnit unit in here.Units.Where(u => u.Class == UnitClass.Land).Take(Cargo))
 			{
-				unit.Sentry = false;
-				unit.MovesLeft = unit.Move;
+				unit.Sentry = false;   // hands back what boarding took, not a fresh turn
 			}
 		}
 

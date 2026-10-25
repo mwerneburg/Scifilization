@@ -903,8 +903,11 @@ namespace CivOne.Screens
 					var unitRect = new Rectangle(ux, GarrisonY + 7, 32, 32);
 					if (unitRect.Contains(args.Location))
 					{
+						// Only a working Settler refills (see UnitStack); anything else gets back
+						// what sleep took. A unit that flew in and landed has finished its turn.
+						bool working = units[i] is Settlers && units[i].Busy;
 						units[i].Busy      = false;
-						units[i].MovesLeft = units[i].Move;
+						if (working) units[i].MovesLeft = units[i].Move;
 						Game.ActiveUnit = units[i];
 						CloseScreen();
 						return true;

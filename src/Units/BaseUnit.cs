@@ -66,6 +66,11 @@ namespace CivOne.Units
 			}
 		}
 
+		// What going to sleep took this turn, handed back on waking — and no more. Every wake
+		// and unload site used to refill to a full Move instead, so a unit could fly, land,
+		// sleep, wake and fly again in one turn: a Dirigible crossed Africa in a turn, a Bomber
+		// struck city after city. NewTurn clears it; a unit asleep since last turn is already full.
+		private byte _movesAtSleep, _partMovesAtSleep;
 		private bool _sentry;
 		public bool Sentry
 		{
@@ -76,7 +81,14 @@ namespace CivOne.Units
 			set
 			{
 				if (_sentry == value) return;
-				if (!(_sentry = value) || !Game.Started) return;
+				if (!(_sentry = value))
+				{
+					if (MovesLeft == 0 && PartMoves == 0) { MovesLeft = _movesAtSleep; PartMoves = _partMovesAtSleep; }
+					return;
+				}
+				if (!Game.Started) return;
+				_movesAtSleep = MovesLeft;
+				_partMovesAtSleep = PartMoves;
 				MovesLeft = 0;
 				PartMoves = 0;
 				MovementDone(Map[X, Y]);
@@ -1237,6 +1249,7 @@ namespace CivOne.Units
 				_fortify = true;
 			}
 			MovesLeft = Move;
+			_movesAtSleep = _partMovesAtSleep = 0;
 			if (ReverseEngineer() && Human == Owner)
 			{
 				GameTask.Enqueue(Message.General($"Our engineers have stripped the captured {Name}",
