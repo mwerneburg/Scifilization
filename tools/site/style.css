@@ -1,0 +1,89 @@
+/* Scifilization — the City screen's cassette-futurism theme (src/Graphics/CassetteTheme.cs).
+   Self-hosted, no web fonts, no scripts: the etherlabs.net CSP allows 'self' only. */
+:root {
+  --bg0: #0a0806; --bg1: #121009; --bg2: #1b1810; --bg3: #26221a; --border: #3a3122;
+  --ink-low: #6a5a3c; --ink-mid: #b39c72; --ink-high: #f4e6c8;
+  --phos-ghost: #201508; --phos-faint: #3d2a10; --phos-dim: #c07818; --phos: #f0a030; --phos-glow: #f8c060;
+  --ok: #5db536; --alert: #c42820; --cyan: #3aaccc;
+  --mono: "IBM Plex Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --sans: "Gill Sans", "Gill Sans MT", "Avenir Next", "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg0); }
+body {
+  margin: 0; color: var(--ink-high); font: 17px/1.6 var(--sans);
+  background:
+    repeating-linear-gradient(0deg, rgba(240,160,48,0.025) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at top, var(--bg2), var(--bg0) 70%);
+  min-height: 100vh;
+}
+a { color: var(--cyan); text-decoration: none; }
+a:hover { color: var(--phos-glow); text-decoration: underline; }
+
+/* header strip: the City screen's BG3 band over a BORDER rule */
+.top { background: var(--bg3); border-bottom: 1px solid var(--border); }
+.top .inner { max-width: 1080px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; }
+.brand { font: 600 15px var(--mono); letter-spacing: 5px; color: var(--phos-glow); text-shadow: 0 0 8px rgba(240,160,48,0.45); }
+.brand:hover { text-decoration: none; color: var(--phos-glow); }
+.nav { display: flex; flex-wrap: wrap; min-width: 0; gap: 4px 18px; font: 13px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.nav a { color: var(--ink-mid); }
+.nav a.here, .nav a:hover { color: var(--phos); text-decoration: none; }
+
+main { max-width: 1080px; margin: 0 auto; padding: 24px 16px 48px; }
+.kicker { font: 12px var(--mono); letter-spacing: 3px; text-transform: uppercase; color: var(--phos-dim); margin: 0 0 4px; }
+h1 { font: 500 34px/1.2 var(--sans); color: var(--phos-glow); margin: 0 0 12px; text-shadow: 0 0 14px rgba(240,160,48,0.35); }
+h2 { font: 500 22px/1.3 var(--sans); color: var(--phos); margin: 32px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+h3 { font: 600 15px var(--mono); color: var(--ink-high); margin: 20px 0 4px; letter-spacing: 1px; }
+p { margin: 0 0 14px; }
+.lede { font-size: 20px; color: var(--ink-high); }
+.dim { color: var(--ink-mid); }
+.low { color: var(--ink-low); }
+code, pre, kbd { font-family: var(--mono); font-size: 14px; }
+code { color: var(--phos-glow); background: var(--phos-ghost); padding: 1px 5px; border-radius: 3px; }
+pre { background: var(--bg1); border: 1px solid var(--border); border-left: 3px solid var(--phos-dim); padding: 12px 14px; overflow-x: auto; color: var(--ink-high); }
+ul, ol { padding-left: 22px; margin: 0 0 14px; }
+li { margin-bottom: 4px; }
+
+/* art: a phosphor monitor */
+figure.art { margin: 0 0 22px; }
+figure.art img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 0 0 4px var(--bg1), 0 0 30px rgba(240,160,48,0.12); }
+figure.art figcaption { font: 12px var(--mono); color: var(--ink-low); letter-spacing: 2px; text-transform: uppercase; margin-top: 8px; }
+
+/* panels and cards: the City screen's raised BG2 surfaces */
+.panel { background: var(--bg1); border: 1px solid var(--border); border-radius: 6px; padding: 16px 18px; margin: 0 0 18px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin: 14px 0 24px; }
+.card { display: block; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; color: var(--ink-high); }
+.card:hover { border-color: var(--phos-dim); text-decoration: none; color: var(--ink-high); box-shadow: 0 0 18px rgba(240,160,48,0.18); }
+.card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-bottom: 1px solid var(--border); }
+.card .body { padding: 10px 12px 12px; }
+.card .t { display: block; font: 600 14px var(--mono); color: var(--phos); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.card .d { display: block; font-size: 15px; color: var(--ink-mid); line-height: 1.45; }
+
+.hook { border-left: 3px solid var(--phos); background: var(--phos-ghost); padding: 12px 16px; margin: 0 0 18px; font-style: italic; color: var(--ink-high); }
+
+/* Civilopedia */
+.pedia-grid { columns: 3 220px; column-gap: 24px; margin: 8px 0 24px; }
+.pedia-grid a { display: flex; align-items: center; gap: 8px; break-inside: avoid; padding: 2px 0; color: var(--ink-high); }
+.pedia-grid a:hover { color: var(--phos-glow); }
+.pedia-grid img { width: 56px; height: auto; border: 1px solid var(--border); border-radius: 3px; }
+figure.art.pedia { max-width: 640px; }
+.entry { max-width: 68ch; }
+.entry p { color: var(--ink-high); }
+hr.page { border: 0; border-top: 1px dashed var(--border); margin: 18px 0; max-width: 68ch; }
+.lines { white-space: pre-wrap; font-family: var(--mono); font-size: 14px; color: var(--ink-high); margin: 0 0 14px; }
+.stats { display: grid; grid-template-columns: max-content 1fr; gap: 3px 16px; font: 14px var(--mono); color: var(--ink-mid); }
+.stats dt { color: var(--ink-low); }
+.stats dd { margin: 0; color: var(--ink-high); }
+.terrain h3 { color: var(--ink-high); }
+.terrain ul { list-style: none; padding-left: 12px; font: 14px var(--mono); color: var(--ink-mid); }
+.crumbs { font: 12px var(--mono); color: var(--ink-low); margin-bottom: 14px; letter-spacing: 1px; }
+
+footer { border-top: 1px solid var(--border); color: var(--ink-low); font: 12px var(--mono); }
+footer .inner { max-width: 1080px; margin: 0 auto; padding: 14px 16px 28px; display: flex; flex-wrap: wrap; gap: 6px 22px; }
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .nav { flex-basis: 100%; gap: 4px 14px; }
+  h1 { font-size: 27px; }
+  .lede { font-size: 18px; }
+}
