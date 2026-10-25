@@ -41,7 +41,7 @@ story about who hears you — chosen by what kind of civilization you turned out
 {card("visitors/index.html", "OlvirInSpace", "The Visitors", "Five different answers to the same broadcast. You will not know which until it is too late to change.", d)}
 {card("features/index.html", "Skynet", "What's New", "Machines that wake, wonders that turn, storms, materials, culture that takes cities without an army.", d)}
 {card("civilopedia/index.html", "cityfounded", "Civilopedia", "Every page of the in-game reference book.", d)}
-{card("install.html", "spaceshiplaunched", "Install", "Build it and play on macOS or Linux.", d)}
+{card("install.html", "spaceshiplaunched", "Install", "Download it for the Mac, or build it on Linux.", d)}
 </div>
 <h2>The world</h2>
 <p>Play on the real Earth at epic scale (320 × 200 tiles) or on a generated world. Twenty-four nations
@@ -293,16 +293,26 @@ losing badly enough may turn to a harder government entirely, one that you, the 
     # ── install ─────────────────────────────────────────────────────────────
     d = 0
     page("install.html", "Install",
-         "How to build and run Scifilization on macOS and Linux.",
+         "How to install Scifilization on macOS, or build it on Linux.",
          """
 <p class="kicker">Getting started</p>
 <h1>Install</h1>
-<p class="lede">Scifilization builds from source with the free .NET SDK. It needs no files from the original
-game.</p>
+<p class="lede">On an Apple Silicon Mac, download it and play. Everywhere else it builds from source with the
+free .NET SDK. Either way it needs no files from the original game.</p>
 <p>The source is on GitHub: <a href="https://github.com/mwerneburg/Scifilization">mwerneburg/Scifilization</a>.</p>
 
 <h2>macOS</h2>
-<p>Tested on Apple Silicon. With <a href="https://brew.sh">Homebrew</a>:</p>
+<p>Download the <code>.dmg</code> from the
+<a href="https://github.com/mwerneburg/Scifilization/releases/latest">latest release</a>, open it, and drag
+<strong>Scifilization</strong> to Applications. Nothing else needs installing. It runs on Apple Silicon
+with macOS 12 or later.</p>
+<p>The app is not notarized by Apple, so the first launch is refused with a warning. Open
+<strong>System Settings → Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>.
+(On macOS 14 and earlier you can right-click the app and choose <strong>Open</strong> instead.) After that
+it opens normally.</p>
+
+<h3>Building on a Mac</h3>
+<p>For an Intel Mac, or to play the latest code. With <a href="https://brew.sh">Homebrew</a>:</p>
 <pre>brew install dotnet sdl2 git
 git clone https://github.com/mwerneburg/Scifilization.git
 cd Scifilization
@@ -312,9 +322,7 @@ runtime/sdl/bin/Release/net10.0/CivOne.SDL</pre>
 <code>export PATH="$PATH:/opt/homebrew/bin"</code>.</p>
 
 <h2>Linux</h2>
-<p><strong>Not yet tested.</strong> The game is plain .NET over SDL2, and the steps below are what it should
-take. If you try it, success or failure, please
-<a href="https://github.com/mwerneburg/Scifilization/issues">open an issue</a>.</p>
+<p><strong>Well tested, but not as thoroughly as on macOS.</strong> The game is plain .NET over SDL2, and the steps below are what it should take. If you try it, success or failure, please <a href="https://github.com/mwerneburg/Scifilization/issues">open an issue</a>.</p>
 <p>Install the <a href="https://learn.microsoft.com/dotnet/core/install/linux">.NET 10 SDK</a>, then SDL2.
 .NET looks for <code>libSDL2.so</code>, which most distributions ship in the development package:</p>
 <pre># Debian / Ubuntu
@@ -334,8 +342,10 @@ runtime/sdl/bin/Release/net10.0/CivOne.SDL</pre>
 <li>macOS: <code>~/Library/Application Support/CivOne/</code></li>
 <li>Linux: <code>~/.local/share/CivOne/</code></li>
 </ul>
-<p>The folder still carries the project's old name. Saves are in <code>saves/</code>; the game copies its
-art into the folder on every launch, so updating is just pulling and rebuilding:</p>
+<p>The folder still carries the project's old name. Saves are in <code>saves/</code>, and they survive
+updates.</p>
+<p>To update, download the new <code>.dmg</code> and replace the app, or, if you built it, pull and
+rebuild:</p>
 <pre>git pull
 dotnet build runtime/sdl/CivOne.SDL.csproj -c ReleaseMacOS   # or ReleaseLinux</pre>
 

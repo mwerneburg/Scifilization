@@ -26,6 +26,20 @@ dotnet publish runtime/sdl/CivOne.SDL.csproj -c ReleaseMacOS -r osx-arm64 --self
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$OUT/publish/CivOne.SDL" "$APP/Contents/MacOS/Scifilization"
 cp -L "$SDL" "$APP/Contents/MacOS/libSDL2.dylib"
+# Homebrew builds .NET from source and links the apphost against its own brotli, which a
+# player's Mac doesn't have: bundle it and point the executable at the copies.
+BROTLI=$(otool -L "$APP/Contents/MacOS/Scifilization" | awk '/libbrotlidec/{print $1}' | xargs dirname)
+for lib in common dec enc; do
+	cp -L "$BROTLI/libbrotli$lib.1.dylib" "$APP/Contents/MacOS/"
+	install_name_tool -change "$BROTLI/libbrotli$lib.1.dylib" "@executable_path/libbrotli$lib.1.dylib" \
+		"$APP/Contents/MacOS/Scifilization" 2>/dev/null
+	install_name_tool -change @rpath/libbrotlicommon.1.dylib @loader_path/libbrotlicommon.1.dylib \
+		"$APP/Contents/MacOS/libbrotli$lib.1.dylib" 2>/dev/null
+done
+for lib in "$APP"/Contents/MacOS/*.dylib; do install_name_tool -id "@executable_path/$(basename "$lib")" "$lib" 2>/dev/null; done
+if otool -L "$APP"/Contents/MacOS/* | grep -E '/opt/homebrew|/usr/local|@rpath'; then
+	echo "the app still links the libraries above, which a player's Mac won't have"; exit 1
+fi
 cp resources/macos/CivOne.icns "$APP/Contents/Resources/"
 # The oldest macOS the .NET apphost itself was built for.
 MINOS=$(otool -l "$APP/Contents/MacOS/Scifilization" | awk '/LC_BUILD_VERSION/{f=1} f&&/minos/{print $2; exit}')
