@@ -1,1 +1,0 @@
-@bin\CivOne.SDL.exe
