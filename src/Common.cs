@@ -41,6 +41,10 @@ namespace CivOne
 		private static void Log(string text, params object[] parameters) => RuntimeHandler.Runtime.Log(text, parameters);
 
 		public static Random Random = new Random((int)DateTime.Now.Ticks);
+
+		// See src/Properties/AssemblyInfo.cs.
+		public static string Version => typeof(Common).Assembly
+			.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?";
 		
 		public static IAdvance[] Advances = Reflect.GetAdvances().ToArray();
 		public static IBuilding[] Buildings = Reflect.GetBuildings().ToArray();

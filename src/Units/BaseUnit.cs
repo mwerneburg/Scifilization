@@ -114,7 +114,7 @@ namespace CivOne.Units
 			}
 		}
 
-		private int AttackStrength(IUnit defendUnit)
+		private int AttackStrength(IUnit defendUnit, bool planning = false)
 		{
 			// Step 1: Determine the nominal attack value of the attacking unit and multiply it by 8.
 			int attackStrength = ((int)Attack * 8);
@@ -155,7 +155,7 @@ namespace CivOne.Units
 			}
 			
 			// Step 7: If the attacking unit has only 0.2 movement points left, multiply the attack strength by 2, then divide it by 3. If the attacking unit has only 0.1 movement points left, then just divide by 3 instead.
-			if (MovesLeft == 0)
+			if (MovesLeft == 0 && !planning)
 			{
 				attackStrength *= PartMoves;
 				attackStrength /= 3;
@@ -270,6 +270,16 @@ namespace CivOne.Units
 		// a city with, and a Catapult in front of its Phalanx.
 		internal IUnit Defender(ITile defendTile) =>
 			defendTile.Units.OrderByDescending(x => DefendStrength(x, this)).ThenBy(x => (int)x.Type).First();
+
+		// Whether attacking this tile is at least an even fight, by the combat's own arithmetic:
+		// the stack's best defender, with its terrain, fortification and veterancy. Planning
+		// leaves out the tired-attacker penalty, because a unit asleep at the start of its turn
+		// reads as having no moves at all.
+		internal bool EvenOrBetter(ITile defendTile)
+		{
+			IUnit defender = Defender(defendTile);
+			return AttackStrength(defender, planning: true) >= DefendStrength(defender, this);
+		}
 
 		private bool AttackOutcome(IUnit attackUnit, ITile defendTile) => AttackOutcome(attackUnit, Defender(defendTile));
 

@@ -361,7 +361,7 @@ namespace CivOne.Screens
 		
 		public Credits()
 		{
-			Runtime.WindowTitle = $"{Settings.WindowTitle} (press SHIFT+F1 to enter Setup)";
+			Runtime.WindowTitle = $"{Settings.WindowTitle} {Common.Version} (press SHIFT+F1 to enter Setup)";
 
 			OnResize += Resize;
 			Closed += (s, a) => Runtime.WindowTitle = Settings.WindowTitle;

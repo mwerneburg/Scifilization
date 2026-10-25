@@ -11,5 +11,9 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 [assembly: AssemblyProduct("Scifilization")]
+// The one place the version is written. Common.Version reads it, the title screen and
+// --version show it, and tools/package_mac.sh copies it into the app's Info.plist.
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyInformationalVersion("1.0.0")]
 
 [assembly:InternalsVisibleTo("CivOne.UnitTests")]

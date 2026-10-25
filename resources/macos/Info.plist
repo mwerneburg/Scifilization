@@ -3,22 +3,24 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleName</key>
-	<string>CivOne</string>
+	<string>Scifilization</string>
 	<key>CFBundleDisplayName</key>
-	<string>CivOne</string>
+	<string>Scifilization</string>
 	<key>CFBundleIdentifier</key>
-	<string>org.CivOne.SDL</string>
+	<string>net.etherlabs.scifilization</string>
 	<key>CFBundleVersion</key>
-	<string>0.1.0.pre-alpha.1</string>
+	<string>__VERSION__</string>
+	<key>CFBundleShortVersionString</key>
+	<string>__VERSION__</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
-	<key>CFBundleSignature</key>
-	<string>civ1</string>
 	<key>CFBundleExecutable</key>
-	<string>civone-mac</string>
+	<string>Scifilization</string>
 	<key>CFBundleIconFile</key>
 	<string>CivOne.icns</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>10.12</string>
+	<string>__MINOS__</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 </dict>
 </plist>

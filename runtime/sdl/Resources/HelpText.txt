@@ -3,6 +3,7 @@ Usage: civone-sdl [argument|runtime-options]
 
 arguments:
   -h|--help             Show this documentation.
+  -v|--version          Show the version.
   -D|--desktop-icon     Create an icon on the desktop (windows only)
 
 runtime-options:

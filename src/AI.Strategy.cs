@@ -3054,6 +3054,46 @@ namespace CivOne
 		// whatever its grand strategy says.
 		private const int HuntRadius = 8;
 
+		// Phase 3 (Oct 2026): not only monsters. In the turn-365 save of the user's game, about
+		// a hundred hostile combat units stood in the open within eight tiles of an AI city
+		// whose owner was at war with them — 83 of them the Federation's tanks — and three
+		// quarters were still standing five turns later, while twelve cities fell. Nobody went
+		// out at them, though a stack caught in the open dies together. So anything hostile
+		// and armed standing close to one of our cities is quarry too, but on a shorter leash
+		// than a monster (it is the next attack on that city, not a resident), and only on
+		// odds of at least even: tanks on a hill are not a Harvester.
+		private const int RaidRadius = 3;
+
+		// Built once per player turn: HuntQuarry runs for every unit we move and WakeHunters
+		// for every unit asleep, and a scan of the whole unit list per unit is the late-game
+		// slowdown all over again. Nothing on the list moves during our own turn; what we kill
+		// is parked at X = 255.
+		private readonly List<IUnit> _quarry = new();
+		private int _quarryTurn = -1;
+
+		private List<IUnit> Quarry()
+		{
+			if (_quarryTurn == Game.GameTurn) return _quarry;
+			_quarryTurn = Game.GameTurn;
+			_quarry.Clear();
+			City[] cities = Player.Cities;
+			if (cities.Length == 0) return _quarry;
+			byte own = Game.PlayerNumber(Player);
+			foreach (IUnit u in Game.GetUnits())
+			{
+				if (u.Owner == own || u.Class != UnitClass.Land) continue;
+				bool monster = u.Owner == 0 && IsMegafauna(u);
+				if (!monster && (u.Attack == 0 || (u.Owner != 0 && !Player.IsAtWar(Game.GetPlayer(u.Owner))))) continue;
+				ITile tile = Map.Instance[u.X, u.Y];
+				// A land unit cannot reach something standing in the sea, and a unit in a city
+				// is the city's defence, which is PickAttackTarget's business.
+				if (tile.IsOcean || (!monster && tile.City is not null)) continue;
+				int reach = monster ? HuntRadius : RaidRadius;
+				if (cities.Any(c => Common.DistanceToTile(c.X, c.Y, u.X, u.Y) <= reach)) _quarry.Add(u);
+			}
+			return _quarry;
+		}
+
 		// The barbarian-owned things that are worth walking out to kill. All of them are
 		// unbuildable and answer to nobody's diplomacy, which is what separates them from an
 		// ordinary raiding party — a raid moves on, these do not.
@@ -3087,6 +3127,7 @@ namespace CivOne
 					_settlerMisses.Remove(gone);
 			}
 
+			_quarryTurn = -1;   // others have moved since our last turn
 			WakeHunters();
 			WakeSeaSleepers();
 		}
@@ -3126,8 +3167,8 @@ namespace CivOne
 
 		internal void WakeHunters()
 		{
-			// Cheap exit for the ordinary case: no monsters anywhere, which is most of a game.
-			if (!Game.Instance.GetUnits().Any(u => u.Owner == 0 && IsMegafauna(u))) return;
+			// Cheap exit for the ordinary case: nothing to hunt, which is most of a game.
+			if (Quarry().Count == 0) return;
 
 			byte own = Game.PlayerNumber(Player);
 			// Any land unit, not just the ones filed as attackers — see HuntQuarry for why.
@@ -3168,22 +3209,22 @@ namespace CivOne
 			// is a worse trade than the drained tiles.
 			if (IsSoleGarrison(hunter)) return null;
 
-			City[] cities = Player.Cities;
-			if (cities.Length == 0) return null;
-
-			return Game.GetUnits()
-				.Where(u => u.Owner == 0 && IsMegafauna(u))
+			// Our ground, not a crusade: Quarry holds only what stands near a city of ours.
+			return Quarry()
+				.Where(u => u.X != 255)   // killed earlier this turn
 				// Only what this unit can plausibly beat. Feeding Legions one at a time to a
 				// defence-6 harvester is worse for the civ than ignoring it, and it is how an
 				// AI empties its army into a wall. Gozira (defence 24) is nobody's quarry,
 				// which is correct: it is a catastrophe, not a boss fight.
-				.Where(u => hunter.Attack >= u.Defense)
-				// A land unit cannot reach something standing in the sea, and cannot walk to
-				// another continent — the engine has no naval transport AI.
-				.Where(u => !Map.Instance[u.X, u.Y].IsOcean
-				         && LandReachable(hunter, Map.Instance[u.X, u.Y]))
-				// Our ground, not a crusade: something has to be near a city of ours.
-				.Where(u => cities.Any(c => Common.DistanceToTile(c.X, c.Y, u.X, u.Y) <= HuntRadius))
+				.Where(u => u.Owner == 0 && IsMegafauna(u)
+					? hunter.Attack >= u.Defense
+					// A raider: only from close by, since it will not wait, and only on real
+					// odds. The +1 lets a unit just outside the city answer too.
+					: Common.DistanceToTile(hunter.X, hunter.Y, u.X, u.Y) <= RaidRadius + 1
+					  && hunter is BaseUnit b && b.EvenOrBetter(Map.Instance[u.X, u.Y]))
+				// A land unit cannot walk to another continent — the engine has no naval
+				// transport AI.
+				.Where(u => LandReachable(hunter, Map.Instance[u.X, u.Y]))
 				.OrderBy(u => Common.DistanceToTile(hunter.X, hunter.Y, u.X, u.Y))
 				.FirstOrDefault();
 		}
@@ -4096,7 +4137,7 @@ namespace CivOne
 				return;
 			}
 
-			// Hunt loose monsters before considering anybody's cities. See HuntQuarry: the
+			// Hunt loose monsters and raiders before considering anybody's cities. See HuntQuarry: the
 			// offensive AI targets cities and nothing else, so barbarian megafauna standing in
 			// a civ's own fields were untouchable by anyone but a human.
 			//

@@ -24,8 +24,10 @@ namespace CivOne
 				(name, asm, searchPath) =>
 				{
 					if (name != "SDL2") return IntPtr.Zero;
+					// Bundled beside the executable: Scifilization.app (tools/package_mac.sh)
+					if (NativeLibrary.TryLoad(System.IO.Path.Combine(AppContext.BaseDirectory, "libSDL2.dylib"), out IntPtr h)) return h;
 					// Official SDL2 .dmg framework install
-					if (NativeLibrary.TryLoad("/Library/Frameworks/SDL2.framework/Versions/Current/SDL2", out IntPtr h)) return h;
+					if (NativeLibrary.TryLoad("/Library/Frameworks/SDL2.framework/Versions/Current/SDL2", out h)) return h;
 					// Homebrew on Apple Silicon (/opt/homebrew)
 					if (NativeLibrary.TryLoad("/opt/homebrew/lib/libSDL2.dylib", out h)) return h;
 					// Homebrew on Intel Mac (/usr/local)
@@ -69,6 +71,8 @@ Try 'civone-sdl --help' for more information.
 			for (int i = 0; i < args.Length; i++)
 			{
 				string cmd = args[i].TrimStart('-');
+				// Finder can still hand an app bundle a process serial number; it is not an option.
+				if (cmd.StartsWith("psn_")) continue;
 				if (i == 0 && args.Length == 1)
 				{
 					switch(cmd)
@@ -76,6 +80,10 @@ Try 'civone-sdl --help' for more information.
 						case "help":
 						case "h":
 							Console.WriteLine(Resources.HelpText);
+							return;
+						case "version":
+						case "v":
+							Console.WriteLine($"Scifilization {Common.Version}");
 							return;
 						case "desktop-icon":
 						case "D":

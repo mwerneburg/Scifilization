@@ -92,11 +92,11 @@ namespace CivOne.Tests
 			Assert.Null(AI.Instance(ai).HuntQuarry(cannon));
 		}
 
-		// An ordinary barbarian raider is NOT megafauna: raids move on, and the existing
-		// local defensive response is the right answer to them. Widening the hunt to every
-		// loose hostile is a separate decision with its own knock-on effects on the war AI.
+		// An ordinary barbarian raider is hunted only on a short leash (phase 3, Oct 2026: see
+		// RaiderHuntTests). Four tiles out it is nobody's quarry yet — a monster at that range
+		// would be.
 		[Fact]
-		public void AnOrdinaryBarbarianRaiderIsNotHunted()
+		public void ABarbarianRaiderBeyondTheLeashIsLeftAlone()
 		{
 			var (g, ai, _) = AWorldWithACity();
 			Beast(g, UnitType.Legion, 44, 25);
