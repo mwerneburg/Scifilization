@@ -90,6 +90,17 @@ namespace CivOne.IO
 				"within one tile of land, or risk",
 				"being lost at sea.",
 			],
+			// Raised through Orders.Error, which builds the key at runtime, so a search for
+			// "ERROR/SETTLERS" finds nothing; ErrorTextTests reads both spellings.
+			["ERROR/SETTLERS"] = [
+				"Only SETTLERS can found cities",
+				"and build roads, irrigation and",
+				"mines.",
+			],
+			["ERROR/ADDCITY"] = [
+				"A city of size 10 or more cannot",
+				"take in any more SETTLERS.",
+			],
 			["ERROR/NOIRR"] = [
 				"This tile cannot be irrigated.",
 				"Irrigation needs fresh water in an",
