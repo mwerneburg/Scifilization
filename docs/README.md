@@ -1,4 +1,4 @@
-# Civ91 : A sci-fi port of CivOne
+# Scifilization : A sci-fi port of Civilization One
 
 by michael werneburg, 2026
 

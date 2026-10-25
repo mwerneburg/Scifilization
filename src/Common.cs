@@ -42,9 +42,9 @@ namespace CivOne
 
 		public static Random Random = new Random((int)DateTime.Now.Ticks);
 
-		// See src/Properties/AssemblyInfo.cs.
-		public static string Version => typeof(Common).Assembly
-			.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?";
+		// See shared/Properties/AssemblyInfo.cs.
+		public static string Version => System.Reflection.CustomAttributeExtensions
+			.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(Common).Assembly)?.InformationalVersion ?? "?";
 		
 		public static IAdvance[] Advances = Reflect.GetAdvances().ToArray();
 		public static IBuilding[] Buildings = Reflect.GetBuildings().ToArray();

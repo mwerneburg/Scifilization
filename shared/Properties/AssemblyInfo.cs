@@ -9,7 +9,10 @@
 
 using System.Reflection;
 
-[assembly: AssemblyVersion("0.1.0.1417")]
+// The one place the version is written. Common.Version reads it, the title screen and
+// --version show it, and tools/package_mac.sh copies it into the app's Info.plist.
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyInformationalVersion("1.0.0")]
 // The compiled assembly carries the licence of the work as distributed, which is
 // the fork's. The CC0 header above is upstream's and is accurate for this file's
 // history — see NOTICE for why both are true at once.

@@ -83,7 +83,9 @@ Try 'civone-sdl --help' for more information.
 							return;
 						case "version":
 						case "v":
-							Console.WriteLine($"Scifilization {Common.Version}");
+							// The API assembly compiles the same shared/Properties/AssemblyInfo.cs.
+							Console.WriteLine("Scifilization " + typeof(IRuntime).Assembly
+								.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion);
 							return;
 						case "desktop-icon":
 						case "D":

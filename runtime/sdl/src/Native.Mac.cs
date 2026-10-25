@@ -9,7 +9,6 @@
 
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace CivOne
@@ -18,7 +17,9 @@ namespace CivOne
 	{
 		private static string MacFolderBrowser(string caption)
 		{
-			string scriptPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "OpenFolder.sh");
+			// Temp, not beside the executable: in the packaged app that is inside the signed
+			// bundle, and a single-file build has no assembly Location at all.
+			string scriptPath = Path.Combine(Path.GetTempPath(), "OpenFolder.sh");
 			using (StreamWriter sw = new StreamWriter(scriptPath, false))
 			{
 				sw.WriteLine("!#/bin/bash");

@@ -1,6 +1,6 @@
-# CivOne
+# Scifilization
 
-A Civilization I remake in C#, forked from the original CivOne project and extended with a sci-fi storyline, improved AI, procedural map generation, and a machine-learning decision logger.
+A "Civilization I" remake in C#, forked from the original CivOne project and extended with a sci-fi storyline, improved AI, procedural map generation, and a machine-learning decision logger.
 
 Licensed under [GPL-3.0-or-later](LICENSE). Forked from the CC0 original — see
 [NOTICE](NOTICE) for how the two fit together, [AUTHORS](AUTHORS) for who wrote
@@ -9,26 +9,43 @@ from. No original Civilization I assets are included, and none are required.
 
 ---
 
-## Requirements
+## Installing
+
+### macOS (Apple silicon)
+
+Download `Scifilization-<version>-macos-arm64.dmg` from the
+[latest release](https://github.com/mwerneburg/Scifilization/releases/latest), open it, and
+drag **Scifilization** to Applications. Nothing else needs installing: the .NET runtime and
+SDL2 are inside the app.
+
+The app is not notarized, so the first launch is refused with a warning that Apple cannot
+check it. Open **System Settings → Privacy & Security**, scroll down, and click **Open
+Anyway**. (On macOS 14 and earlier you can instead right-click the app and choose **Open**.)
+After that it opens normally.
+
+### Intel Macs and Linux
+
+Build from source (below). Linux builds have not been tested yet.
+
+---
+
+## Building from source
 
 | Tool | Version | Notes |
 |------|---------|-------|
 | .NET SDK | 10.0+ | `runtime/sdl` targets net10.0 |
-| SDL2 | any recent | installed via Homebrew on macOS |
-| Python 3 | 3.10+ | optional — only needed for the analysis notebook |
-
-On macOS with Homebrew:
-
-```
-brew install dotnet sdl2 sdl2_image sdl2_mixer
-```
-
----
-
-## Building and running
+| SDL2 | 2.x | the only native library the game loads |
+| Python 3 | 3.10+ | optional — only for the analysis notebook and the website |
 
 ```bash
-# Debug build + run (macOS)
+# macOS
+brew install dotnet sdl2
+# Debian / Ubuntu: install the .NET 10 SDK, then
+sudo apt install libsdl2-2.0-0
+```
+
+```bash
+# Debug build + run (macOS; on Linux use -c DebugLinux / ReleaseLinux)
 dotnet build runtime/sdl/CivOne.SDL.csproj -c DebugMacOS
 runtime/sdl/bin/Debug/net10.0/CivOne.SDL
 
@@ -38,8 +55,13 @@ runtime/sdl/bin/Release/net10.0/CivOne.SDL
 ```
 
 The `build.sh` script at the repo root does both builds and launches the release binary.
+`CivOne.SDL --version` prints the version, which lives in `shared/Properties/AssemblyInfo.cs`.
 
-Game data (saves, assets, logs) is stored in `~/Library/Application Support/CivOne/` on macOS. The game copies bundled defaults there on first launch and overwrites them on every subsequent launch, so pulling and rebuilding is enough to pick up asset updates.
+To build the Mac app and DMG yourself, run `tools/package_mac.sh`; the DMG lands in `bin/`.
+
+Game data (saves, assets, logs) is stored in `~/Library/Application Support/CivOne/` on macOS.
+The game copies its bundled defaults there on launch, skipping any file that is already
+present.
 
 ---
 
