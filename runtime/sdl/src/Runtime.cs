@@ -92,14 +92,15 @@ namespace CivOne
 			"data", "garrison_icons", "unit_tiles", "leader_art", "event_art", "improvement_art",
 		};
 
-		// Deploys every embedded defaults asset to the storage dir on first run (skipping files
-		// that already exist). Enumerates the assembly manifest, so any EmbeddedResource added
-		// under Resources/defaults/ is installed automatically -- no per-file registration. This
-		// replaced a hand-maintained table that silently dropped newly-added art (leader/event/
-		// improvement images) from fresh installs.
+		// Deploys every embedded defaults asset to the storage dir, refreshing what an update
+		// changed and keeping what the player edited (DefaultsInstaller). Enumerates the assembly
+		// manifest, so any EmbeddedResource added under Resources/defaults/ is installed
+		// automatically -- no per-file registration. This replaced a hand-maintained table that
+		// silently dropped newly-added art (leader/event/improvement images) from fresh installs.
 		private static void InstallDefaults(string storageDir)
 		{
 			Assembly asm = Assembly.GetExecutingAssembly();
+			var files = new List<KeyValuePair<string, Func<Stream>>>();
 			foreach (string name in asm.GetManifestResourceNames())
 			{
 				if (!name.StartsWith(DefaultsPrefix)) continue;
@@ -111,16 +112,13 @@ namespace CivOne
 					dirs.Add(segments[i++]);
 				string fileName = string.Join(".", segments.Skip(i));
 
-				string targetPath = Path.Combine(new[] { storageDir }.Concat(dirs).Append(fileName).ToArray());
-				if (File.Exists(targetPath)) continue;
-				using (Stream src = asm.GetManifestResourceStream(name))
-				{
-					if (src == null) continue;
-					Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
-					using (FileStream dst = File.Create(targetPath))
-						src.CopyTo(dst);
-				}
+				string resource = name;
+				files.Add(new KeyValuePair<string, Func<Stream>>(string.Join("/", dirs.Append(fileName)),
+					() => asm.GetManifestResourceStream(resource)));
 			}
+			// The module version id changes whenever the assembly does, art included (builds are
+			// deterministic), so an unchanged build skips the hashing.
+			DefaultsInstaller.Install(storageDir, asm.ManifestModule.ModuleVersionId.ToString(), files);
 		}
 
 		public Runtime(RuntimeSettings settings)
