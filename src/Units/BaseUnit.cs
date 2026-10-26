@@ -1346,7 +1346,7 @@ namespace CivOne.Units
 		// Returns true when all conditions for upgrading are met, populating the resolved
 		// target type, its name and the gold cost. Conditions: unit is in a city with a
 		// Barracks, a fieldable target exists in its upgrade chain, and the player has the gold.
-		protected bool CanUpgrade(out UnitType targetType, out string targetName, out int cost)
+		protected internal bool CanUpgrade(out UnitType targetType, out string targetName, out int cost)
 		{
 			targetType = default;
 			targetName = "";

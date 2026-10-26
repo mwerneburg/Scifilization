@@ -1092,6 +1092,27 @@ namespace CivOne
 			else if (tax > target) Player.TaxesRate = tax - 1;
 		}
 
+		// ── unit upgrades ──────────────────────────────────────────────────────
+
+		// The AI never upgraded a unit. At turn 381 of game c58808e6 the Lakota fielded
+		// Riflemen yet 82 of their 128 units were outdated, 45 of them Militia and Phalanxes.
+		// A refit costs the new unit's price in gold — 30g turns a Militia into Riflemen —
+		// so it runs before rush-buy, weakest unit first, keeping a 50g reserve.
+		// ponytail: Barracks-gated like the human's; ~1 AI city in 5 has one. Consider
+		// Barracks where outdated units stand if this proves too narrow.
+		internal void ConsiderUpgrades()
+		{
+			if (Player.IsDestroyed() || Player.Government is Gov.Anarchy) return;
+			byte own = (byte)Game.PlayerNumber(Player);
+			foreach (BaseUnit unit in Game.GetUnits().OfType<BaseUnit>()
+			             .Where(u => u.Owner == own && u.UpgradesTo.HasValue)
+			             .OrderBy(u => u.Defense).ToList())
+			{
+				if (unit.CanUpgrade(out UnitType to, out _, out int cost) && Player.Gold - cost >= 50)
+					Game.UpgradeUnit(unit, to, cost);
+			}
+		}
+
 		// ── rush-buy logic ─────────────────────────────────────────────────────
 
 		internal void ConsiderRushBuy()
