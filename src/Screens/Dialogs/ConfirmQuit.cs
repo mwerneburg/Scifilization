@@ -19,14 +19,16 @@ namespace CivOne.Screens.Dialogs
 	{
 		private bool _update = true;
 
+		private const int pw = 200, ph = 68; // dimensions of the text box (I think)
+		private const int px = (320 - pw) / 2;
+		private const int py = (200 - ph) / 2;
+		internal static int QuitY => py + ph - Resources.GetFontHeight(0) * 2 - 10;
+		internal static int KeepY => py + ph - Resources.GetFontHeight(0) - 6;
+
 		protected override bool HasUpdate(uint gameTick)
 		{
 			if (!_update) return false;
 			_update = false;
-
-			const int pw = 200, ph = 68; // dimensions of the text box (I think)
-			const int px = (320 - pw) / 2;
-			const int py = (200 - ph) / 2;
 
 			this.FillRectangle(px, py, pw, ph, CassetteTheme.BG1);
 			this.FillRectangle(px,          py,          pw, 1, CassetteTheme.BORDER);
@@ -39,16 +41,15 @@ namespace CivOne.Screens.Dialogs
 			this.FillRectangle(px + 1, py + 14, pw - 2, 1, CassetteTheme.BORDER);
 			this.DrawText("QUIT GAME", 0, CassetteTheme.PHOS, px + pw / 2, py + 4, TextAlign.Center);
 
-			int fh = Resources.GetFontHeight(0);
 			this.DrawText("Are you sure you want to quit?", 0, CassetteTheme.INK_HIGH,
 				px + 5, py + 22, TextAlign.Left);
 				// px + pw / 2, py + 22, TextAlign.Left);
 
 			this.DrawText("Y / ENTER - QUIT", 0, CassetteTheme.ALERT,
-				px + 5, py + ph - fh * 2 - 10, TextAlign.Left);
+				px + 5, QuitY, TextAlign.Left);
 				// px + pw / 2, py + ph - fh * 2 - 10, TextAlign.Left);
 			this.DrawText("ESC / N - KEEP PLAYING", 0, CassetteTheme.INK_MID,
-				px + 5, py + ph - fh - 6, TextAlign.Left);
+				px + 5, KeepY, TextAlign.Left);
 				// px + pw / 2, py + ph - fh - 6, TextAlign.Left);
 
 			return true;
@@ -70,8 +71,12 @@ namespace CivOne.Screens.Dialogs
 			return false;
 		}
 
+		// Clicking the QUIT line quits; a click anywhere else keeps playing, as before. Every
+		// click used to keep playing, so the mouse could never quit (reported Oct 2026).
 		public override bool MouseDown(ScreenEventArgs args)
 		{
+			if (args.X > px && args.X < px + pw - 1 && args.Y >= QuitY - 2 && args.Y < KeepY - 2)
+				Runtime.Quit();
 			Destroy();
 			return true;
 		}

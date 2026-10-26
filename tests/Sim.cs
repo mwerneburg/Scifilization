@@ -50,7 +50,8 @@ namespace CivOne.Tests
 		public void Log(string text, params object[] parameters) { }
 		public string BrowseFolder(string caption = "") => "";
 		public string WindowTitle { set { } }
-		public void Quit() { }
+		public int Quits { get; private set; }
+		public void Quit() => Quits++;
 	}
 
 	internal static class Sim
