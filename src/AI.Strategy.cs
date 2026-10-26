@@ -4930,6 +4930,26 @@ namespace CivOne
 			// deadlocks production forever (the Inca case).
 			if (hostileNear && defenders < Math.Min(2, (int)city.Size)) Consider(BestDefender());
 
+			// A hunter, when there is quarry here and nothing of ours on this continent able to
+			// kill it. Every other attacker entry waits on SenateRaisesArmies, and a Republic or
+			// Democracy is only "invaded" by the Federation, the Others or Skynet — never by a
+			// harvester or a raiding party. So the Haida, in Democracy with 83 advances, ended a
+			// game with 61 units at attack 3 or less while defence-6 harvesters drank their land:
+			// HuntQuarry had nobody to send. Like the hunt itself this is stance-independent
+			// and raises no war footing; it buys one hunter per beast, counting the ones on order.
+			IUnit hunter = (IUnit)BestAttacker();
+			List<IUnit> prey = Quarry().Where(u => u.X != 255 && hunter.Attack >= u.Defense
+				&& Common.DistanceToTile(u.X, u.Y, city.X, city.Y) <= (u.Owner == 0 && IsMegafauna(u) ? HuntRadius : RaidRadius))
+				.ToList();
+			if (prey.Count > 0)
+			{
+				int weakest = prey.Min(u => u.Defense);
+				int hunters = Game.GetUnits().Count(u => u.Owner == threatOwnId && u.Class == UnitClass.Land
+					&& u.Attack >= weakest && u.Tile?.ContinentId == city.Tile.ContinentId && !IsSoleGarrison(u))
+					+ Player.Cities.Count(c => c.CurrentProduction is IUnit { Role: UnitRole.LandAttack });
+				if (hunters < prey.Count) Consider(hunter);
+			}
+
 			// A hull, for a civ with nowhere left to walk — placed HIGH, which is the whole
 			// change. Both boat rules already existed near the bottom of this method and both
 			// were being reached: BoxedIn() was true on 35 of the Maori's 63 logged production
