@@ -1419,6 +1419,20 @@ namespace CivOne
 		private bool DequeueProduction()
 		{
 			if (_productionQueue.Count == 0) return false;
+			// An AI city that reached its growth cap partway through a queue replans first. The
+			// planner queues its whole plan and only replans on an empty queue, so a city that
+			// hit size 7 worked through ten-odd stale items before the aqueduct. Measured in
+			// game c58808e6 (turns 353-440): a fresh plan for a blocked city chose the Aqueduct
+			// or Sewer 120 times in 125, the stale queue 62 times in 1,131. The queue is only
+			// swapped when the fresh plan includes the unblocker, so the Federation's (which
+			// never does) and the player's are untouched.
+			if (Player != Human && GrowthBlocked && _productionQueue[0] is not (Aqueduct or SewerSystem)
+			    && Player.AI is AI ai && ai.ProductionPlan(this) is { Length: > 0 } plan
+			    && plan.Any(p => p is Aqueduct or SewerSystem))
+			{
+				_productionQueue.Clear();
+				_productionQueue.AddRange(plan);
+			}
 			CurrentProduction = _productionQueue[0];
 			_productionQueue.RemoveAt(0);
 			// Log queue-driven builds too — previously only re-plans (CityProduction calls)
