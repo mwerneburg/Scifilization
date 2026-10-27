@@ -5925,6 +5925,8 @@ namespace CivOne
 				if (unseen == 0) continue;
 
 				bool coastal = tile.GetBorderTiles().Any(b => b is not null && !b.IsOcean);
+				// A Trireme stops out of sight of land and sinks one time in two.
+				if (unit is Trireme && !coastal) continue;
 				int score = unseen * (coastal ? 2 : 1) - Common.DistanceToTile(unit.X, unit.Y, tx, ty);
 				if (score > bestScore) { bestScore = score; best = tile; }
 			}

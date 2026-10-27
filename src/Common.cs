@@ -555,6 +555,16 @@ namespace CivOne
 					return null;
 			}
 
+			// An AI Trireme keeps land in sight. Out of sight of land at the end of a turn it
+			// sinks one time in two (Trireme.MovementDone), and the explore and ferry targets
+			// were taking it there: game 396337f3 built 62 Triremes and ended with 12, and the
+			// Japanese sent theirs into the open Pacific. Every route is held to water beside
+			// land, so a crossing it cannot make that way has no route at all. The player's own
+			// orders and the barbarians keep the old risk.
+			bool hugCoast = unit is Trireme && unit.Owner != 0
+				&& (unit.Owner != Game.Instance.PlayerNumber(Game.Instance.HumanPlayer) || Settings.Instance.Autopilot);
+			static bool OpenSea(ITile t) => t.IsOcean && t.City is null && t.GetBorderTiles().All(b => b is null || b.IsOcean);
+
 			var gScore = new Dictionary<int, int>();
 			var cameFrom = new Dictionary<int, int>();
 			// open set as a binary min-heap keyed on (f, euclidSq-to-goal). Primary: lowest
@@ -778,7 +788,7 @@ namespace CivOne
 					if (unit.Class == UnitClass.Land)
 						passable = !tile.IsOcean || tile.City is not null || tile.TransportTube;
 					else if (unit.Class == UnitClass.Water)
-						passable = tile.IsOcean || tile.City is not null;
+						passable = (tile.IsOcean || tile.City is not null) && !(hugCoast && OpenSea(tile));
 					else
 						passable = true;
 					// A tube claim bars walking the line and sailing it, not the sky above it.
