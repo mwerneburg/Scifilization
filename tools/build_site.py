@@ -37,7 +37,7 @@ LISTS = [("advances", "Civilization Advances"), ("improvements", "City Improveme
          ("terrain", "Terrain Types"), ("concepts", "Game Concepts")]
 
 NAV = [("index.html", "Home"), ("signal.html", "The Signal"), ("visitors/index.html", "Visitors"),
-       ("features/index.html", "What's New"), ("civilopedia/index.html", "Civilopedia"), ("install.html", "Install")]
+       ("features/index.html", "What's New"), ("civipedia/index.html", "Civipedia"), ("install.html", "Install")]
 
 
 def slug(s):
@@ -113,7 +113,7 @@ def shell(path, title, body, desc=""):
 <main>
 {body}
 </main>
-<footer><div class="inner"><span>Scifilization · GPL-3.0-or-later</span><a href="https://github.com/mwerneburg/Scifilization">source on GitHub</a><a href="/">etherlabs.net</a></div></footer>
+<footer><div class="inner"><span>Scifilization · GPL-3.0-or-later</span><a href="https://github.com/mwerneburg/Scifilization">source on GitHub</a><a href="{up}author.html">author</a><a href="/">etherlabs.net</a></div></footer>
 </body>
 </html>
 """
@@ -122,7 +122,7 @@ def shell(path, title, body, desc=""):
     dest.write_text(doc, encoding="utf-8")
 
 
-# ── Civilopedia ──────────────────────────────────────────────────────────────
+# ── Civipedia ──────────────────────────────────────────────────────────────
 
 class Pedia:
     def __init__(self, export):
@@ -130,7 +130,7 @@ class Pedia:
         self.entries = json.loads((self.export / "civilopedia.json").read_text(encoding="utf-8"))
         self.by_name = {}
         for e in self.entries:
-            e["href"] = f"civilopedia/{e['list']}/{slug(e['name'])}.html"
+            e["href"] = f"civipedia/{e['list']}/{slug(e['name'])}.html"
             self.by_name.setdefault(e["name"], e)
         # The book refers to other entries in CAPITALS ("needs IRON", "the MANHATTAN PROJECT").
         names = sorted((n for n in self.by_name if len(n) >= 3), key=len, reverse=True)
@@ -238,25 +238,25 @@ class Pedia:
         for e in self.entries:
             depth = 2
             title = esc(e["name"])
-            body = (f'<div class="crumbs"><a href="../index.html">Civilopedia</a> / '
+            body = (f'<div class="crumbs"><a href="../index.html">Civipedia</a> / '
                     f'<a href="index.html#{e["list"]}">{esc(dict(LISTS)[e["list"]])}</a></div>'
                     f'<p class="kicker">{esc(e["category"])}</p><h1>{title}</h1>'
                     + (f'<figure class="art pedia"><img src="../../art/pedia/{art}.webp" alt="{title}"></figure>'
                        if (art := self.illustration(e)) else "")
                     + f'<div class="entry">{self.render_pages(e, depth)}</div>{self.render_stats(e, depth)}')
-            shell(e["href"], e["name"], body, f'{e["name"]} — {e["category"]}, from the Scifilization Civilopedia.')
+            shell(e["href"], e["name"], body, f'{e["name"]} — {e["category"]}, from the Scifilization Civipedia.')
             # each list folder gets a redirect-free index pointing back to the full contents
         sections = []
         for key, label in LISTS:
             items = [e for e in self.entries if e["list"] == key]
             links = "".join(f'<a href="{key}/{slug(e["name"])}.html">{self.thumb(e, 1)}<span>{esc(e["name"])}</span></a>' for e in items)
             sections.append(f'<h2 id="{key}">{esc(label)} <span class="low">· {len(items)}</span></h2><div class="pedia-grid">{links}</div>')
-            shell(f"civilopedia/{key}/index.html", label,
-                  f'<p class="kicker">Civilopedia</p><h1>{esc(label)}</h1><div class="pedia-grid">'
+            shell(f"civipedia/{key}/index.html", label,
+                  f'<p class="kicker">Civipedia</p><h1>{esc(label)}</h1><div class="pedia-grid">'
                   + "".join(f'<a href="{slug(e["name"])}.html">{self.thumb(e, 2)}<span>{esc(e["name"])}</span></a>' for e in items)
                   + '</div><p><a href="../index.html">All sections</a></p>')
-        shell("civilopedia/index.html", "Civilopedia",
-              '<p class="kicker">Encyclopedia of Civilization</p><h1>Civilopedia</h1>'
+        shell("civipedia/index.html", "Civipedia",
+              '<p class="kicker">Encyclopedia of Civilization</p><h1>Civipedia</h1>'
               f'<p class="lede">The in-game reference book, every page of it — {len(self.entries)} entries, '
               'exported straight from the game so the two never disagree.</p>'
               '<p class="dim">Names in CAPITALS inside an entry link to their own pages, as they do in the game.</p>'

@@ -40,7 +40,7 @@ story about who hears you — chosen by what kind of civilization you turned out
 {card("signal.html", "OthersAtLuna", "The Signal", "How the endgame begins, and the thirty years you get to prepare.", d)}
 {card("visitors/index.html", "OlvirInSpace", "The Visitors", "Five different answers to the same broadcast. You will not know which until it is too late to change.", d)}
 {card("features/index.html", "Skynet", "What's New", "Machines that wake, wonders that turn, storms, materials, culture that takes cities without an army.", d)}
-{card("civilopedia/index.html", "cityfounded", "Civilopedia", "Every page of the in-game reference book.", d)}
+{card("civipedia/index.html", "cityfounded", "Civipedia", "Every page of the in-game reference book.", d)}
 {card("install.html", "spaceshiplaunched", "Install", "Download it for the Mac, or build it on Linux.", d)}
 </div>
 <h2>The world</h2>
@@ -351,7 +351,52 @@ dotnet build runtime/sdl/CivOne.SDL.csproj -c ReleaseMacOS   # or ReleaseLinux</
 
 <h2>First game</h2>
 <p>Start on the Earth map if you want to know where you are, or a generated world if you don't. The
-<a href="civilopedia/index.html">Civilopedia</a> in the game is the same book as the one on this site. Read
+<a href="civipedia/index.html">Civipedia</a> on this site is the game's own Civilopedia, page for page. Read
 the wonder entries before you build.</p>
+""")
+    # ── author ──────────────────────────────────────────────────────────────
+    # Credits mirror AUTHORS; change both together.
+    page("author.html", "Author", "Who made Scifilization, and whose work it stands on.", """
+<p class="kicker">Credits</p>
+<h1>Author</h1>
+<p class="lede">Scifilization is written by Michael Werneburg.</p>
+<p>I am a Canadian high tech drifter currently living in Tokyo. Currently looking for an agent for a complete sci-fi novel.</p>
+
+<p>This game is a labor of love; six months of play-testing and vibe-coding. My goals were to bring back the original chess-like game layout and movement rules, to add sci-fi narratives to the game, and to give it an interface that would have worked on the USCSS Nostromo. I wanted the game to have multiple ways of winning - and losing. You can't just sweep Eurasia with Chariot units; you have to stay competitive on trade and culture or the NPCs will win while aren't looking. I made each alien encounter different - but there is always a solution. I recommend you play with cursed wonders.</p>
+
+<p>I made this for the Mac and Linux because that's what I use. I find them under-served by interesting games. The right price for this humble game built on someone else's original work is of course free!</p>
+
+<h2>Upstream CivOne, 2015–2020</h2>
+<p>Scifilization began as a fork of <a href="https://github.com/SWY1985/CivOne">CivOne</a>, Stefan
+Wouters' open reimplementation of Civilization I, dedicated to the public domain under CC0 1.0. Its
+contributors:</p>
+<ul>
+<li>Stefan Wouters (SWY1985), 2015–2019</li>
+<li>Christoph Donges, 2018–2020</li>
+<li>Jake Brown, 2017</li>
+<li>Jakob Mulvad Nielsen, 2017</li>
+<li>Ilya Sosnovsky, 2017</li>
+<li>uHappyLogic (Lukasz Kosiak), 2017</li>
+<li>AlexFolland, 2017</li>
+<li>Spiridonov Dmitry, 2018</li>
+<li>axx, 2018</li>
+</ul>
+
+<h2>The parallel fork, 2019–2026</h2>
+<p>Fixes, performance work and whole features were taken from <a href="https://github.com/ChrisWiGit/CivOne">Christian
+Wimmer's fork</a> of CivOne, also CC0 1.0: city-view frame arithmetic, palette and shield-caching
+performance, AI railroad building, goto-move restoration, the conquest finale, map zoom, empire-size
+unhappiness and the feature toggles. Material from that project may originate with any of its
+contributors, so they are credited together:</p>
+<ul>
+<li>Christian Wimmer, 2025–2026</li>
+<li>Kevin Routley (fire-eggs), 2019–2022</li>
+</ul>
+
+<h2>This fork, 2026</h2>
+<p>Michael Werneburg, GPL-3.0-or-later. Portions of the code were written with the assistance of
+Claude (Anthropic); authorship rests with the human author who directed, reviewed and accepted the
+work. The art was made for this fork with generative image tooling and hand editing. The Earth maps
+are derived from public-domain NASA and Natural Earth elevation imagery.</p>
 """)
     return pages
