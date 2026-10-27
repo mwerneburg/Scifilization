@@ -2434,7 +2434,10 @@ namespace CivOne
 							}
 							break;
 						case 3:
-							if (Player.Government.CollapsesInDisorder && Player.DisorderIsGeneral)
+							bool collapses = Player.Government.CollapsesInDisorder && Player.DisorderIsGeneral;
+							if (Player.Government.CollapsesInDisorder)
+								DecisionLogger.LogDisorderCollapse(Player, collapses);
+							if (collapses)
 							{
 								Player.Revolt();
 								if (Player == Human)

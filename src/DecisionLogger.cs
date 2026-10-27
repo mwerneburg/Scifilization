@@ -24,6 +24,7 @@ using CivOne.Units;
 // Schema (flat, intentionally simple for easy pandas/numpy ingestion):
 //
 //   type          string   "settler" | "city_prod" | "game_outcome" | "salvage" | "defection" | "plague"
+//                          | "landfall" | "disorder_collapse"
 //   game_id       string   8-char hex, one per GAME — survives save/load, so a resumed
 //                          run keeps one identity and its game_outcome scores all of it
 //   session_id    string   8-char hex, one per LOAD. Two sessions sharing a game_id are a
@@ -506,6 +507,41 @@ namespace CivOne
 				KV("from_cult", from?.Culture ?? 0),
 				KV("to_cult",   to?.Culture ?? 0),
 				KV("cause",     cause),
+			}));
+		}
+
+		// A Longboat put ashore and founded a city: the crossing an island civ exists to make.
+		// Tests prove GoAshore; no finished game had shown one before this record.
+		internal static void LogLandfall(Player? owner, int x, int y)
+		{
+			if (!_active) return;
+			Enqueue(Fmt(new[] {
+				KV("type",     "landfall"),
+				KV("game_id",  _gameId),
+				KV("turn",     Game.Instance?.GameTurn ?? 0),
+				KV("is_human", owner is not null && owner.IsHuman),
+				KV("civ",      owner?.Civilization?.NamePlural ?? "?"),
+				KV("x",        x),
+				KV("y",        y),
+			}));
+		}
+
+		// A city reached its third turn of riot under a government that collapses in disorder.
+		// "held" is the empire-size scaling at work (Player.DisorderIsGeneral): too few cities
+		// rioting for the whole civ to fall. "collapsed" is the revolt.
+		internal static void LogDisorderCollapse(Player player, bool collapsed)
+		{
+			if (!_active) return;
+			Enqueue(Fmt(new[] {
+				KV("type",       "disorder_collapse"),
+				KV("game_id",    _gameId),
+				KV("turn",       Game.Instance?.GameTurn ?? 0),
+				KV("is_human",   player.IsHuman),
+				KV("civ",        player.Civilization?.NamePlural ?? "?"),
+				KV("government", player.Government?.Name ?? "?"),
+				KV("cities",     player.Cities.Length),
+				KV("rioting",    player.Cities.Count(c => c.DisorderTurns >= 3)),
+				KV("outcome",    collapsed ? "collapsed" : "held"),
 			}));
 		}
 

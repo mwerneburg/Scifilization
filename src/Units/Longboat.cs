@@ -57,7 +57,8 @@ namespace CivOne.Units
 		{
 			site ??= LandingSite();
 			if (!CanLandOn(site)) return false;
-			GameTask.Enqueue(Orders.NewCity(Player, site!.X, site.Y));
+			DecisionLogger.LogLandfall(Player, site!.X, site.Y);
+			GameTask.Enqueue(Orders.NewCity(Player, site.X, site.Y));
 			Game.DisbandUnit(this);
 			return true;
 		}
