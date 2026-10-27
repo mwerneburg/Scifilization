@@ -4,7 +4,7 @@
 // reached its growth cap partway through worked through ten-odd stale items before the
 // Aqueduct: in game c58808e6 (turns 353-440) a fresh plan for a blocked city chose the
 // Aqueduct or Sewer 120 times in 125, the stale queue 62 times in 1,131. Now a blocked AI
-// city replans when it moves to its next queued item.
+// city replans when it moves to its next queued item, and so does an autopiloted player's.
 
 using System.Linq;
 using CivOne.Advances;
@@ -13,10 +13,14 @@ using CivOne.Enums;
 
 namespace CivOne.Tests
 {
-	public class GrowthCapQueueTests
+	public class GrowthCapQueueTests : System.IDisposable
 	{
+		private readonly bool _auto;
+		public GrowthCapQueueTests() { Sim.EnsureRuntime(); _auto = Settings.Instance.Autopilot; }
+		public void Dispose() => Settings.Instance.Autopilot = _auto;
+
 		// An AI city that has just finished a Barracks, with a queue planned before it hit its cap.
-		private static City AnAiCityFinishingABuild(int size)
+		private static City AnAiCityFinishingABuild(int size, bool human = false)
 		{
 			Sim.NewGame(width: 80, height: 50);
 			for (int y = 15; y <= 35; y++)
@@ -27,7 +31,7 @@ namespace CivOne.Tests
 			}
 			Map.Instance.RecalculateContinentsIfDirty();
 			Game g = Game.Instance;
-			Player ai = g.Players.First(p => p is not null && g.PlayerNumber(p) != 0 && p != g.HumanPlayer);
+			Player ai = human ? g.HumanPlayer : g.Players.First(p => p is not null && g.PlayerNumber(p) != 0 && p != g.HumanPlayer);
 			ai.Government = new Governments.Monarchy();
 			ai.AddAdvance(new Construction(), false);
 			ai.Explore(40, 25, range: 20);
@@ -44,11 +48,15 @@ namespace CivOne.Tests
 		}
 
 		// Not necessarily first: the fresh plan may put a garrison ahead of it, as it would for
-		// any city. But ahead of everything the stale queue held.
-		[Fact]
-		public void ACityAtItsCapBuildsTheAqueductBeforeTheStaleQueue()
+		// any city. But ahead of everything the stale queue held. Under Autopilot the player's
+		// cities are the AI's to steer, and get the same rule.
+		[Theory]
+		[InlineData(false)]
+		[InlineData(true)]
+		public void ACityAtItsCapBuildsTheAqueductBeforeTheStaleQueue(bool autopilotedHuman)
 		{
-			City c = AnAiCityFinishingABuild(size: 7);
+			Settings.Instance.Autopilot = autopilotedHuman;
+			City c = AnAiCityFinishingABuild(size: 7, human: autopilotedHuman);
 
 			c.NewTurn();
 
@@ -65,11 +73,25 @@ namespace CivOne.Tests
 		[Fact]
 		public void ACityBelowItsCapKeepsItsQueue()
 		{
+			Settings.Instance.Autopilot = false;
 			City c = AnAiCityFinishingABuild(size: 5);
 
 			c.NewTurn();
 
 			Assert.True(c.HasBuilding<Barracks>(), "fixture: the Barracks did not finish");
+			Assert.IsType<Granary>(c.CurrentProduction);
+		}
+
+		// Played by hand, the player's queue is the player's: a capped city follows it.
+		[Fact]
+		public void APlayerCityAtItsCapKeepsItsQueue()
+		{
+			Settings.Instance.Autopilot = false;
+			City c = AnAiCityFinishingABuild(size: 7, human: true);
+
+			c.NewTurn();
+
+			Assert.True(c.GrowthBlocked, "fixture: the city is not at its cap");
 			Assert.IsType<Granary>(c.CurrentProduction);
 		}
 	}

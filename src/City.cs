@@ -1425,8 +1425,8 @@ namespace CivOne
 			// game c58808e6 (turns 353-440): a fresh plan for a blocked city chose the Aqueduct
 			// or Sewer 120 times in 125, the stale queue 62 times in 1,131. The queue is only
 			// swapped when the fresh plan includes the unblocker, so the Federation's (which
-			// never does) and the player's are untouched.
-			if (Player != Human && GrowthBlocked && _productionQueue[0] is not (Aqueduct or SewerSystem)
+			// never does) is untouched. The player's too, unless Autopilot is steering it.
+			if ((Player != Human || Settings.Instance.Autopilot) && GrowthBlocked && _productionQueue[0] is not (Aqueduct or SewerSystem)
 			    && Player.AI is AI ai && ai.ProductionPlan(this) is { Length: > 0 } plan
 			    && plan.Any(p => p is Aqueduct or SewerSystem))
 			{
