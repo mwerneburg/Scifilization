@@ -5238,13 +5238,23 @@ namespace CivOne
 			// settler → city drops to size 1 → cycle repeats, and the city never
 			// accumulates food past size 2 because Granary stays buried at the bottom
 			// of the standard infrastructure chain.
-			if (Player.HasAdvance<Pottery>() && !city.HasBuilding<Granary>()) Consider(new Granary());
+			//
+			// Not for a slow start. A tiny empire with room to found in, whose city would take
+			// more than SlowStartTurns over a Granary, founds first: the city follows the whole
+			// plan before replanning, so a Granary and Harbour at the head of it are 100 shields
+			// before a settler is even considered. Measured on the Earth map (game 396337f3):
+			// Kyoto, on hills at 1-2 shields, spent turns 10-105 on the two and built its first
+			// Settlers on turn 125; Japan had 4 cities at 1050 AD to the Mongols' 36.
+			const int SlowStartTurns = 20;
+			bool slowStart = Player.Cities.Length < 3 && HasExpansionRoom()
+			    && city.ShieldIncome * SlowStartTurns < city.ProductionCost(new Granary());
+			if (Player.HasAdvance<Pottery>() && !city.HasBuilding<Granary>() && !slowStart) Consider(new Granary());
 
 			// ...and the Harbour beside it, for the same reason and from the same advance. A
 			// coastal city working ocean tiles cannot grow without one, so for those cities
 			// this IS the growth building — a Granary only halves the food already coming in,
 			// while the Harbour is what makes any come in at all.
-			if (Player.HasAdvance<Pottery>() && !city.HasBuilding<Harbour>()
+			if (Player.HasAdvance<Pottery>() && !city.HasBuilding<Harbour>() && !slowStart
 			    && Map[city.X, city.Y].GetBorderTiles().Any(t => t.IsOcean && !Map.Instance.IsFreshwaterAt(t.X, t.Y)))
 				Consider(new Harbour());
 
@@ -5284,7 +5294,7 @@ namespace CivOne
 			// fewer malcontents). Stances reorder priorities; they don't veto survival needs.
 			if (ownCities < 3)
 			{
-				bool granaryReady = !Player.HasAdvance<Pottery>() || city.HasBuilding<Granary>();
+				bool granaryReady = !Player.HasAdvance<Pottery>() || city.HasBuilding<Granary>() || slowStart;
 				// ...or the city is stalled below that size for good, in which case the
 				// settler is the only thing that can lift it (see SettlerIsTheOnlyWayOut).
 				bool canBuild = CanAffordSettler(city, 3) || SettlerIsTheOnlyWayOut(city);
