@@ -219,12 +219,12 @@ namespace CivOne
 		{
 			int year = TurnToYear(turn);
 			if (zeroAd && year == 1) year = 0;
-			// BCE rather than BC. AD is left as it stands — changing it is a separate call,
-			// since BCE conventionally pairs with CE and the game says AD in a good many
-			// places besides this one (save names, the Hall of Fame, every report header).
+			// BCE and CE, the pair. Save names, report headers and the Hall of Fame all take
+			// their dates from here; Hall of Fame entries and saves written before the change
+			// keep the AD they were stored with.
 			if (year < 0)
 				return $"{-year} BCE";
-			return $"{year} AD";
+			return $"{year} CE";
 		}
 
 		public static string DifficultyName(int difficuly)

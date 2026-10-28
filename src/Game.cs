@@ -2642,7 +2642,7 @@ namespace CivOne
 							OlvirArrivalTurn > 0
 								? $"Olvir landfall est. {Common.YearString((ushort)OlvirArrivalTurn)}."
 								: "Await the visitors.",
-							"Continue to 2200 AD."));
+							"Continue to 2200 CE."));
 					}
 				}
 
@@ -3144,7 +3144,7 @@ namespace CivOne
 									SETISignalReceived && DomeComplete
 										? "The Dome guards Earth."
 										: "The colony must now hold.",
-									"Continue to 2200 AD."));
+									"Continue to 2200 CE."));
 							}
 							else
 							{
@@ -5073,7 +5073,7 @@ namespace CivOne
 		// goes back to 1850 and nothing else has to move.
 		//
 		// 1, not 0: TurnToYear has no year zero — turn 199 is 20 BCE and turn 200 is year 1,
-		// which the game writes as "0 AD" wherever YearString's zeroAd flag is set. So this is
+		// which the game writes as "0 CE" wherever YearString's zeroAd flag is set. So this is
 		// turn 200 of roughly 750. See CultureGateYearLabel for the spelling.
 		internal const int CultureGateYear = 1;
 
@@ -5110,11 +5110,11 @@ namespace CivOne
 			return world.Length > 0 && world.Count(p => p.HasAdvance<Advances.Electronics>()) * 2 >= world.Length;
 		}
 
-		// How the gate year is written for a player. Year 1 is the game's "0 AD" (there is no
+		// How the gate year is written for a player. Year 1 is the game's "0 CE" (there is no
 		// year zero in TurnToYear), and the score screen and the Civilopedia page both have to
 		// say the same thing the rule means — the same one-definition reason as
 		// CulturalPopulaceFloor.
-		internal static string CultureGateYearLabel => CultureGateYear <= 1 ? "0 AD" : $"{CultureGateYear} AD";
+		internal static string CultureGateYearLabel => CultureGateYear <= 1 ? "0 CE" : $"{CultureGateYear} CE";
 
 		// How far ahead of every ranking rival the leader must be. Not a dominance bar — it
 		// is deliberately small — but enough that a lead of a nose does not run out a

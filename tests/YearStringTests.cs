@@ -31,13 +31,12 @@ namespace CivOne.Tests
 			Assert.DoesNotContain(" BC ", s);
 		}
 
-		// AD is deliberately unchanged — see the comment in Common.YearString. Pinned so the
-		// pairing stays a decision rather than drifting halfway.
+		// CE pairs with BCE (Oct 2026); AD followed BC out.
 		[Theory]
-		[InlineData(200, "1 AD")]
-		[InlineData(400, "1850 AD")]
-		[InlineData(750, "2200 AD")]
-		public void YearsAfterItStillUseAD(ushort turn, string expected)
+		[InlineData(200, "1 CE")]
+		[InlineData(400, "1850 CE")]
+		[InlineData(750, "2200 CE")]
+		public void YearsAfterItUseCE(ushort turn, string expected)
 		{
 			Assert.Equal(expected, Common.YearString(turn));
 		}

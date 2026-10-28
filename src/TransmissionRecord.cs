@@ -12,6 +12,6 @@ namespace CivOne
 	internal struct TransmissionRecord
 	{
 		internal string Type;   // "SETISignal" | "SouthPoleIntel" | "SouthPoleExpedition"
-		internal string Year;   // game year string (e.g. "1960 AD")
+		internal string Year;   // game year string (e.g. "1960 CE")
 	}
 }
