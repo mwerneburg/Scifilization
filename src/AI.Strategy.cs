@@ -2387,8 +2387,18 @@ namespace CivOne
 		// and reproducing them through settler targeting would take a whole world.
 		internal static bool LandReachable(IUnit unit, ITile tile)
 		{
-			byte from = unit.Tile?.ContinentId ?? MISC_CONTINENT;
-			byte to   = tile.ContinentId;
+			// Aboard a ship a unit stands on water, which belongs to no landmass, and the misc
+			// id it carries said "unreachable" for every named continent — including the shore
+			// beside the hull. In game 453977e5 four Japanese settlers sat unloaded on their
+			// Triremes for up to 120 turns, one tile off their own coast, with nowhere to go.
+			// Judge from the shore the unit would step onto.
+			if (unit.Tile is not null && unit.Tile.IsOcean && unit.Tile.City is null)
+				return unit.Tile.GetBorderTiles().Any(b => b is not null && !b.IsOcean && SameLand(b.ContinentId, tile.ContinentId));
+			return SameLand(unit.Tile?.ContinentId ?? MISC_CONTINENT, tile.ContinentId);
+		}
+
+		private static bool SameLand(byte from, byte to)
+		{
 
 			// Both on named landmasses: reachable only if it is the SAME one.
 			//
@@ -2813,6 +2823,10 @@ namespace CivOne
 		internal TileWork WorkAvailable(ITile? tile)
 		{
 			if (tile is null || tile.City is not null) return default;
+			// Nothing here is sea work: a settler standing on its ship (game 453977e5) was
+			// offered a ROAD on the water under the hull, ordered it every turn, spent its move
+			// on it, and never stepped ashore. Sea tubes are the Hydro Engineers' branch.
+			if (tile.IsOcean) return default;
 
 			// Draining a swamp and clearing a jungle or forest are IRRIGATE orders in Civ 1,
 			// and Settlers.BuildIrrigation (Settlers.cs:438) implements all three — 4 turns,
