@@ -141,7 +141,7 @@ namespace CivOne
 				int tx = (c.X + dx + Map.WIDTH) % Map.WIDTH;
 				if (!seen.Add(ty * Map.WIDTH + tx)) continue;
 				ITile t = Map[tx, ty];
-				if (t is not null && t.Pollution) n++;
+				if (t is not null && t.Pollution && !Settlers.CarbonCaptureClears(t, Game.PlayerNumber(Player))) n++;
 			}
 
 			_pollutionBacklogTurn = Game.GameTurn;

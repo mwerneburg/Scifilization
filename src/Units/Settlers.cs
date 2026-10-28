@@ -289,6 +289,15 @@ namespace CivOne.Units
 		// set and nothing else — identical answers, ~49 x cities reads instead of 64000.
 		//
 		// Deduped because city radii overlap, and the nearest-wins comparison is unchanged.
+		// Carbon Capture clears one polluted tile a turn from its city's ground, and cities take
+		// their turn AFTER units — so a crew sent to that smog arrived on clean ground, rode home
+		// on the rails and was sent to the next tile (Tonawanda, game f37aa663). Not its job.
+		// ponytail: skips the whole radius though Capture clears one a turn; a backlog there
+		// simply takes longer.
+		internal static bool CarbonCaptureClears(ITile t, byte owner) => Game.GetCities().Any(c =>
+			c.Owner == owner && c.HasBuilding<CivOne.Buildings.CarbonCapture>()
+			&& Common.DistanceToTile(c.X, c.Y, t.X, t.Y) <= 2 && c.CityTiles.Contains(t));
+
 		private ITile? FindNearestCityPollution()
 		{
 			ITile? best = null;
@@ -309,6 +318,7 @@ namespace CivOne.Units
 
 					ITile t = Map[tx, ty];
 					if (t is null || !t.Pollution) continue;
+					if (CarbonCaptureClears(t, Owner)) continue;
 					if (IsTileClaimed(tx, ty)) continue;
 					// A tile held by a foreign unit can never be entered by a Settlers: it is
 					// nonCombat, so GotoStep treats every foreign unit as a wall and Confront
