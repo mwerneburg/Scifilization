@@ -132,7 +132,11 @@ namespace CivOne
 
 					// Not the bottleneck it looked like: measured at 6us per call. The renderer
 					// is created without SDL_RENDERER_PRESENTVSYNC and macOS does not pace it.
+					// TEMPORARY (2026-10-29): other_ms tracks presented frames at 7-11ms each
+					// (game f37aa663), and present is the one per-frame call no probe covers.
+					long __p = CivOne.TurnMetrics.Now;
 					SDL_RenderPresent(_renderer);
+					CivOne.TurnMetrics.AddBucket("frame:Present", __p);
 					_redraw = false;
 					if (FrameCapMs > 0) Wait(FrameCapMs);
 				}

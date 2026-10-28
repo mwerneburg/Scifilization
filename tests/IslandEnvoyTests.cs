@@ -3,6 +3,7 @@
 // Island civs' diplomats sat in their own cities for 170-320 turns (game c3bd1512: five
 // Maori, seven Japanese). A diplomat only looked for targets on its own landmass, and no
 // ship ever carried one. Now it boards a hull, and the hull sets it down beside a foreign port.
+// Island caravans had the same trouble and take the same ship.
 
 using System.Linq;
 using CivOne.Enums;
@@ -42,13 +43,15 @@ namespace CivOne.Tests
 			return (g, mine);
 		}
 
-		[Fact]
-		public void AnIslandDiplomatHeadsForAShip()
+		[Theory]
+		[InlineData(UnitType.Diplomat)]
+		[InlineData(UnitType.Caravan)]
+		public void AnIslandEnvoyHeadsForAShip(UnitType kind)
 		{
 			(Game g, Player mine) = TwoIslands();
 			byte id = g.PlayerNumber(mine);
 			g.CreateUnit(UnitType.Sail, 30, 25, id, false);
-			IUnit dip = g.CreateUnit(UnitType.Diplomat, 29, 25, id, false)!;
+			IUnit dip = g.CreateUnit(kind, 29, 25, id, false)!;
 			dip.MovesLeft = dip.Move;
 			for (ushort t = 0; t < 8; t++)
 			{
@@ -61,34 +64,38 @@ namespace CivOne.Tests
 			for (int i = 0; i < 20 && GameTask.Any(); i++) GameTask.Update();
 
 			Assert.True((dip.X, dip.Y) == (30, 25) || (dip.Goto.X, dip.Goto.Y) == (30, 25),
-				$"diplomat at ({dip.X},{dip.Y}) with goto {dip.Goto}");
+				$"{kind} at ({dip.X},{dip.Y}) with goto {dip.Goto}");
 		}
 
-		private static (Player mine, IUnit ship, IUnit dip) AnEnvoyAboardAt(int x)
+		private static (Player mine, IUnit ship, IUnit dip) AnEnvoyAboardAt(UnitType kind, int x)
 		{
 			(Game g, Player mine) = TwoIslands();
 			byte id = g.PlayerNumber(mine);
 			IUnit ship = g.CreateUnit(UnitType.Sail, x, 25, id, false)!;
-			IUnit dip = g.CreateUnit(UnitType.Diplomat, x, 25, id, false)!;
+			IUnit dip = g.CreateUnit(kind, x, 25, id, false)!;
 			dip.Sentry = true;
 			Sim.ClearTasks();
 			return (mine, ship, dip);
 		}
 
-		[Fact]
-		public void AShipCarryingAnEnvoySailsForAForeignPort()
+		[Theory]
+		[InlineData(UnitType.Diplomat)]
+		[InlineData(UnitType.Caravan)]
+		public void AShipCarryingAnEnvoySailsForAForeignPort(UnitType kind)
 		{
-			(Player mine, IUnit ship, _) = AnEnvoyAboardAt(33);
+			(Player mine, IUnit ship, _) = AnEnvoyAboardAt(kind, 33);
 
 			AI.Instance(mine).Move(ship);
 
 			Assert.Equal((45, 25), (ship.Goto.X, ship.Goto.Y));
 		}
 
-		[Fact]
-		public void BesideThePortTheEnvoyIsSetDown()
+		[Theory]
+		[InlineData(UnitType.Diplomat)]
+		[InlineData(UnitType.Caravan)]
+		public void BesideThePortTheEnvoyIsSetDown(UnitType kind)
 		{
-			(Player mine, IUnit ship, IUnit dip) = AnEnvoyAboardAt(44);
+			(Player mine, IUnit ship, IUnit dip) = AnEnvoyAboardAt(kind, 44);
 
 			AI.Instance(mine).Move(ship);
 

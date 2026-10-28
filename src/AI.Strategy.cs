@@ -3750,6 +3750,24 @@ namespace CivOne
 			.OrderBy(c => Common.DistanceToTile(from.X, from.Y, c.X, c.Y))
 			.FirstOrDefault();
 
+		// An envoy or caravan with no foreign city on its own landmass boards a hull, which
+		// EnvoyHarbour then steers. One crossing per kind at a time, so they do not crowd the
+		// colonists off the hulls. False when there is nowhere to go or nothing to board.
+		private bool CatchShip(IUnit unit, byte myContinent)
+		{
+			byte own = Game.PlayerNumber(Player);
+			bool Shipping(IUnit u) => (u.Tile is not null && (u.Sentry || u.Tile.IsOcean)
+			                           && u.Tile.Units.Any(b => b.Owner == own && b is IBoardable))
+			                          || (!u.Goto.IsEmpty && Map[u.Goto.X, u.Goto.Y].Units.Any(b => b.Owner == own && b is IBoardable));
+			if (EnvoyHarbour(unit, myContinent) is null
+			    || Game.GetUnits().Any(u => u != unit && u.Owner == own && u.GetType() == unit.GetType() && Shipping(u))
+			    || BoardingTile(unit) is not ITile berth) return false;
+			// A hull in our own city takes its sentried land units when it sails (BaseUnitSea.MoveUnits).
+			if (berth.X == unit.X && berth.Y == unit.Y) unit.Sentry = true;
+			else unit.Goto = new Point(berth.X, berth.Y);
+			return true;
+		}
+
 		// True when an idle non-combat unit should NOT re-target this turn.
 		//
 		// This replaces a Sentry that looked right and was wrong. Diplomats and Caravans
@@ -3953,8 +3971,8 @@ namespace CivOne
 						}
 					}
 
-					// An envoy aboard: sail to a foreign port and set it down beside it.
-					if (unit.Tile.Units.Any(u => u.Owner == own && u is Diplomat && u.Sentry)
+					// An envoy or caravan aboard: sail to a foreign port and set it down beside it.
+					if (unit.Tile.Units.Any(u => u.Owner == own && (u is Diplomat || u is Caravan) && u.Sentry)
 					    && EnvoyHarbour(unit) is City haven)
 					{
 						if (Common.DistanceToTile(unit.X, unit.Y, haven.X, haven.Y) <= 1)
@@ -4120,20 +4138,7 @@ namespace CivOne
 
 				// Nobody to visit on foot: catch a boat to a foreign shore. Island civs' diplomats
 				// sat in their own cities for 170-320 turns (Maori, Japanese; game c3bd1512).
-				// One crossing at a time, so the envoys do not crowd the colonists off the hulls.
-				byte ownE = Game.PlayerNumber(Player);
-				bool Shipping(IUnit u) => (u.Tile is not null && (u.Sentry || u.Tile.IsOcean)
-				                           && u.Tile.Units.Any(b => b.Owner == ownE && b is IBoardable))
-				                          || (!u.Goto.IsEmpty && Map[u.Goto.X, u.Goto.Y].Units.Any(b => b.Owner == ownE && b is IBoardable));
-				if (EnvoyHarbour(unit, myContinent) is not null
-				    && !Game.GetUnits().Any(u => u != unit && u.Owner == ownE && u is Diplomat && Shipping(u))
-				    && BoardingTile(unit) is ITile berth)
-				{
-					// A hull in our own city takes its sentried land units when it sails (BaseUnitSea.MoveUnits).
-					if (berth.X == unit.X && berth.Y == unit.Y) unit.Sentry = true;
-					else unit.Goto = new Point(berth.X, berth.Y);
-					return;
-				}
+				if (CatchShip(unit, myContinent)) return;
 				// SkipTurn rather than Sentry, for the reason spelled out at the Caravan
 				// below: a sentried AI unit never wakes.
 				unit.SkipTurn();
@@ -4248,9 +4253,10 @@ namespace CivOne
 				}
 
 				if (target is not null) unit.Goto = new Point(target.X, target.Y);
-				// SkipTurn, not Sentry — an AI unit that sentries never wakes. See
-				// IdleRetryTurn, which is what keeps this from re-probing every turn.
-				else unit.SkipTurn();
+				// No partner on foot: take ship, as the diplomats do. Failing that, SkipTurn, not
+				// Sentry — an AI unit that sentries never wakes. See IdleRetryTurn, which is
+				// what keeps this from re-probing every turn.
+				else if (!CatchShip(unit, myContinent)) unit.SkipTurn();
 				return;
 			}
 
@@ -4730,6 +4736,21 @@ namespace CivOne
 		// 2 in fifteen turns with 49 cities. So, once a turn, top up the shortfall at the
 		// head of the queues that will reach it soonest. Large empires only: below
 		// LargeEmpire the planner's cadence was never the problem.
+		// The explorer build rule's gate: fog left at home, and most of the world unseen.
+		private bool ExplorersWanted => Player.ExploredHomeContinentFraction < 0.95 && Player.ExploredLandFraction < 0.70;
+
+		// An explorer with nothing left to scout sentries, and AI units never wake from Sentry
+		// (BaseUnit.cs:604), so each one drew upkeep to the end of the game: every one of the 27
+		// alive at game f37aa663's end was asleep. Once the build rule would not raise another,
+		// nothing will need them again, so stand them down.
+		internal void ConsiderExplorers()
+		{
+			if (Player.IsDestroyed() || ExplorersWanted) return;
+			byte own = Game.PlayerNumber(Player);
+			foreach (IUnit u in Game.GetUnits().Where(u => u.Owner == own && u is Explorer && u.Sentry).ToArray())
+				Game.DisbandUnit(u);
+		}
+
 		internal void ConsiderWorkers()
 		{
 			if (Player.IsDestroyed() || Player.Cities.Length < LargeEmpire) return;
@@ -5417,7 +5438,7 @@ namespace CivOne
 			// is whether its own continent still holds fog — which on a small continent
 			// can be answered in the first few dozen turns. AI civs do not chase every
 			// last goody hut, so once home is charted there is nothing left to scout.
-			if (Player.ExploredHomeContinentFraction < 0.95 && Player.ExploredLandFraction < 0.70)
+			if (ExplorersWanted)
 			{
 				byte ownId = Game.PlayerNumber(Player);
 				int ownExplorers = Game.GetUnits().Count(u => u.Owner == ownId && u is Explorer);

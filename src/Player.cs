@@ -1434,6 +1434,7 @@ namespace CivOne
 			AI?.ConsiderGarrisonUpkeep();
 			AI?.ConsiderDivestment();
 			AI?.ConsiderWorkers();
+			AI?.ConsiderExplorers();
 			AI?.ConsiderUpgrades();
 			AI?.ConsiderRushBuy();
 			AI?.ConsiderWar();

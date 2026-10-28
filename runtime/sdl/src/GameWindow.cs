@@ -61,7 +61,9 @@ namespace CivOne
 		private void Draw(object sender, EventArgs args)
 		{
 			if (!_hasUpdate) return;
+			long __c = TurnMetrics.Now;   // TEMPORARY (2026-10-29), with frame:Present in Window.Run
 			_runtime.InvokeDraw();
+			TurnMetrics.AddBucket("frame:Compose", __c);
 			_hasUpdate = false;
 			
 			Render();
