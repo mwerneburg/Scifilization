@@ -2414,6 +2414,39 @@ namespace CivOne
 			return true;   // both misc, or an unexpected id: cannot tell, so allow
 		}
 
+		// The land a unit can WALK to without leaving a window `reach` tiles around it, as
+		// y*WIDTH+x keys. LandReachable compares continents, and Africa and Eurasia are one
+		// continent, joined at Sinai: in game 453977e5 Malian settlers near San picked work in
+		// Spain, three tiles across the Strait of Gibraltar, and the pathfinder marched them
+		// east through the Sahara toward Egypt for fifteen turns before they gave up and
+		// picked again. A site finder that only looks a few tiles away should only take what
+		// it can reach a few tiles away.
+		// ponytail: a site whose only walk leaves the window (the far end of a long fjord) is
+		// skipped too; widen `reach` if that ever matters.
+		internal static System.Collections.Generic.HashSet<int> LandWithin(IUnit unit, int reach)
+		{
+			int w = Map.WIDTH, h = Map.HEIGHT;
+			var seen = new System.Collections.Generic.HashSet<int> { unit.Y * w + unit.X };
+			var queue = new System.Collections.Generic.Queue<(int X, int Y)>();
+			queue.Enqueue((unit.X, unit.Y));
+			while (queue.Count > 0)
+			{
+				(int cx, int cy) = queue.Dequeue();
+				for (int dy = -1; dy <= 1; dy++)
+				for (int dx = -1; dx <= 1; dx++)
+				{
+					int tx = (cx + dx + w) % w, ty = cy + dy;
+					if (ty < 0 || ty >= h || Math.Abs(ty - unit.Y) > reach) continue;
+					int ax = Math.Abs(tx - unit.X);
+					if (Math.Min(ax, w - ax) > reach) continue;
+					ITile t = Map.Instance[tx, ty];
+					if (t is null || t.IsOcean) continue;
+					if (seen.Add(ty * w + tx)) queue.Enqueue((tx, ty));
+				}
+			}
+			return seen;
+		}
+
 		// Is this civ hemmed in — nowhere left to settle by land? Island starts, a
 		// civ behind a strait, or one walled off by desert and a neighbour. These
 		// are the civs that flatline for a whole game: HasExpansionRoom is land-only
@@ -2708,6 +2741,7 @@ namespace CivOne
 				    .Where(s => s != settlers && s.Owner == ownId && !s.Goto.IsEmpty)
 				    .Select(s => (s.Goto.X, s.Goto.Y)));
 
+			System.Collections.Generic.HashSet<int>? walkable = null;   // built on the first candidate
 			for (int dy = -radius; dy <= radius; dy++)
 			for (int dx = -radius; dx <= radius; dx++)
 			{
@@ -2722,6 +2756,7 @@ namespace CivOne
 				// ...and it has to be able to feed itself. See CentreCanFeed.
 				if (!CentreCanFeed(tile)) continue;
 				if (!LandReachable(settlers, tile)) continue;
+				if (!(walkable ??= LandWithin(settlers, radius + 4)).Contains(ty * mapWidth + tx)) continue;
 				if (Game.GetCities().Any(c => Common.DistanceToTile(c.X, c.Y, tx, ty) < 4)) continue;
 				if (claimedGotos.Contains((tx, ty))) continue;
 				int score = SiteSuitability(tile) - SiteDistanceWeight * Common.DistanceToTile(settlers.X, settlers.Y, tx, ty);
@@ -2982,6 +3017,7 @@ namespace CivOne
 				.Where(c => Common.DistanceToTile(c.X, c.Y, settlers.X, settlers.Y) <= 8)
 				.ToArray();
 
+			System.Collections.Generic.HashSet<int>? walkable = null;   // built on the first candidate
 			ITile? best = null;
 			int bestDist = int.MaxValue;
 			Scan(Pass.Farm);
@@ -3020,6 +3056,7 @@ namespace CivOne
 				ITile tile = Map[tx, ty];
 				if (tile is null || tile.IsOcean || tile.City is not null) continue;
 				if (!LandReachable(settlers, tile)) continue;
+				if (!(walkable ??= LandWithin(settlers, 10)).Contains(ty * mapWidth + tx)) continue;
 				// Eligibility is WorkAvailable's, not restated here. What IS this method's
 				// own judgement is the despot rule: a settler routed to grassland it cannot
 				// usefully irrigate is a settler sent to stand still.
