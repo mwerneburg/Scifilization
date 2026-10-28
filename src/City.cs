@@ -2569,6 +2569,7 @@ namespace CivOne
 				IUnit[] homeUnits = Units;
 				int maxDistance = homeUnits.Max(u => Common.DistanceToTile(X, Y, u.X, u.Y));
 				IUnit unit = homeUnits.Last(u => Common.DistanceToTile(X, Y, u.X, u.Y) == maxDistance);
+				DecisionLogger.LogDisband(this, unit, maxDistance);
 				if (Human == Owner)
 				{
 					Message message = Message.DisbandUnit(this, unit);

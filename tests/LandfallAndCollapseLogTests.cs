@@ -2,9 +2,10 @@
 //
 // Two mechanisms green in tests had never been seen in a finished game because nothing
 // logged them: a Longboat's landfall and the empire-size-scaled disorder collapse. Each now
-// writes a record. So does every advance learned, which dates the culture gate. Pinned on
-// the source, as in SalvageTests and DefectionTests: the logger appends to the user's real
-// decisions.jsonl, so a test must not emit rows.
+// writes a record. So does every advance learned, which dates the culture gate, and every
+// unit a city disbands for want of support. Pinned on the source, as in SalvageTests and
+// DefectionTests: the logger appends to the user's real decisions.jsonl, so a test must not
+// emit rows.
 
 namespace CivOne.Tests
 {
@@ -62,7 +63,18 @@ namespace CivOne.Tests
 			Assert.True(started >= 0 && started < log, "advances are recorded before the game starts");
 		}
 
+		// The unit a city lets go when its shields go negative, before it is gone.
+		[Fact]
+		public void AnUnsupportedUnitIsRecorded()
+		{
+			string m = Between(Src("src", "City.cs"), "if (shieldIncome < 0)", "else if (shieldIncome > 0)");
+			int log = m.IndexOf("DecisionLogger.LogDisband(this, unit, maxDistance);");
+			Assert.True(log > 0, "a disband is not recorded");
+			Assert.True(log < m.IndexOf("Game.DisbandUnit(unit)"), "the record is written after the unit is gone");
+		}
+
 		[Theory]
+		[InlineData("\"disband\"),", "civ", "city", "city_size", "unit", "distance")]
 		[InlineData("\"advance\"),", "civ", "advance", "known")]
 		[InlineData("\"landfall\"),", "civ", "x", "y")]
 		[InlineData("\"disorder_collapse\"),", "civ", "government", "cities", "rioting", "outcome")]

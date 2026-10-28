@@ -24,7 +24,7 @@ using CivOne.Units;
 // Schema (flat, intentionally simple for easy pandas/numpy ingestion):
 //
 //   type          string   "settler" | "city_prod" | "game_outcome" | "salvage" | "defection" | "plague"
-//                          | "landfall" | "disorder_collapse" | "advance"
+//                          | "landfall" | "disorder_collapse" | "advance" | "disband"
 //   game_id       string   8-char hex, one per GAME — survives save/load, so a resumed
 //                          run keeps one identity and its game_outcome scores all of it
 //   session_id    string   8-char hex, one per LOAD. Two sessions sharing a game_id are a
@@ -126,6 +126,13 @@ using CivOne.Units;
 //   civ           string   who learned it
 //   advance       string   its name
 //   known         int      advances the civ now holds, this one included
+//
+//   --- disband fields (a city could not support its units and let one go) ---
+//   civ           string   the owner
+//   city          string   the home city
+//   city_size     int
+//   unit          string   the unit disbanded — the farthest from home
+//   distance      int      how far from home it was
 //
 //   --- game_outcome fields ---
 //   score         int      human player's final score
@@ -563,6 +570,25 @@ namespace CivOne
 				KV("civ",      player.Civilization?.NamePlural ?? "?"),
 				KV("advance",  advance),
 				KV("known",    player.Advances.Length),
+			}));
+		}
+
+		// A city's shields went negative and it disbanded its farthest unit. Logged because a
+		// settler walking out to found a city is often that unit: the Japanese held one city for
+		// all 475 turns of game fb1cbab1 while building settlers that never founded anything.
+		internal static void LogDisband(City city, IUnit unit, int distance)
+		{
+			if (!_active) return;
+			Enqueue(Fmt(new[] {
+				KV("type",      "disband"),
+				KV("game_id",   _gameId),
+				KV("turn",      Game.Instance?.GameTurn ?? 0),
+				KV("is_human",  city.Player.IsHuman),
+				KV("civ",       city.Player.Civilization?.NamePlural ?? "?"),
+				KV("city",      city.Name),
+				KV("city_size", city.Size),
+				KV("unit",      unit.Name),
+				KV("distance",  distance),
 			}));
 		}
 
