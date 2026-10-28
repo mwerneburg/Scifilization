@@ -3732,6 +3732,17 @@ namespace CivOne
 				.FirstOrDefault();
 		}
 
+		// The nearest foreign city a ship could set a diplomat down beside.
+		// ponytail: no sea-path probe, the same ceiling as BestOverseasSite; a Trireme that
+		// cannot reach it keeps trying.
+		private City? EnvoyHarbour(IUnit from, byte notOn = MISC_CONTINENT) => Game.GetCities()
+			.Where(c => c.Player != Player && c.Owner != 0 && !Player.IsAtWar(c.Player)
+			         && c.Tile is not null && Player.Visible(c.X, c.Y)
+			         && !(Map.NamedContinent(notOn) && c.Tile.ContinentId == notOn)
+			         && c.Tile.GetBorderTiles().Any(t => t is not null && t.IsOcean))
+			.OrderBy(c => Common.DistanceToTile(from.X, from.Y, c.X, c.Y))
+			.FirstOrDefault();
+
 		// True when an idle non-combat unit should NOT re-target this turn.
 		//
 		// This replaces a Sentry that looked right and was wrong. Diplomats and Caravans
@@ -3935,6 +3946,17 @@ namespace CivOne
 						}
 					}
 
+					// An envoy aboard: sail to a foreign port and set it down beside it.
+					if (unit.Tile.Units.Any(u => u.Owner == own && u is Diplomat && u.Sentry)
+					    && EnvoyHarbour(unit) is City haven)
+					{
+						if (Common.DistanceToTile(unit.X, unit.Y, haven.X, haven.Y) <= 1)
+							(unit as BaseUnitSea)!.Unload();
+						else
+							unit.Goto = new Point(haven.X, haven.Y);
+						return;
+					}
+
 					// Wait at a coastal city for troops — but ONLY when there is actually an
 					// invasion to ferry. This branch used to return unconditionally, and an
 					// embarkation city always exists, so every empty transport parked at a
@@ -4087,11 +4109,27 @@ namespace CivOne
 					    .OrderBy(c => Common.DistanceToTile(unit.X, unit.Y, c.X, c.Y))
 					    .Take(MaxProbes)
 					    .FirstOrDefault(FirstStepReachable);
-				if (target is not null) unit.Goto = new Point(target.X, target.Y);
-				// Sentry rather than SkipTurn, for the reason spelled out at the Caravan
-				// below: a diplomat with no reachable target re-ran four full A* searches
-				// every turn for the rest of the game.
-				else unit.SkipTurn();
+				if (target is not null) { unit.Goto = new Point(target.X, target.Y); return; }
+
+				// Nobody to visit on foot: catch a boat to a foreign shore. Island civs' diplomats
+				// sat in their own cities for 170-320 turns (Maori, Japanese; game c3bd1512).
+				// One crossing at a time, so the envoys do not crowd the colonists off the hulls.
+				byte ownE = Game.PlayerNumber(Player);
+				bool Shipping(IUnit u) => (u.Tile is not null && (u.Sentry || u.Tile.IsOcean)
+				                           && u.Tile.Units.Any(b => b.Owner == ownE && b is IBoardable))
+				                          || (!u.Goto.IsEmpty && Map[u.Goto.X, u.Goto.Y].Units.Any(b => b.Owner == ownE && b is IBoardable));
+				if (EnvoyHarbour(unit, myContinent) is not null
+				    && !Game.GetUnits().Any(u => u != unit && u.Owner == ownE && u is Diplomat && Shipping(u))
+				    && BoardingTile(unit) is ITile berth)
+				{
+					// A hull in our own city takes its sentried land units when it sails (BaseUnitSea.MoveUnits).
+					if (berth.X == unit.X && berth.Y == unit.Y) unit.Sentry = true;
+					else unit.Goto = new Point(berth.X, berth.Y);
+					return;
+				}
+				// SkipTurn rather than Sentry, for the reason spelled out at the Caravan
+				// below: a sentried AI unit never wakes.
+				unit.SkipTurn();
 				return;
 			}
 
