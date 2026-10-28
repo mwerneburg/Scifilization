@@ -463,10 +463,13 @@ namespace CivOne
 				// its ten cities — an empire that could not grow because it could not
 				// research the buildings that let a city pass size 7.
 				int diffFactor = (IsHuman && !Settings.Instance.Autopilot) ? Game.Instance.Difficulty + 3 : 3;
-				short cost = (short)(diffFactor * 2 * (_advances.Count() + 1) * (Common.TurnToYear(Game.Instance.GameTurn) > 0 ? 2 : 1));
-				if (cost < 12)
-					return 12;
-				return cost;
+				// Civ 1's price was set for its 80-wide map. A wider world is built for bigger
+				// empires (AI.CityTarget scales by the same width/80), and bigger empires make
+				// more science, so on the 320-wide Epic map the world reached Electronics around
+				// 650 AD (game aa0eb1a5, Oct 2026). The price scales with the map like the target.
+				int mapScale = Math.Max(1, Map.WIDTH / 80);
+				int cost = diffFactor * 2 * (_advances.Count() + 1) * (Common.TurnToYear(Game.Instance.GameTurn) > 0 ? 2 : 1) * mapScale;
+				return (short)Math.Min(short.MaxValue, Math.Max(12, cost));
 			}
 		}
 		
