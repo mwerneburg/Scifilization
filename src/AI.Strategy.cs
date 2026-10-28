@@ -3016,6 +3016,13 @@ namespace CivOne
 			{
 				if (!other.Goto.IsEmpty) claimed.Add((other.Goto.X, other.Goto.Y));
 				if (other.Busy) claimed.Add(((int)other.X, (int)other.Y));
+				// ...and one that has just ARRIVED: its move spent getting there, it starts work
+				// next turn, so it is neither Busy nor going anywhere. A second settler was sent
+				// to the same tile, found it taken next turn and left (Tonawanda, game f37aa663).
+				// Scan-side only and on purpose: the arrival gate (IsTileClaimed) must not apply
+				// it, or two settlers on one tile would each defer to the other. Stricter here can
+				// only route fewer settlers, never one the gate will refuse.
+				else if (other.Goto.IsEmpty && other.Tile?.City is null) claimed.Add(((int)other.X, (int)other.Y));
 			}
 
 			// The city-proximity test below was an O(cities) scan run per tile, per pass —

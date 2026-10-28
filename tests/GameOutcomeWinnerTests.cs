@@ -10,7 +10,6 @@
 // The record now names the winner in the same NamePlural spelling victory_standings uses, so
 // the two join, plus the leader.
 
-using System.IO;
 using System.Linq;
 using System.Text.Json;
 
@@ -18,25 +17,26 @@ namespace CivOne.Tests
 {
 	public class GameOutcomeWinnerTests
 	{
-		// Read back the last record of a kind that this process wrote, PARSED. EndGame closes
-		// the writer, so by the time it returns the line is on disk. Parsing rather than
+		// Read back the record of a kind written AFTER `before` such lines, PARSED. EndGame
+		// only enqueues: the line reaches disk on the logger's background task, so reading the
+		// last line straight away sometimes found the PREVIOUS test's record (a "?" winner read
+		// back as "Romans"). Count first, then wait for the new one. Parsing rather than
 		// substring-matching also proves the record is still valid JSON — the first draft of
 		// this file matched on "\"winner\": \"" and failed on every case, because the writer
 		// emits compact JSON with no space after the colon.
-		private static JsonElement LastRecord(string type)
-		{
-			string path = Path.Combine(Settings.Instance.DataDirectory, "decisions.jsonl");
-			string line = File.ReadLines(path).Last(l => l.Contains($"\"{type}\""));
-			return JsonDocument.Parse(line).RootElement;
-		}
+		private static string Needle(string type) => $"\"type\":\"{type}\"";
+		private static int Count(string type) => Sim.DecisionLineCount(Needle(type));
+		private static JsonElement NextRecord(string type, int before)
+			=> JsonDocument.Parse(Sim.AwaitDecisionLine(Needle(type), before)).RootElement;
 
 		private static string Str(JsonElement e, string field) => e.GetProperty(field).GetString()!;
 
 		private static JsonElement EndAndRead(string victory, bool humanWon, Player? winner)
 		{
 			Sim.NewGame(width: 80, height: 50, competition: 4);
+			int before = Count("game_outcome");
 			DecisionLogger.EndGame(1234, victory, humanWon, turns: 300, winner);
-			return LastRecord("game_outcome");
+			return NextRecord("game_outcome", before);
 		}
 
 		// The reported gap: a loss now says who won it.
@@ -47,8 +47,9 @@ namespace CivOne.Tests
 			Game g = Game.Instance;
 			Player rival = g.Players.First(p => p is not null && g.PlayerNumber(p) != 0 && p != g.HumanPlayer);
 
+			int before = Count("game_outcome");
 			DecisionLogger.EndGame(1234, "Cultural Ascendancy", humanWon: false, turns: 537, rival);
-			JsonElement rec = LastRecord("game_outcome");
+			JsonElement rec = NextRecord("game_outcome", before);
 
 			Assert.Equal(rival.Civilization.NamePlural, Str(rec, "winner"));
 			Assert.Equal(rival.LeaderName, Str(rec, "winner_leader"));
@@ -64,6 +65,7 @@ namespace CivOne.Tests
 			Game g = Game.Instance;
 			Player rival = g.Players.First(p => p is not null && g.PlayerNumber(p) != 0 && p != g.HumanPlayer);
 
+			int standings = Count("victory_standings"), outcomes = Count("game_outcome");
 			DecisionLogger.LogVictoryStandings(300, rival, cities: 16, culture: 19166,
 				reach: 11, shadow: 0, bestNeighbour: 0, observatories: 0, hasFuel: false,
 				populace: 166, peakPopulace: 166, artists: 0, grossOutput: 8871, worldOutput: 166765,
@@ -71,8 +73,8 @@ namespace CivOne.Tests
 				launchTurn: 0, missionControl: false);
 			DecisionLogger.EndGame(1234, "Cultural Ascendancy", humanWon: false, turns: 537, rival);
 
-			Assert.Equal(Str(LastRecord("victory_standings"), "civ"),
-			             Str(LastRecord("game_outcome"), "winner"));
+			Assert.Equal(Str(NextRecord("victory_standings", standings), "civ"),
+			             Str(NextRecord("game_outcome", outcomes), "winner"));
 		}
 
 		// A win by the human names the human. "human_won: true implies it was you" is true but
@@ -83,8 +85,9 @@ namespace CivOne.Tests
 			Sim.NewGame(width: 80, height: 50, competition: 4);
 			Player me = Game.Instance.HumanPlayer;
 
+			int before = Count("game_outcome");
 			DecisionLogger.EndGame(9999, "Economic Dominance", humanWon: true, turns: 400, me);
-			JsonElement rec = LastRecord("game_outcome");
+			JsonElement rec = NextRecord("game_outcome", before);
 
 			Assert.Equal(me.Civilization.NamePlural, Str(rec, "winner"));
 			Assert.True(rec.GetProperty("human_won").GetBoolean());
