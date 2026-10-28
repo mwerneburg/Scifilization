@@ -50,7 +50,7 @@ namespace CivOne.Tests
 
 			us.SetCulture(6000);
 			foreach (Player r in rivals) r.SetCulture(600);
-			rivals[0].AddAdvance(new CivOne.Advances.Electronics(), false);
+			Sim.ElectronicsForTheWorld(us);
 			Sim.ClearTasks();
 			return (g, us, rivals);
 		}

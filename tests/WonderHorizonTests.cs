@@ -24,8 +24,11 @@ namespace CivOne.Tests
 {
 	public class WonderHorizonTests
 	{
-		// One city, so it is trivially its civ's "top production city" — the exact hole the
-		// relative test leaves open. Terrain is what sets its shield income.
+		// The top production city of a three-city civ, which is the exact hole the relative
+		// test leaves open: its other cities are size-1 hamlets, so this one is "top" however
+		// feeble. Three, not one, because a civ with fewer than three cities and room to
+		// found more starts no wonder at all (SlowStartTests), and these tests are about the
+		// horizon. Terrain is what sets its shield income.
 		private static (Game game, Player owner, City city) ALoneCity(Terrain terrain, int size)
 		{
 			Sim.NewGame(width: 80, height: 50);
@@ -40,6 +43,11 @@ namespace CivOne.Tests
 			p.Explore(40, 25, range: 12);
 			City c = g.AddCity(p, 0, 40, 25)!;
 			c.Size = (byte)size;
+			foreach (var (hx, hy) in new[] { (60, 10), (60, 40) })   // east of it: ties go to the lower X
+			{
+				Map.Instance.ChangeTileType(hx, hy, Terrain.Grassland1);
+				g.AddCity(p, (byte)(hx / 10), hx, hy);
+			}
 			foreach (IAdvance a in Common.Advances) p.AddAdvance(a, false);   // nothing gated on tech
 			c.InvalidateCache();
 			Sim.ClearTasks();

@@ -272,7 +272,7 @@ namespace CivOne.Tests
 			foreach (Player r in rivals) g.AddCity(r, id, 34 + id++ * 3, 30)!.Size = 6;
 			human.SetCulture(6000);
 			foreach (Player r in rivals) { r.SetCulture(600); human.EstablishEmbassy(r); }
-			rivals[0].AddAdvance(new Electronics(), false);
+			Sim.ElectronicsForTheWorld(human);
 			g.Progress(g.PlayerNumber(human)).CultureStreak = Game.CultureHoldTurns - 1;
 			Sim.ClearTasks();
 			return human;

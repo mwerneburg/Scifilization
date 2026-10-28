@@ -427,13 +427,39 @@ namespace CivOne.Tests
 			// nothing about how far the world has actually come. Two coronations at turns 274
 			// and 325 of roughly 750 were the measurement that moved it.
 			Assert.Contains("bool modern = CultureGateOpen();", src);
-			// Held by ANYONE, not by the claimant — the world has to have arrived, or a leader
-			// could open its own window by researching alone.
-			Assert.Contains("private bool CultureGateOpen() => _players.Any", src);
 			// ...and it must actually be shut in a fresh world, or it gates nothing.
 			Sim.NewGame(width: 80, height: 50);
 			Assert.False(Game.CultureGateOpenForDisplay(),
 				"the gate is already open on turn one");
+		}
+
+		// Held by HALF the world, not by anyone. In game aa0eb1a5 the Malians reached
+		// Electronics on turn 215 (around 650 AD), the gate opened, and the Russians won on 9
+		// cities at turn 290. Half the world had it on turn 267.
+		private static Player[] TheWorld(Game g) => g.Players
+			.Where(p => p is not null && g.PlayerNumber(p) != 0 && !p.IsDestroyed()).ToArray();
+
+		[Fact]
+		public void OneCivWithElectronicsDoesNotOpenTheGate()
+		{
+			Sim.NewGame(width: 80, height: 50);
+			Player[] world = TheWorld(Game.Instance);
+			Assert.True(world.Length >= 3, $"fixture: only {world.Length} civs");
+
+			world[0].AddAdvance(new Advances.Electronics(), false);
+
+			Assert.False(Game.CultureGateOpenForDisplay());
+		}
+
+		[Fact]
+		public void HalfTheWorldWithElectronicsOpensIt()
+		{
+			Sim.NewGame(width: 80, height: 50);
+			Player[] world = TheWorld(Game.Instance);
+
+			foreach (Player p in world.Take((world.Length + 1) / 2)) p.AddAdvance(new Advances.Electronics(), false);
+
+			Assert.True(Game.CultureGateOpenForDisplay());
 		}
 
 		// The hold has to be long enough to be a contest. Leads changed hands a median of 12
@@ -501,7 +527,7 @@ namespace CivOne.Tests
 			// RIVAL rather than the claimant, so the fixture also demonstrates that the gate
 			// is the world's and not the leader's. There is no way to un-learn an advance,
 			// so a shut gate is expressed by never granting it.
-			if (gateOpen) rivals[0].AddAdvance(new Advances.Electronics(), false);
+			if (gateOpen) Sim.ElectronicsForTheWorld(us);
 
 			// Equal populations, so culture per head is decided by culture alone.
 			g.AddCity(us, 0, 40, 25)!.Size = 6;

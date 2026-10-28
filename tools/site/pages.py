@@ -208,7 +208,7 @@ count starts over.</li>
 for seventy-five turns, with {L("Banking", d)}, at least three rivals standing, no war of your own starting,
 and half the world bound to you (at Prince; the clock scales with difficulty).</li>
 <li><strong>Cultural Ascendancy.</strong> Be the most admired nation, measured per head, a tenth ahead of
-every rival for seventy-five turns (at Prince) once somebody has {L("Electronics", d)}. See
+every rival for seventy-five turns (at Prince) once half the world has {L("Electronics", d)}. See
 {L("Cultural Ascendancy", d)}.</li>
 </ul>
 {figure("CulturalAscendancy", "Cultural Ascendancy", d)}

@@ -37,7 +37,7 @@ namespace CivOne.Concepts
 			"average nation's. One town is",
 			"not a shortcut.",
 			"",
-			"When any nation masters",
+			"When half the nations have",
 			"ELECTRONICS the clock may start.",
 			"Stay a tenth ahead of every rival",
 			"for 75 turns (at Prince) and the",

@@ -76,7 +76,7 @@ namespace CivOne.Tests
 			//
 			// The gate is an ADVANCE now, not a year — granted to a rival, because it is the
 			// world that must have arrived, not the claimant.
-			rivals[0].AddAdvance(new CivOne.Advances.Electronics(), false);
+			Sim.ElectronicsForTheWorld(human);
 			g.Progress(g.PlayerNumber(human)).CultureStreak = Game.CultureHoldTurns - 1;
 			Assert.True(Game.CultureGateOpenForDisplay(), "fixture is before the gate");
 			int before = human.MilestoneScore;

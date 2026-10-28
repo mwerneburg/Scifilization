@@ -488,6 +488,7 @@ namespace CivOne
 			if (Game.Started)
 			{
 				Game.Instance.AddReplayEvent(new ReplayData.TechDiscovered(Game.GameTurn, Game.PlayerNumber(this), (advance as ICivilopedia).Name));
+				DecisionLogger.LogAdvance(this, (advance as ICivilopedia).Name);
 				InvalidateCityCaches();
 			}
 			if (!setOrigin) return;

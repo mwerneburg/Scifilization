@@ -24,7 +24,7 @@ using CivOne.Units;
 // Schema (flat, intentionally simple for easy pandas/numpy ingestion):
 //
 //   type          string   "settler" | "city_prod" | "game_outcome" | "salvage" | "defection" | "plague"
-//                          | "landfall" | "disorder_collapse"
+//                          | "landfall" | "disorder_collapse" | "advance"
 //   game_id       string   8-char hex, one per GAME — survives save/load, so a resumed
 //                          run keeps one identity and its game_outcome scores all of it
 //   session_id    string   8-char hex, one per LOAD. Two sessions sharing a game_id are a
@@ -121,6 +121,11 @@ using CivOne.Units;
 //   city          string   city hit, "" for a strike in the field
 //   is_human      bool     the human fired it
 //   against_human bool     the human was the target
+//
+//   --- advance fields (a civ learned something, by any route) ---
+//   civ           string   who learned it
+//   advance       string   its name
+//   known         int      advances the civ now holds, this one included
 //
 //   --- game_outcome fields ---
 //   score         int      human player's final score
@@ -542,6 +547,22 @@ namespace CivOne
 				KV("cities",     player.Cities.Length),
 				KV("rioting",    player.Cities.Count(c => c.DisorderTurns >= 3)),
 				KV("outcome",    collapsed ? "collapsed" : "held"),
+			}));
+		}
+
+		// A civ learned an advance: research, a hut, a trade, a theft or a wonder. Tells us
+		// when the world reaches each era, which sets when the culture gate opens.
+		internal static void LogAdvance(Player player, string advance)
+		{
+			if (!_active) return;
+			Enqueue(Fmt(new[] {
+				KV("type",     "advance"),
+				KV("game_id",  _gameId),
+				KV("turn",     Game.Instance?.GameTurn ?? 0),
+				KV("is_human", player.IsHuman),
+				KV("civ",      player.Civilization?.NamePlural ?? "?"),
+				KV("advance",  advance),
+				KV("known",    player.Advances.Length),
 			}));
 		}
 

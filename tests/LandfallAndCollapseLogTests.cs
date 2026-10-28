@@ -2,8 +2,9 @@
 //
 // Two mechanisms green in tests had never been seen in a finished game because nothing
 // logged them: a Longboat's landfall and the empire-size-scaled disorder collapse. Each now
-// writes a record. Pinned on the source, as in SalvageTests and DefectionTests: the logger
-// appends to the user's real decisions.jsonl, so a test must not emit rows.
+// writes a record. So does every advance learned, which dates the culture gate. Pinned on
+// the source, as in SalvageTests and DefectionTests: the logger appends to the user's real
+// decisions.jsonl, so a test must not emit rows.
 
 namespace CivOne.Tests
 {
@@ -48,7 +49,21 @@ namespace CivOne.Tests
 				"the collapse is logged only after the revolt, or not on the held path");
 		}
 
+		// Every advance, by every route: research, huts, trades, thefts and wonders all come
+		// through AddAdvance. Logged only in a started game, so a new world's starting
+		// advances are not a flood of records.
+		[Fact]
+		public void EveryAdvanceIsRecorded()
+		{
+			string m = Between(Src("src", "Player.cs"), "public void AddAdvance(", "\n\t\t}");
+			int started = m.IndexOf("if (Game.Started)");
+			int log = m.IndexOf("DecisionLogger.LogAdvance(this,");
+			Assert.True(log > 0, "an advance is not recorded");
+			Assert.True(started >= 0 && started < log, "advances are recorded before the game starts");
+		}
+
 		[Theory]
+		[InlineData("\"advance\"),", "civ", "advance", "known")]
 		[InlineData("\"landfall\"),", "civ", "x", "y")]
 		[InlineData("\"disorder_collapse\"),", "civ", "government", "cities", "rioting", "outcome")]
 		public void TheRecordsCarryTheirFields(string type, params string[] fields)

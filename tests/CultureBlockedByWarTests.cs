@@ -65,9 +65,9 @@ namespace CivOne.Tests
 			// Known to every rival: Cultural Ascendancy's reach clause wants half of them met.
 			foreach (Player r in rivals) us.EstablishEmbassy(r);
 
-			// The clock opens on ELECTRONICS held by anyone, not on a date. Granted to a
-			// RIVAL, because it is the world that must have arrived, not the claimant.
-			rivals[0].AddAdvance(new CivOne.Advances.Electronics(), false);
+			// The clock opens on ELECTRONICS held by half the world, not on a date. Granted
+			// to the RIVALS, because it is the world that must have arrived, not the claimant.
+			Sim.ElectronicsForTheWorld(us);
 			Sim.ClearTasks();
 			return (g, us, rivals);
 		}

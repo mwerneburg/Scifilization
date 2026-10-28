@@ -5092,13 +5092,23 @@ namespace CivOne
 		// failure here was a coronation at turn 274 of roughly 750. If Electronics proves too
 		// late, this is one word.
 		//
-		// Held by ANYONE, not by the claimant: it is the world that has to have arrived, not
-		// the civilization being judged. A claimant gating on its own research would let the
-		// leader open its own window.
+		// Held by HALF THE WORLD, not by the claimant: it is the world that has to have
+		// arrived, not the civilization being judged. A claimant gating on its own research
+		// would let the leader open its own window.
+		//
+		// Half, not anyone (Oct 2026). On the Epic map civs field three to four times Civ 1's
+		// cities at Civ 1's research prices, so the leader reaches Electronics centuries early:
+		// in game aa0eb1a5 the Malians had it on turn 215 (around 650 AD), the gate opened,
+		// and the Russians won on 9 cities at turn 290 (1400 AD). Half the world had it on
+		// turn 267. The outsiders are not the world, as for the culture rivals.
 		internal static bool CultureGateOpenForDisplay() => Instance.CultureGateOpen();
 
-		private bool CultureGateOpen() => _players.Any(p => p is not null && !p.IsDestroyed()
-			&& PlayerNumber(p) != 0 && p.HasAdvance<Advances.Electronics>());
+		private bool CultureGateOpen()
+		{
+			Player[] world = _players.Where(p => p is not null && !p.IsDestroyed()
+				&& PlayerNumber(p) != 0 && !IsOutsider(p)).ToArray();
+			return world.Length > 0 && world.Count(p => p.HasAdvance<Advances.Electronics>()) * 2 >= world.Length;
+		}
 
 		// How the gate year is written for a player. Year 1 is the game's "0 AD" (there is no
 		// year zero in TurnToYear), and the score screen and the Civilopedia page both have to
