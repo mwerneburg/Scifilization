@@ -239,7 +239,10 @@ namespace CivOne.Screens
 		public override bool KeyDown(KeyboardEventArgs args)
 		{
 			// Cancel an active GoTo order on any keypress, even mid-move animation.
-			if (Game.CurrentPlayer == Human && Game.ActiveUnit is not null && !Game.ActiveUnit.Goto.IsEmpty)
+			// Not under Autopilot: the AI is steering, and AutopilotTick presses Enter here every
+			// ~0.1s — each one cancelled a settler's order after a single step, and seven of them
+			// hopped 50 times a turn around Tonawanda (game f37aa663, AutopilotGotoTests).
+			if (Game.CurrentPlayer == Human && !Settings.Autopilot && Game.ActiveUnit is not null && !Game.ActiveUnit.Goto.IsEmpty)
 			{
 				Game.ActiveUnit.Goto = Point.Empty;
 				return true;
@@ -330,8 +333,8 @@ namespace CivOne.Screens
 				return _menuBar.MouseDown(args);
 			}
 
-			// Cancel an active GoTo order on any click.
-			if (Game.CurrentPlayer == Human && Game.ActiveUnit is not null && !Game.ActiveUnit.Goto.IsEmpty)
+			// Cancel an active GoTo order on any click — not under Autopilot (see KeyDown).
+			if (Game.CurrentPlayer == Human && !Settings.Autopilot && Game.ActiveUnit is not null && !Game.ActiveUnit.Goto.IsEmpty)
 			{
 				Game.ActiveUnit.Goto = Point.Empty;
 				return true;
