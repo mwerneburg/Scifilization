@@ -3362,6 +3362,7 @@ namespace CivOne
 				// admired civilization's flag.
 				Tick("CultureDefections", ProcessCultureDefections);
 				Tick("ColonistGrants", ProcessColonistGrants);
+				Tick("IdleUnits", WatchIdleUnits);
 
 				// Gozira falls: the rampage ends when the kaiju is destroyed.
 				if (GoziraState == 1 && !_units.Any(u => u is Units.Gozira))
@@ -6348,6 +6349,41 @@ namespace CivOne
 				Log($"[colonist] {p.TribeNamePlural} granted an unsupported settler at {home.Name} "
 				  + $"({cities.Length} cities, turn {_gameTurn})");
 			}
+		}
+
+		// ── Idle units ───────────────────────────────────────────────────────
+		// An AI settler, explorer, caravan or diplomat that has not left its tile in
+		// IdleUnitTurns turns is logged, with every flag that can stop a unit moving. In game
+		// c1175c79 Japan's settler stood in Kyoto with a full move from turn 100 to 138, and
+		// loading the save moved it at once: whatever held it lives only in the running game,
+		// and the app writes no runtime log. Military units are left out; a garrison is
+		// meant to sit still.
+		internal const int IdleUnitTurns = 20;
+		private readonly Dictionary<IUnit, (int X, int Y, int Since)> _idleWatch = new();
+
+		internal int IdleTurns(IUnit unit)
+			=> _idleWatch.TryGetValue(unit, out var w) && w.X == unit.X && w.Y == unit.Y ? _gameTurn - w.Since : 0;
+
+		private void WatchIdleUnits()
+		{
+			byte human = PlayerNumber(HumanPlayer);
+			var watched = new HashSet<IUnit>();
+			foreach (IUnit u in _units)
+			{
+				if (u.Owner == 0 || (u.Owner == human && !Settings.Instance.Autopilot)) continue;
+				if (!(u is Units.Settlers or Units.Explorer || u.Role == UnitRole.Civilian)) continue;
+				watched.Add(u);
+				if (!_idleWatch.TryGetValue(u, out var w) || w.X != u.X || w.Y != u.Y)
+				{
+					_idleWatch[u] = (u.X, u.Y, _gameTurn);
+					continue;
+				}
+				int idle = _gameTurn - w.Since;
+				if (idle == IdleUnitTurns || (idle > IdleUnitTurns && (idle - IdleUnitTurns) % 50 == 0))
+					DecisionLogger.LogIdleUnit(u, idle);
+			}
+			foreach (IUnit gone in _idleWatch.Keys.Where(k => !watched.Contains(k)).ToArray())
+				_idleWatch.Remove(gone);
 		}
 
 		// ── Cultural defection ───────────────────────────────────────────────

@@ -24,7 +24,7 @@ using CivOne.Units;
 // Schema (flat, intentionally simple for easy pandas/numpy ingestion):
 //
 //   type          string   "settler" | "city_prod" | "game_outcome" | "salvage" | "defection" | "plague"
-//                          | "landfall" | "disorder_collapse" | "advance" | "disband"
+//                          | "landfall" | "disorder_collapse" | "advance" | "disband" | "idle_unit"
 //   game_id       string   8-char hex, one per GAME — survives save/load, so a resumed
 //                          run keeps one identity and its game_outcome scores all of it
 //   session_id    string   8-char hex, one per LOAD. Two sessions sharing a game_id are a
@@ -133,6 +133,16 @@ using CivOne.Units;
 //   city_size     int
 //   unit          string   the unit disbanded — the farthest from home
 //   distance      int      how far from home it was
+//
+//   --- idle_unit fields (an AI civilian unit has not left its tile in 20 turns; again every 50) ---
+//   civ           string   the owner
+//   unit          string   Settlers, Explorer, Caravan, Diplomat
+//   x, y          int      where it stands
+//   idle_turns    int      turns on this tile
+//   goto          string   "x,y", or "" for no destination
+//   sentry, fortify, busy, aboard, in_city   bool   what can hold a unit still
+//   home          string   home city, "" for none
+//   moves         int      moves left at the end of the turn
 //
 //   --- game_outcome fields ---
 //   score         int      human player's final score
@@ -589,6 +599,32 @@ namespace CivOne
 				KV("city_size", city.Size),
 				KV("unit",      unit.Name),
 				KV("distance",  distance),
+			}));
+		}
+
+		// See Game.WatchIdleUnits.
+		internal static void LogIdleUnit(IUnit unit, int idleTurns)
+		{
+			if (!_active) return;
+			Player? owner = Game.Instance?.GetPlayer(unit.Owner);
+			Enqueue(Fmt(new[] {
+				KV("type",       "idle_unit"),
+				KV("game_id",    _gameId),
+				KV("turn",       Game.Instance?.GameTurn ?? 0),
+				KV("is_human",   owner is not null && owner.IsHuman),
+				KV("civ",        owner?.Civilization?.NamePlural ?? "?"),
+				KV("unit",       unit.Name),
+				KV("x",          unit.X),
+				KV("y",          unit.Y),
+				KV("idle_turns", idleTurns),
+				KV("goto",       unit.Goto.IsEmpty ? "" : $"{unit.Goto.X},{unit.Goto.Y}"),
+				KV("sentry",     unit.Sentry),
+				KV("fortify",    unit.Fortify),
+				KV("busy",       unit.Busy),
+				KV("aboard",     unit.Tile is not null && unit.Tile.IsOcean),
+				KV("in_city",    unit.Tile?.City is not null),
+				KV("home",       unit.Home?.Name ?? ""),
+				KV("moves",      unit.MovesLeft),
 			}));
 		}
 

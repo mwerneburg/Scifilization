@@ -74,6 +74,7 @@ namespace CivOne.Tests
 		}
 
 		[Theory]
+		[InlineData("\"idle_unit\"),", "civ", "unit", "x", "y", "idle_turns", "goto", "sentry", "fortify", "busy", "aboard", "in_city", "home", "moves")]
 		[InlineData("\"disband\"),", "civ", "city", "city_size", "unit", "distance")]
 		[InlineData("\"advance\"),", "civ", "advance", "known")]
 		[InlineData("\"landfall\"),", "civ", "x", "y")]
