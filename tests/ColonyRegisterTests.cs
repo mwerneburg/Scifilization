@@ -17,7 +17,8 @@ namespace CivOne.Tests
 {
 	public class ColonyRegisterTests
 	{
-		// A home island, open water, and a foreign coast worth settling.
+		// A home island, open water, and a foreign coast worth settling. Sails, not
+		// Triremes: an AI Trireme has no route across open water (TriremeCoastTests).
 		private static (Player player, IUnit ship) TwoShores(int hx = 20, int hy = 25, int sx = 34)
 		{
 			Sim.NewGame(width: 80, height: 50);
@@ -36,7 +37,7 @@ namespace CivOne.Tests
 
 			Game.Instance.AddCity(player, 0, hx, hy);
 			player.Explore(hx, hy, range: 30);
-			IUnit ship = Game.Instance.CreateUnit(UnitType.Trireme, hx + 1, hy, id)!;
+			IUnit ship = Game.Instance.CreateUnit(UnitType.Sail, hx + 1, hy, id)!;
 			return (player, ship);
 		}
 
@@ -61,7 +62,7 @@ namespace CivOne.Tests
 		{
 			var (player, first) = TwoShores();
 			byte id = Game.Instance.PlayerNumber(player);
-			IUnit second = Game.Instance.CreateUnit(UnitType.Trireme, first.X, first.Y, id)!;
+			IUnit second = Game.Instance.CreateUnit(UnitType.Sail, first.X, first.Y, id)!;
 			AI ai = AI.Instance(player);
 
 			ITile? a = ai.BestOverseasSite(first);
@@ -109,7 +110,7 @@ namespace CivOne.Tests
 
 			// They have surveyed a shore; we have surveyed nothing.
 			byte pid = Game.Instance.PlayerNumber(partner);
-			IUnit theirShip = Game.Instance.CreateUnit(UnitType.Trireme, ship.X, ship.Y, pid)!;
+			IUnit theirShip = Game.Instance.CreateUnit(UnitType.Sail, ship.X, ship.Y, pid)!;
 			Assert.NotNull(theirs.BestOverseasSite(theirShip));
 			int theirKnowledge = theirs.KnownColonySites();
 			Assert.True(theirKnowledge > 0);
@@ -135,7 +136,7 @@ namespace CivOne.Tests
 			AI theirs = AI.Instance(partner);
 
 			byte pid = Game.Instance.PlayerNumber(partner);
-			IUnit theirShip = Game.Instance.CreateUnit(UnitType.Trireme, ship.X, ship.Y, pid)!;
+			IUnit theirShip = Game.Instance.CreateUnit(UnitType.Sail, ship.X, ship.Y, pid)!;
 			ITile? claimed = theirs.BestOverseasSite(theirShip);   // claims it for their hull
 			Assert.NotNull(claimed);
 

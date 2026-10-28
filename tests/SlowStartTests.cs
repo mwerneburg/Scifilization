@@ -11,6 +11,7 @@ using CivOne.Advances;
 using CivOne.Buildings;
 using CivOne.Enums;
 using CivOne.Units;
+using CivOne.Wonders;
 
 namespace CivOne.Tests
 {
@@ -82,6 +83,38 @@ namespace CivOne.Tests
 			int granary = System.Array.FindIndex(plan, x => x is Granary);
 			int settlers = System.Array.FindIndex(plan, x => x is Settlers);
 			Assert.True(granary >= 0 && (settlers < 0 || granary < settlers), Show(plan));
+		}
+
+		private static IWonder? Wonder(Player p, City c)
+		{
+			System.Type stance = typeof(AI).GetNestedType("StrategyStance",
+				System.Reflection.BindingFlags.NonPublic)!;
+			return (IWonder?)typeof(AI).GetMethod("SelectWonder",
+				System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+				.Invoke(AI.Instance(p), new object[] { c, System.Enum.Parse(stance, "Expand") });
+		}
+
+		// Game aa0eb1a5: Kyoto planned the Colossus at exactly the 100-turn horizon, shipped
+		// its first Settlers, and spent turns 57-132 on the wonder at 0-2 shields.
+		[Fact]
+		public void AOneCityCivWithRoomStartsNoWonder()
+		{
+			(Player p, City c) = ACapital(shieldSpecials: true, size: 5);
+			p.AddAdvance(new Masonry(), false);
+
+			Assert.Null(Wonder(p, c));
+		}
+
+		// Control: the same capital, once the empire has its third city, takes one.
+		[Fact]
+		public void AThreeCityCivsCapitalStillTakesAWonder()
+		{
+			(Player p, City c) = ACapital(shieldSpecials: true, size: 5);
+			p.AddAdvance(new Masonry(), false);
+			Game.Instance.AddCity(p, 1, 28, 18);
+			Game.Instance.AddCity(p, 2, 52, 32);
+
+			Assert.NotNull(Wonder(p, c));
 		}
 	}
 }

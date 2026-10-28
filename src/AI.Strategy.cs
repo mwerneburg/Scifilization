@@ -4500,6 +4500,13 @@ namespace CivOne
 					return assigned;
 			}
 
+			// Not before a third city, while there is room to found one: a tiny empire's
+			// capital is its only source of settlers, and the horizon test below cannot see
+			// that the settler it is about to ship will halve its output. Game aa0eb1a5:
+			// Kyoto planned the Colossus at 2 shields (exactly the 100-turn horizon), shipped
+			// its first Settlers, and spent turns 57-132 on the wonder at 0-2 shields.
+			if (Player.Cities.Length < 3 && HasExpansionRoom()) return null;
+
 			// ...nor one this city could not finish in a lifetime.
 			//
 			// IsTopProductionCity above is RELATIVE to the civ's own cities, so a one-city

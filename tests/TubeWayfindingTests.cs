@@ -414,7 +414,7 @@ namespace CivOne.Tests
 		public void ShipsAreUnaffected()
 		{
 			(Game g, byte num) = TwoShores();
-			IUnit ship = g.CreateUnit(UnitType.Trireme, 25, 21, num, false)!;
+			IUnit ship = g.CreateUnit(UnitType.Sail, 25, 21, num, false)!;   // an AI Trireme keeps to the coast
 
 			Assert.NotNull(Common.GotoStep(ship, 30, 25));
 		}

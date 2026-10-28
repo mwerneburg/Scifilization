@@ -68,7 +68,7 @@ namespace CivOne.Tests
 			Map.Instance.RecalculateContinentsIfDirty();
 			p.Explore(65, 35, range: 20);
 
-			IUnit ship = g.CreateUnit(UnitType.Trireme, 20, 25, g.PlayerNumber(p))!;
+			IUnit ship = g.CreateUnit(UnitType.Sail, 20, 25, g.PlayerNumber(p))!;   // an AI Trireme keeps to the coast
 			Assert.Null(Common.GotoStep(ship, 65, 35));
 		}
 
@@ -79,7 +79,7 @@ namespace CivOne.Tests
 		{
 			(Game g, Player p) = DrownedWorld();
 			p.Explore(40, 25, range: 30);
-			IUnit ship = g.CreateUnit(UnitType.Trireme, 20, 25, g.PlayerNumber(p))!;
+			IUnit ship = g.CreateUnit(UnitType.Sail, 20, 25, g.PlayerNumber(p))!;   // an AI Trireme keeps to the coast
 			Assert.NotNull(Common.GotoStep(ship, 40, 25));
 		}
 

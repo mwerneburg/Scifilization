@@ -386,7 +386,8 @@ namespace CivOne.Tests
 		// An empty transport with no invasion to ferry must go and chart the map, not park
 		// at a pier. The wait-for-troops branch used to return unconditionally, so the sea
 		// exploration below it was unreachable for the only ship class most civs build —
-		// Japan held three Triremes and had seen 1% of the world's land.
+		// Japan held three Triremes and had seen 1% of the world's land. A Sail, because an
+		// AI Trireme now explores only water beside land, and this island has none unseen.
 		[Fact]
 		public void EmptyTransport_ExploresInsteadOfParking()
 		{
@@ -404,7 +405,7 @@ namespace CivOne.Tests
 			Game.Instance.AddCity(player, 0, cx, cy);
 			player.Explore(cx, cy, range: 2);
 
-			IUnit ship = Game.Instance.CreateUnit(UnitType.Trireme, cx + 1, cy,
+			IUnit ship = Game.Instance.CreateUnit(UnitType.Sail, cx + 1, cy,
 				Game.Instance.PlayerNumber(player))!;
 			Assert.NotNull(ship);
 			Assert.DoesNotContain(ship.Tile.Units, u => u.Class == UnitClass.Land);
