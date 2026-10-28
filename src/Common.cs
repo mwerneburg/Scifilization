@@ -65,11 +65,24 @@ namespace CivOne
 		// table did (e.g. slot 3/16 were both near-black; slot 0 and 9 were identical 16/4).
 		// ColourDark is left as the original dark shades — the Intelligence Report uses it as a
 		// button background with ColourLight text on top, which needs the dark contrast.
-		public static byte[] ColourLight     = [16, 11, 13, 14, 17, 15, 16, 11, 13, 14, 17, 15, 16, 11, 13, 14, 17, 15, 12,  7];
+		//
+		// The slot count is NOT capped at 20. Game.AddPlayer appends the outsiders and any civ
+		// that returns later, and a game at 1915 CE had 21 slots, the Arabs in slot 20: the
+		// first Arab city on the minimap indexed ColourLight[20] and crashed the game. So the
+		// tables wrap, and every existing `ColourLight[owner]` stays legal at any slot.
+		public static readonly SlotColours ColourLight     = new(16, 11, 13, 14, 17, 15, 16, 11, 13, 14, 17, 15, 16, 11, 13, 14, 17, 15, 12,  7);
 		// Slot 0 (Barbarians) is deliberately red/red: it's a fixed, single slot with no other
 		// civ to disambiguate it from, so it stays solid red (classic Civ) rather than red/white.
-		public static byte[] BannerSecondary = [16, 17, 14, 13, 16, 11, 17, 15, 16, 15, 13, 14, 13, 14, 17, 16, 15, 16, 17, 16];
-		public static byte[] ColourDark      = [ 4,  7,  2,  1, 10,  3,  4,  8,  5,  4,  3,  4,  4,  3,  5,  3,  1, 10,  3,  4];
+		public static readonly SlotColours BannerSecondary = new(16, 17, 14, 13, 16, 11, 17, 15, 16, 15, 13, 14, 13, 14, 17, 16, 15, 16, 17, 16);
+		public static readonly SlotColours ColourDark      = new( 4,  7,  2,  1, 10,  3,  4,  8,  5,  4,  3,  4,  4,  3,  5,  3,  1, 10,  3,  4);
+
+		public sealed class SlotColours
+		{
+			private readonly byte[] _colours;
+			public SlotColours(params byte[] colours) => _colours = colours;
+			public byte this[int slot] => _colours[slot % _colours.Length];
+			public int Length => _colours.Length;
+		}
 
 		// A surface too small for the quartered banner (the political map, the score traces)
 		// shows the pair as a 2:1 mix, a third of tiles in the accent. Not 1:1: several slots
