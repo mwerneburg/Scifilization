@@ -9,6 +9,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -25,6 +26,7 @@ using CivOne.Units;
 //
 //   type          string   "settler" | "city_prod" | "game_outcome" | "salvage" | "defection" | "plague"
 //                          | "landfall" | "disorder_collapse" | "advance" | "disband" | "idle_unit"
+//                          | "round_trip"
 //   game_id       string   8-char hex, one per GAME — survives save/load, so a resumed
 //                          run keeps one identity and its game_outcome scores all of it
 //   session_id    string   8-char hex, one per LOAD. Two sessions sharing a game_id are a
@@ -143,6 +145,13 @@ using CivOne.Units;
 //   sentry, fortify, busy, aboard, in_city   bool   what can hold a unit still
 //   home          string   home city, "" for none
 //   moves         int      moves left at the end of the turn
+//
+//   --- round_trip fields (a settler moved 4+ steps in a turn and ended within 1 tile of its start) ---
+//   civ, unit, home   string
+//   from          string   "x,y" where its turn began; x, y where it ended
+//   steps         int      tiles entered
+//   trail         string   each tile entered, "x,y>gx,gy" while it had a destination
+//   state         string   auto_clean / auto_improve / site
 //
 //   --- game_outcome fields ---
 //   score         int      human player's final score
@@ -603,6 +612,28 @@ namespace CivOne
 		}
 
 		// See Game.WatchIdleUnits.
+		internal static void LogRoundTrip(IUnit unit, (int X, int Y) from, IEnumerable<string> trail, string state)
+		{
+			if (!_active) return;
+			Player? owner = Game.Instance?.GetPlayer(unit.Owner);
+			string[] steps = trail.ToArray();
+			Enqueue(Fmt(new[] {
+				KV("type",     "round_trip"),
+				KV("game_id",  _gameId),
+				KV("turn",     Game.Instance?.GameTurn ?? 0),
+				KV("is_human", owner is not null && owner.IsHuman),
+				KV("civ",      owner?.Civilization?.NamePlural ?? "?"),
+				KV("unit",     unit.Name),
+				KV("from",     $"{from.X},{from.Y}"),
+				KV("x",        unit.X),
+				KV("y",        unit.Y),
+				KV("steps",    steps.Length),
+				KV("trail",    string.Join(" ", steps)),
+				KV("home",     unit.Home?.Name ?? ""),
+				KV("state",    state),
+			}));
+		}
+
 		internal static void LogIdleUnit(IUnit unit, int idleTurns)
 		{
 			if (!_active) return;

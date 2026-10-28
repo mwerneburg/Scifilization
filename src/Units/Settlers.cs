@@ -336,9 +336,16 @@ namespace CivOne.Units
 			return best;
 		}
 
+		// A settler that rode out and back in one turn, logged as `round_trip`. The Tonawanda
+		// loop (game f37aa663) happened only in the running game — every replay of its saves
+		// was calm — so the game has to describe it itself.
+		private (int X, int Y) _turnStart = (-1, -1);
+		private readonly List<string> _trail = new();
+
 		protected override void MovementDone(ITile previousTile)
 		{
 			base.MovementDone(previousTile);
+			if (_trail.Count < 60) _trail.Add(Goto.IsEmpty ? $"{X},{Y}" : $"{X},{Y}>{Goto.X},{Goto.Y}");
 			if (AutoClean && Map[X, Y].Pollution)
 				CleanPollution();
 			if (AutoImprove && IsBuildIdle())
@@ -707,6 +714,10 @@ namespace CivOne.Units
 
 		public override void NewTurn()
 		{
+			if (_trail.Count >= 4 && _turnStart.X >= 0 && Common.DistanceToTile(_turnStart.X, _turnStart.Y, X, Y) <= 1)
+				DecisionLogger.LogRoundTrip(this, _turnStart, _trail, $"auto_clean={AutoClean} auto_improve={AutoImprove} site={SettleSite}");
+			_turnStart = (X, Y);
+			_trail.Clear();
 			base.NewTurn();
 			if (Map[X, Y].IsOcean)
 			{
