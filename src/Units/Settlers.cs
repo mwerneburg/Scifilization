@@ -709,7 +709,7 @@ namespace CivOne.Units
 				{
 					if (Map[X, Y].Road)
 					{
-						if (Human.HasAdvance<RailRoad>())
+						if (Player.HasAdvance<RailRoad>())
 							Map[X, Y].RailRoad = true;
 						else if (BuildingRoad > 0)
 							foreach (Settlers settlers in Map[X, Y].Units.OfType<Settlers>().Where(s => s.BuildingRoad > 0))
