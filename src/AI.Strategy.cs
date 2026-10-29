@@ -3446,6 +3446,10 @@ namespace CivOne
 				    && Player.HasAdvance<Writing>())
 					muster.PrependProduction(new Diplomat());
 			}
+			// No attacker to build: BestAttacker's last resort is a Militia, which the group never
+			// counts and `raising` never sees, so one was queued in each near city every turn of
+			// the war. The Babylonians of game abb9ba24 held a city queuing nine.
+			if (BestAttacker() is not IUnit { Role: UnitRole.LandAttack }) return;
 			int short_ = (muster is null ? StrikeThreshold(target) : StrikeGroupSize)
 				- reach.Count(u => u.Tile.ContinentId == home);
 			if (short_ <= 0) return;
