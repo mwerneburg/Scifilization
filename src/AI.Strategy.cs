@@ -5770,6 +5770,15 @@ namespace CivOne
 			if (Player.HasAdvance<CeremonialBurial>()  && !city.HasBuilding<Temple>())        Consider(new Temple());
 			if (Player.HasAdvance<Writing>()           && !city.HasBuilding<Library>())       Consider(new Library());
 			if (Player.HasAdvance<Currency>()          && !city.HasBuilding<MarketPlace>())   Consider(new MarketPlace());
+			// Develop with room is only reached through GetStance's path clause: a builder-path
+			// civ at half its target. It still founds, behind the first tier; Develop plans no
+			// founding settler otherwise. China at peace in game abb9ba24 (Commerce, target 15)
+			// held 7 cities from t125 to t300 with room; 19-24 in games where wars kept it in
+			// Militarize.
+			if (stance == StrategyStance.Develop && ownCities >= 3 && ownCities < maxCities && HasExpansionRoom()
+			    && settlerBudget && CanAffordSettler(city, Leader.Development == Expansionistic ? 3 : 4)
+			    && !city.Units.Any(x => x is Settlers))
+				Consider(new Settlers());
 			// The second tier of both multiplier chains, which was simply absent: nothing ever
 			// passed a Bank or a University to Consider, so they reached a city only through the
 			// last-resort fallback that fires when it has run out of everything else. Exactly the
