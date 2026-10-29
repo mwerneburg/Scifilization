@@ -4826,9 +4826,16 @@ namespace CivOne
 		// irrigates the ground that lifts the ceiling. Guards keep it narrow — a tiny
 		// empire, a city genuinely stalled rather than merely slow, no settler already in
 		// the field, and somewhere for this one to actually work.
+		//
+		// Not only one or two cities. Game 100847b1: the Babylonians held four cities from
+		// t200 to t500 at food 0-1 and 1-5 shields on bare Plains and Hills, with no settler
+		// alive, and the Ottomans and Khmer sat at 5-7 the same way. Expand wanted size 4
+		// and a surplus they never reached, and WorkerQuota gives a small civ outside
+		// Develop nothing, so 344 of the Babylonians' picks were Research Grants. Large
+		// empires have their own worker quota.
 		private bool SettlerIsTheOnlyWayOut(City city)
 		{
-			if (Player.Cities.Length > 2) return false;
+			if (Player.Cities.Length >= LargeEmpire) return false;
 			if (city.Size < 2) return false;
 			if (city.FoodIncome > 1) return false;   // still growing on its own — normal rules apply
 			byte own = Game.PlayerNumber(Player);
@@ -5573,6 +5580,11 @@ namespace CivOne
 				    && (ownCities < maxCities || HasExpansionRoom()))
 					Consider(new Settlers());
 			}
+			// Any stance: a stalled city's settler is what lifts the ceiling (see the hatch).
+			// The hatch counts settlers alive, so one city raises it at a time.
+			if (ownCities >= 3 && SettlerIsTheOnlyWayOut(city)
+			    && !Player.Cities.Any(c => c != city && (c.CurrentProduction is Settlers || c.ProductionQueue.Any(p => p is Settlers))))
+				Consider(new Settlers());
 
 			// Worker settlers: a built-out empire (Develop/Consolidate) keeps a few settlers
 			// terraforming — irrigating the tiles its cities work — so cities reach the food
