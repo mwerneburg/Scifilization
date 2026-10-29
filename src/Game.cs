@@ -3807,8 +3807,25 @@ namespace CivOne
 			while (x >= Map.WIDTH) x-= Map.WIDTH;
 			if (y < 0) return null;
 			if (y >= Map.HEIGHT) return null;
-			return _cities.Where(c => c.X == x && c.Y == y && c.Size > 0).FirstOrDefault();
+			if (!Started) return _cities.Where(c => c.X == x && c.Y == y && c.Size > 0).FirstOrDefault();
+			// Every ITile.City is this call, and it was a scan of every city: the pathfinder
+			// reads it several times per neighbour, so at 787 cities a node cost 75us and the
+			// Federation's Hover Tanks 125ms a route (game 6d2f0cca, t506). Indexed against
+			// the roster version, which every add, removal and zero-size crossing bumps; the
+			// count covers a save load, which adds without bumping. A city only moves on
+			// creation and destruction, both of which change the roster.
+			if (_cityAt is null || _cityAtVersion != _cityRosterVersion || _cityAtCount != _cities.Count)
+			{
+				_cityAt = new Dictionary<int, City>();
+				foreach (City c in _cities)
+					if (c.Size > 0 && !_cityAt.ContainsKey(c.Y * Map.WIDTH + c.X)) _cityAt[c.Y * Map.WIDTH + c.X] = c;
+				_cityAtVersion = _cityRosterVersion;
+				_cityAtCount = _cities.Count;
+			}
+			return _cityAt.TryGetValue(y * Map.WIDTH + x, out City hit) ? hit : null;
 		}
+		private Dictionary<int, City>? _cityAt;
+		private int _cityAtVersion = -1, _cityAtCount = -1;
 		
 		internal static IUnit? PeekUnit(UnitType type) => CreateUnit(type, 0, 0);
 
