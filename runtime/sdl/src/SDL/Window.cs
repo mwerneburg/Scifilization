@@ -98,15 +98,26 @@ namespace CivOne
 
 				while (_running)
 				{
+					// TEMPORARY (2026-10-29): frame:Present and frame:Compose came back at ~0.01ms a
+					// frame while other_ms stayed at 12-13ms a frame (game a82cf446), so time every
+					// stage of the loop and let the log name the remainder.
+					long __l = CivOne.TurnMetrics.Now;
 					if (SDL_PollEvent(out SDL_Event sdlEvent) == 1)
 					{
 						HandleEvent(sdlEvent);
 					}
+					CivOne.TurnMetrics.AddBucket("loop:Poll", __l);
 
+					__l = CivOne.TurnMetrics.Now;
 					OnUpdate?.Invoke(this, EventArgs.Empty);
+					CivOne.TurnMetrics.AddBucket("loop:Update", __l);
+					__l = CivOne.TurnMetrics.Now;
 					OnDraw?.Invoke(this, EventArgs.Empty);
+					CivOne.TurnMetrics.AddBucket("loop:Draw", __l);
 
+					__l = CivOne.TurnMetrics.Now;
 					HandleMouse();
+					CivOne.TurnMetrics.AddBucket("loop:Mouse", __l);
 
 					if (!_redraw)
 					{

@@ -207,6 +207,24 @@ namespace CivOne.Tests
 			Assert.True(RuntimeHandler.WatchedHumanSlide);
 		}
 
+		// ...unless the human is on Autopilot: nobody is steering, and holding every one of
+		// those journeys to 60 Hz was 5-11 seconds of each late turn.
+		[Fact]
+		public void UnderAutopilotTheHumansSlideIsNotHeld()
+		{
+			bool auto = Settings.Instance.Autopilot;
+			try
+			{
+				Sim.NewGame(width: 80, height: 50);
+				IUnit u = AUnitInFlight(Game.Instance.HumanPlayer, withGoto: true);
+				Settings.Instance.Autopilot = true;
+
+				Assert.True(u.Moving, "fixture: the unit is not actually mid-move");
+				Assert.False(RuntimeHandler.WatchedHumanSlide);
+			}
+			finally { Settings.Instance.Autopilot = auto; }
+		}
+
 		// Open ground is untouched: this is not a general speed-up of the game's animation.
 		[Fact]
 		public void OrdinaryGroundIsUnchanged()

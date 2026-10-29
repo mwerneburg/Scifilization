@@ -69,7 +69,9 @@ namespace CivOne
 			{
 				RuntimeHandler h = _instance;
 				if (h is null) return false;
-				return h._gameTick < h.TickWatch || h.FastForwarding;
+				// ...but not during a watched slide, which OnUpdate leaves to the tick clock: the
+				// loop spun 0.5-1.5 million times a turn waiting out those (game a82cf446).
+				return h._gameTick < h.TickWatch || (h.FastForwarding && !WatchedHumanSlide);
 			}
 		}
 
@@ -248,7 +250,11 @@ namespace CivOne
 		// enemy step and handed the whole AI turn back to 60 Hz pacing — the between-turns
 		// pause fast-forward exists to remove. Blurring an enemy move is the deliberate trade
 		// fast-forward has always made; blurring the player's own journey was the bug.
-		internal static bool WatchedHumanSlide => HumanGotoInFlight && GameTask.AnimatingMove;
+		//
+		// Under Autopilot nobody is steering those journeys either, and holding every one of
+		// them to 60 Hz was 5-11 seconds of each late turn (game a82cf446). Watch Mode, which
+		// turns fast-forward off altogether, is the way to watch an autopiloted game.
+		internal static bool WatchedHumanSlide => !Settings.Instance.Autopilot && HumanGotoInFlight && GameTask.AnimatingMove;
 
 		private const long FAST_BUDGET_MS = 8;
 
