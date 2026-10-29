@@ -569,8 +569,9 @@ namespace CivOne.Screens.GamePlayPanels
 					Game.ActiveUnit.Fortify = true;
 					break;
 				case 'U':
-					// Unload, then Upgrade. The two never contend: a hull cannot upgrade and an
-					// upgradeable unit carries nothing.
+					// Unload, then Upgrade. The two never contend: a ship offers Upgrade only in
+					// port with nothing aboard (BaseUnitSea.MenuItems), so an empty hull in a
+					// Shipyard city refits and any other hull unloads.
 					//
 					// Dispatched per hull type rather than through IBoardable alone. This read
 					// `(ActiveUnit as BaseUnitSea)!.Unload()` guarded only by `is IBoardable`,
@@ -578,7 +579,7 @@ namespace CivOne.Screens.GamePlayPanels
 					// IBoardable and is NOT a BaseUnitSea, so the cast yielded null and the
 					// call threw. The `!` silenced the compiler, not the crash.
 					if (Game.ActiveUnit is BaseUnitSea seaHull && Game.ActiveUnit is IBoardable)
-						return seaHull.Unload();
+						return ActivateUnitMenuShortcut("u") || seaHull.Unload();
 					if (Game.ActiveUnit is Units.Dirigible airship)
 					{
 						airship.Unload();

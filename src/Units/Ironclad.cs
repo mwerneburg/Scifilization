@@ -14,6 +14,8 @@ namespace CivOne.Units
 {
 	internal class Ironclad : BaseUnitSea
 	{
+		public override UnitType? UpgradesTo => UnitType.Cruiser;   // in a Shipyard city
+
 		private static readonly string[] _page1 =
 		{
 			"The IRONCLAD is the first steam",

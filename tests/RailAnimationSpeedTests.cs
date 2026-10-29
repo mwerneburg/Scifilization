@@ -24,7 +24,16 @@ namespace CivOne.Tests
 	// queue. Left there it outlives the test. Cleared after each one.
 	public class RailAnimationSpeedTests : System.IDisposable
 	{
-		public void Dispose() => Sim.ClearTasks();
+		// ...and Autopilot off: under it the human's slides are not held (WatchedHumanSlide),
+		// and other test classes leave it on, so the result depended on run order.
+		private readonly bool _auto;
+		public RailAnimationSpeedTests()
+		{
+			Sim.EnsureRuntime();
+			_auto = Settings.Instance.Autopilot;
+			Settings.Instance.Autopilot = false;
+		}
+		public void Dispose() { Sim.ClearTasks(); Settings.Instance.Autopilot = _auto; }
 
 		private static ITile Tile(int x, int y, Terrain t, bool rail = false, bool tube = false)
 		{

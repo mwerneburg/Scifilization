@@ -3759,16 +3759,18 @@ namespace CivOne
 				.FirstOrDefault();
 		}
 
-		// The nearest foreign city a ship could set a diplomat down beside.
-		// ponytail: no sea-path probe, the same ceiling as BestOverseasSite; a Trireme that
-		// cannot reach it keeps trying.
-		private City? EnvoyHarbour(IUnit from, byte notOn = MISC_CONTINENT) => Game.GetCities()
+		// The nearest foreign city a ship could set a diplomat down beside. Given the ship, only
+		// one it can sail to, of the nearest four: a Trireme in Nagasaki was sent every turn for
+		// a Zulu floating city out on open sea, found no path, and stayed in port with its envoy
+		// (game a82cf446). The walker asking only whether any harbour exists is not probed.
+		private City? EnvoyHarbour(IUnit from, byte notOn = MISC_CONTINENT, bool sailing = false) => Game.GetCities()
 			.Where(c => c.Player != Player && c.Owner != 0 && !Player.IsAtWar(c.Player)
 			         && c.Tile is not null && Player.Visible(c.X, c.Y)
 			         && !(Map.NamedContinent(notOn) && c.Tile.ContinentId == notOn)
 			         && c.Tile.GetBorderTiles().Any(t => t is not null && t.IsOcean))
 			.OrderBy(c => Common.DistanceToTile(from.X, from.Y, c.X, c.Y))
-			.FirstOrDefault();
+			.Take(sailing ? 4 : 1)
+			.FirstOrDefault(c => !sailing || Common.GotoStep(from, c.X, c.Y) is not null);
 
 		// An envoy or caravan with no foreign city on its own landmass boards a hull, which
 		// EnvoyHarbour then steers. One crossing per kind at a time, so they do not crowd the
@@ -3993,12 +3995,26 @@ namespace CivOne
 
 					// An envoy or caravan aboard: sail to a foreign port and set it down beside it.
 					if (unit.Tile.Units.Any(u => u.Owner == own && (u is Diplomat || u is Caravan) && u.Sentry)
-					    && EnvoyHarbour(unit) is City haven)
+					    && EnvoyHarbour(unit, sailing: true) is City haven)
 					{
 						if (Common.DistanceToTile(unit.X, unit.Y, haven.X, haven.Y) <= 1)
 							(unit as BaseUnitSea)!.Unload();
 						else
 							unit.Goto = new Point(haven.X, haven.Y);
+						return;
+					}
+
+					// Outdated and empty: put in at our nearest Shipyard, where ConsiderUpgrades
+					// refits it. Transports only; a warship is left to its own errands.
+					if (!unit.Tile.Units.Any(u => u.Owner == own && u.Class == UnitClass.Land && u.Sentry)
+					    && (unit as BaseUnit)?.RefitTarget is not null
+					    && unit.Tile.City?.HasBuilding<Shipyard>() != true
+					    && Player.Cities.Where(c => c.HasBuilding<Shipyard>())
+					             .OrderBy(c => Common.DistanceToTile(unit.X, unit.Y, c.X, c.Y))
+					             .FirstOrDefault() is City yard
+					    && Common.GotoStep(unit, yard.X, yard.Y) is not null)
+					{
+						unit.Goto = new Point(yard.X, yard.Y);
 						return;
 					}
 
@@ -5671,8 +5687,20 @@ namespace CivOne
 			{
 				byte hullId = Game.PlayerNumber(Player);
 				int hulls = Game.GetUnits().Count(u => u.Owner == hullId && u is IBoardable);
-				if (hulls < 2) Consider(new Trireme());
+				// The newest hull this port can launch. Only a Trireme was ever asked for, so at
+				// turn 576 of game a82cf446 every AI transport afloat was one; a Transport also
+				// wants a Shipyard, which the refit rule below provides.
+				if (hulls < 2) Consider(new IProduction[] { new Transport(), new Frigate(), new Sail(), new Trireme() }
+					.FirstOrDefault(h => city.AvailableProduction.Any(a => a.GetType() == h.GetType())) ?? new Trireme());
 			}
+
+			// A refit yard, where an outdated ship of ours lies in port and we have none: the
+			// Shipyard is where ships upgrade (BaseUnit.CanUpgrade), and ConsiderUpgrades refits
+			// whatever is docked there. No AI civ had built one by asking.
+			byte yardId = Game.PlayerNumber(Player);
+			if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>())
+			    && city.Tile?.Units.Any(u => u.Owner == yardId && u.Class == UnitClass.Water && (u as BaseUnit)?.RefitTarget is not null) == true)
+				Consider(new Shipyard());
 
 			// Pollution control. A city past the tolerated smog level (City.cs:1193 gives
 			// the first 20 units free) pays unhappiness for it and rolls for a new polluted

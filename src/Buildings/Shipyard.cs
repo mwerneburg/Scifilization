@@ -22,6 +22,9 @@ namespace CivOne.Buildings
 			"Ships put to sea from a Shipyard",
 			"city as VETERANS, fighting at",
 			"greater strength.",
+			"",
+			"An empty ship in port here can",
+			"be REFITTED to a newer class.",
 		};
 
 		private static readonly string[] _page2 =

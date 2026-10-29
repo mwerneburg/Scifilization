@@ -14,6 +14,8 @@ namespace CivOne.Units
 {
 	internal class Sail : BaseUnitSea, IBoardable
 	{
+		public override UnitType? UpgradesTo => UnitType.Frigate;   // in a Shipyard city
+
 		public int Cargo
 		{
 			get

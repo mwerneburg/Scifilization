@@ -1345,7 +1345,8 @@ namespace CivOne.Units
 
 		// Returns true when all conditions for upgrading are met, populating the resolved
 		// target type, its name and the gold cost. Conditions: unit is in a city with a
-		// Barracks, a fieldable target exists in its upgrade chain, and the player has the gold.
+		// Barracks (a Shipyard, for a ship), a fieldable target exists in its upgrade chain, and
+		// the player has the gold.
 		protected internal bool CanUpgrade(out UnitType targetType, out string targetName, out int cost)
 		{
 			targetType = default;
@@ -1354,28 +1355,37 @@ namespace CivOne.Units
 			if (!UpgradesTo.HasValue) return false;
 			City city = Map[X, Y].City;
 			if (city is null || city.Owner != Owner) return false;
-			if (!city.HasBuilding<Barracks>()) return false;
+			if (!(Class == UnitClass.Water ? city.HasBuilding<Shipyard>() : city.HasBuilding<Barracks>())) return false;
 
-			// Walk the upgrade chain to the first unit the player can actually field, skipping
-			// obsolete or otherwise unavailable intermediates. Without this an obsolete middle
-			// tier (e.g. Knights once Automobile is researched) seals off the whole chain and the
-			// unit below it (Chariot) can never upgrade — here it skips straight to Armor.
-			// ProductionAvailable covers tech, obsolescence and wonder gates in one check.
-			UnitType? next = UpgradesTo;
-			for (int guard = 0; next.HasValue && guard < 16; guard++)   // guard: chains are short and acyclic
+			if (RefitTarget is not IUnit cand) return false;
+			targetType = cand.Type;
+			targetName = cand.Name;
+			cost = (int)cand.Price * 10;
+			return Player.Gold >= cost;
+		}
+
+		// The first class in the upgrade chain the owner can actually field, wherever the unit
+		// stands; null when it is current. The AI sends outdated ships to a Shipyard on this.
+		//
+		// Walk the upgrade chain to the first unit the player can actually field, skipping
+		// obsolete or otherwise unavailable intermediates. Without this an obsolete middle
+		// tier (e.g. Knights once Automobile is researched) seals off the whole chain and the
+		// unit below it (Chariot) can never upgrade — here it skips straight to Armor.
+		// ProductionAvailable covers tech, obsolescence and wonder gates in one check.
+		internal IUnit? RefitTarget
+		{
+			get
 			{
-				IUnit? cand = Game.PeekUnit(next.Value);
-				if (cand is null) break;
-				if (Player.ProductionAvailable(cand))
+				UnitType? next = UpgradesTo;
+				for (int guard = 0; next.HasValue && guard < 16; guard++)   // guard: chains are short and acyclic
 				{
-					targetType = next.Value;
-					targetName = cand.Name;
-					cost = (int)cand.Price * 10;
-					return Player.Gold >= cost;
+					IUnit? cand = Game.PeekUnit(next.Value);
+					if (cand is null) break;
+					if (Player.ProductionAvailable(cand)) return cand;
+					next = (cand as BaseUnit)?.UpgradesTo;
 				}
-				next = (cand as BaseUnit)?.UpgradesTo;
+				return null;
 			}
-			return false;
 		}
 
 		protected MenuItem<int>? MenuUpgrade()

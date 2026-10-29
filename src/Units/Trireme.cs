@@ -18,6 +18,8 @@ namespace CivOne.Units
 {
 	internal class Trireme : BaseUnitSea, IBoardable
 	{
+		public override UnitType? UpgradesTo => UnitType.Sail;   // in a Shipyard city
+
 		protected override void MovementDone(ITile previousTile)
 		{
 			base.MovementDone(previousTile);

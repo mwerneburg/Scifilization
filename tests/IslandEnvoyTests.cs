@@ -161,6 +161,25 @@ namespace CivOne.Tests
 			Assert.Equal((45, 25), (ship.Goto.X, ship.Goto.Y));
 		}
 
+		// The nearest foreign port is one the ship cannot sail to: a city on a lake inside our
+		// own island. It takes the next one rather than giving up its course every turn (a
+		// Trireme in Nagasaki and a Zulu floating city out on open sea, game a82cf446).
+		[Fact]
+		public void AShipSkipsAPortItCannotReach()
+		{
+			(Player mine, IUnit ship, _) = AnEnvoyAboardAt(UnitType.Diplomat, 33);
+			Game g = Game.Instance;
+			Map.Instance.ChangeTileType(24, 25, Terrain.Ocean);
+			Map.Instance.RecalculateContinentsIfDirty();
+			Player theirs = g.GetCity(45, 25)!.Player;
+			g.AddCity(theirs, 2, 24, 24);
+			Sim.ClearTasks();
+
+			AI.Instance(mine).Move(ship);
+
+			Assert.Equal((45, 25), (ship.Goto.X, ship.Goto.Y));
+		}
+
 		[Theory]
 		[InlineData(UnitType.Diplomat)]
 		[InlineData(UnitType.Caravan)]

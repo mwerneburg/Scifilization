@@ -3,8 +3,8 @@
 // Manual upgrade had no keyboard shortcut, so every refit meant opening the orders menu.
 // It is now 'u', shared with Unload.
 //
-// Sharing is safe because the two can never appear on the same unit — a hull carries cargo
-// and cannot upgrade, an upgradeable unit carries nothing — but GameMap's 'U' case has to
+// Sharing is safe because the two never appear on the same unit at once — a ship offers
+// Upgrade only in port with nothing aboard (ShipUpgradeTests) — but GameMap's 'U' case has to
 // dispatch carefully. It used to read `(ActiveUnit as BaseUnitSea)!.Unload()` guarded only
 // by `is IBoardable`, which held while every carrier was a ship. The Dirigible is
 // IBoardable and is NOT a BaseUnitSea, so that cast yielded null and the call would throw;

@@ -136,6 +136,15 @@ namespace CivOne.Units
 				{
 					yield return MenuUnload();
 				}
+				// Refit in a Shipyard port, with nothing aboard: in port only what is asleep sails
+				// with a hull, so that is the cargo. Empty, 'u' cannot mean Unload (GameMap's 'U').
+				var upgrade = Map[X, Y].City is not null && !Map[X, Y].Units.Any(u => u.Class == UnitClass.Land && u.Sentry)
+					? MenuUpgrade() : null;
+				if (upgrade is not null)
+				{
+					yield return null!; // separator
+					yield return upgrade;
+				}
 				yield return null!; // separator
 				yield return MenuDisbandUnit();
 			}

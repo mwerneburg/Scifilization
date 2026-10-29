@@ -14,6 +14,8 @@ namespace CivOne.Units
 {
 	internal class Cruiser : BaseUnitSea
 	{
+		public override UnitType? UpgradesTo => UnitType.Battleship;   // in a Shipyard city
+
 		private static readonly string[] _page1 =
 		{
 			"The CRUISER is a fast modern",
