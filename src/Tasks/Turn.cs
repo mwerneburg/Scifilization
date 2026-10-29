@@ -20,6 +20,11 @@ namespace CivOne.Tasks
 		private ITurn? _turnObject = null;
 		private IUnit? _unit = null;
 		private bool _endTurn = false;
+		// Whose turn this ends. Two ends can be queued for one turn (ActiveUnit's getter queues
+		// one under Autopilot, then Game.Update its own), and the second then ended the NEXT
+		// civ's turn before any of its units moved: Japan, in the slot after the human, sat
+		// idle for 500 turns (game 6d2f0cca).
+		private Player? _endsTurnOf = null;
 
 		private Player? _gameOver = null;
 
@@ -62,6 +67,7 @@ namespace CivOne.Tasks
 			}
 			else if (_endTurn)
 			{
+				if (Game.CurrentPlayer != _endsTurnOf) { EndTask(); return; }
 				if (Game.CurrentPlayer.IsHuman)
 				{
 					_step = TURN_TIME;
@@ -99,7 +105,8 @@ namespace CivOne.Tasks
 		{
 			return new Turn()
 			{
-				_endTurn = true
+				_endTurn = true,
+				_endsTurnOf = CivOne.Game.Instance.CurrentPlayer
 			};
 		}
 
