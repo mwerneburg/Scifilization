@@ -96,7 +96,7 @@ namespace CivOne.Tests
 		// ── the AI ───────────────────────────────────────────────────────────
 
 		// An AI islet at (40,25), charted, sea all round to x 30-50; Navigation known.
-		private static (Game g, Player p, City port) AnAiPort()
+		private static (Game g, Player p, City port) AnAiPort(bool navigation = true)
 		{
 			Sim.NewGame(width: 80, height: 50);
 			Game g = Game.Instance;
@@ -111,7 +111,7 @@ namespace CivOne.Tests
 			p.Explore(40, 25, range: 4);
 			p.Government = new CivOne.Governments.Monarchy();
 			p.AddAdvance(new MapMaking(), false);
-			p.AddAdvance(new Navigation(), false);
+			if (navigation) p.AddAdvance(new Navigation(), false);
 			City port = g.AddCity(p, 0, 42, 25)!;
 			port.Size = 6;
 			p.Gold = 5000;
@@ -143,6 +143,40 @@ namespace CivOne.Tests
 		{
 			(Game g, Player p, City port) = AnAiPort();
 			g.AddCity(p, 1, 38, 25)!.AddBuilding(new Shipyard());
+			g.CreateUnit(UnitType.Trireme, 42, 25, g.PlayerNumber(p), false);
+
+			Assert.DoesNotContain(PlanFor(p, port), x => x is Shipyard);
+		}
+
+		// ...and where it is out at sea, which is where most of them were: waiting for one to
+		// dock meant most civs never built a yard (game b0247e2c).
+		[Fact]
+		public void AnOutdatedHullAtSeaStillGetsAYard()
+		{
+			(Game g, Player p, City port) = AnAiPort();
+			g.CreateUnit(UnitType.Trireme, 46, 25, g.PlayerNumber(p), false);
+
+			Assert.Contains(PlanFor(p, port), x => x is Shipyard);
+		}
+
+		// One at a time: another port already building it is enough.
+		[Fact]
+		public void OneYardIsBuiltAtATime()
+		{
+			(Game g, Player p, City port) = AnAiPort();
+			g.AddCity(p, 1, 38, 25)!.SetProduction(new Shipyard());
+			g.CreateUnit(UnitType.Trireme, 46, 25, g.PlayerNumber(p), false);
+
+			Assert.DoesNotContain(PlanFor(p, port), x => x is Shipyard);
+		}
+
+		// The Ottomans of game b0247e2c: Magnetism makes a Frigate the refit, but the yard
+		// needs Navigation, so it is not asked for.
+		[Fact]
+		public void NoYardIsAskedForWithoutNavigation()
+		{
+			(Game g, Player p, City port) = AnAiPort(navigation: false);
+			p.AddAdvance(new Magnetism(), false);
 			g.CreateUnit(UnitType.Trireme, 42, 25, g.PlayerNumber(p), false);
 
 			Assert.DoesNotContain(PlanFor(p, port), x => x is Shipyard);

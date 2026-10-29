@@ -5694,12 +5694,18 @@ namespace CivOne
 					.FirstOrDefault(h => city.AvailableProduction.Any(a => a.GetType() == h.GetType())) ?? new Trireme());
 			}
 
-			// A refit yard, where an outdated ship of ours lies in port and we have none: the
-			// Shipyard is where ships upgrade (BaseUnit.CanUpgrade), and ConsiderUpgrades refits
-			// whatever is docked there. No AI civ had built one by asking.
+			// A refit yard, when we have none and an outdated cargo hull of ours is afloat
+			// anywhere (or any outdated ship lies in this port): the Shipyard is where ships
+			// upgrade (BaseUnit.CanUpgrade), ConsiderUpgrades refits whatever is docked there,
+			// and AssignMission sends old transports to it. Waiting for a ship to dock at a
+			// port that could build one meant most civs never did (game b0247e2c). One yard
+			// at a time, and only a port that can build it: salt water, and Navigation.
 			byte yardId = Game.PlayerNumber(Player);
-			if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>())
-			    && city.Tile?.Units.Any(u => u.Owner == yardId && u.Class == UnitClass.Water && (u as BaseUnit)?.RefitTarget is not null) == true)
+			if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>() || (c != city && c.CurrentProduction is Shipyard))
+			    && Game.GetUnits().Any(u => u.Owner == yardId && u.Class == UnitClass.Water
+			                                && (u is IBoardable || (u.X == city.X && u.Y == city.Y))
+			                                && (u as BaseUnit)?.RefitTarget is not null)
+			    && city.AvailableProduction.Any(a => a is Shipyard))
 				Consider(new Shipyard());
 
 			// Pollution control. A city past the tolerated smog level (City.cs:1193 gives
