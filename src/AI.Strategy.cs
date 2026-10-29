@@ -3209,6 +3209,7 @@ namespace CivOne
 			_quarryTurn = -1;   // others have moved since our last turn
 			WakeHunters();
 			WakeSeaSleepers();
+			WakeStrandedEnvoys();
 		}
 
 		// A land unit asleep on open water with no hull under it is standing on a TUBE, and
@@ -3242,6 +3243,21 @@ namespace CivOne
 				// flags. See WakeHunters.
 				unit.Busy = false;
 			}
+		}
+
+		// An envoy asleep in port is waiting for a ship (CatchShip). If no ship of ours is in
+		// that port it never sails: the hull left without it, or it was an airship, which never
+		// steers for a foreign harbour. AI units never wake from Sentry on their own, so these
+		// slept for good (game a82cf446, turn 550: Haudenosaunee and Ethiopian diplomats).
+		internal void WakeStrandedEnvoys()
+		{
+			byte own = Game.PlayerNumber(Player);
+			foreach (IUnit unit in Game.Instance.GetUnits()
+				.Where(u => u.Owner == own && (u is Diplomat || u is Caravan) && u.Sentry
+				         && u.Tile?.City is not null
+				         && !u.Tile.Units.Any(x => x.Owner == own && x.Class == UnitClass.Water && x is IBoardable))
+				.ToArray())
+				unit.Busy = false;   // see WakeSeaSleepers
 		}
 
 		internal void WakeHunters()
@@ -3719,9 +3735,13 @@ namespace CivOne
 		{
 			byte own = Game.PlayerNumber(Player);
 			var berths = Game.GetUnits()
-				.Where(u => u.Owner == own && u is IBoardable
+				// Ships only: an airship never steers for a foreign shore, so whatever boards one
+				// sleeps in port for good. And in port only what is asleep sails with the hull
+				// (BaseUnitSea.MoveUnits); counting the garrison made every docked ship in a
+				// defended city look full (the Japanese, game a82cf446).
+				.Where(u => u.Owner == own && u is IBoardable && u.Class == UnitClass.Water
 				         && u.Tile is not null
-				         && u.Tile.Units.Count(p => p.Class == UnitClass.Land) < ((IBoardable)u).Cargo)
+				         && u.Tile.Units.Count(p => p.Class == UnitClass.Land && (u.Tile.City is null || p.Sentry)) < ((IBoardable)u).Cargo)
 				.Where(u => Player.Cities.Any(c => Common.DistanceToTile(c.X, c.Y, u.X, u.Y) <= 1))
 				.ToArray();
 			if (berths.Length == 0) return null;
@@ -4896,6 +4916,10 @@ namespace CivOne
 				// Wonders are exempt — they carry no maintenance and are the one build
 				// worth going hungry for.
 				if (p is IBuilding b && p is not IWonder && !EarnsItsKeep(b, city)) return;
+				// One envoy of each kind per city at a time: both are spent on arrival, so a
+				// second only stacks up behind one that is stuck. The Federation's 64 diplomats
+				// came from 39 cities, up to 5 apiece (game a82cf446, turn 550).
+				if ((p is Diplomat || p is Caravan) && city.Units.Any(u => u.GetType() == p.GetType())) return;
 				if (plan.All(x => x.GetType() != p.GetType())) plan.Add(p);
 			}
 

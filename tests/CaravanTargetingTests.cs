@@ -147,5 +147,41 @@ namespace CivOne.Tests
 
 			Assert.DoesNotContain(plan, x => x is Caravan);
 		}
+
+		// A Commerce civ's plan for its home city, under the ceiling (2 for one city).
+		private static List<IProduction> CommercePlan(Game g, Player us, City home)
+		{
+			us.AddAdvance(new CivOne.Advances.Trade(), false);
+			us.AddAdvance(new Currency(), false);
+			var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+			var pathType = typeof(AI).GetNestedType("VictoryPath", System.Reflection.BindingFlags.NonPublic);
+			AI ai = AI.Instance(us);
+			typeof(AI).GetField("_path", flags)!.SetValue(ai, System.Enum.Parse(pathType!, "Commerce"));
+			typeof(AI).GetField("_pathChosenTurn", flags)!.SetValue(ai, (int)g.GameTurn);
+			typeof(AI).GetField("_pathSignalSeen", flags)!.SetValue(ai, g.SETISignalReceived);
+			var stanceType = typeof(AI).GetNestedType("StrategyStance", System.Reflection.BindingFlags.NonPublic);
+			return (List<IProduction>)typeof(AI).GetMethod("PlanProductionInto", flags)!.Invoke(ai,
+				new object[] { new List<IProduction>(), home, System.Enum.Parse(stanceType!, "Develop") })!;
+		}
+
+		// One per city at a time: a caravan is spent on arrival, so a second only stacks up
+		// behind one that is stuck. The Federation's 64 diplomats came from 39 cities.
+		[Fact]
+		public void ACityWithACaravanAfootDoesNotBuildAnother()
+		{
+			(Game g, Player us, _, City home, _, _) = AWorld();
+			ACaravanAt(g, us, home, 41, 25);
+
+			Assert.DoesNotContain(CommercePlan(g, us, home), x => x is Caravan);
+		}
+
+		// Control: with none afoot, the same city does.
+		[Fact]
+		public void ACityWithNoCaravanAfootBuildsOne()
+		{
+			(Game g, Player us, _, City home, _, _) = AWorld();
+
+			Assert.Contains(CommercePlan(g, us, home), x => x is Caravan);
+		}
 	}
 }

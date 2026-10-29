@@ -67,6 +67,77 @@ namespace CivOne.Tests
 				$"{kind} at ({dip.X},{dip.Y}) with goto {dip.Goto}");
 		}
 
+		// A diplomat two tiles inland on our island, given its move on a turn it is not deferred.
+		private static IUnit AnEnvoyOnItsTurn(Game g, Player mine)
+		{
+			IUnit dip = g.CreateUnit(UnitType.Diplomat, 27, 25, g.PlayerNumber(mine), false)!;
+			dip.MovesLeft = dip.Move;
+			for (ushort t = 0; t < 8; t++)
+			{
+				g.GameTurn = t;
+				if (!AI.Instance(mine).TestIdleRetryDeferred(dip)) break;
+			}
+			Sim.ClearTasks();
+			return dip;
+		}
+
+		// The garrison is not aboard: only what is asleep sails with a hull from port. Counting
+		// the defenders made every docked ship in a held city look full (the Japanese, a82cf446).
+		[Fact]
+		public void AShipInAGarrisonedPortIsStillABerth()
+		{
+			(Game g, Player mine) = TwoIslands();
+			byte id = g.PlayerNumber(mine);
+			IUnit ship = g.CreateUnit(UnitType.Sail, 29, 25, id, false)!;
+			for (int i = 0; i < ((IBoardable)ship).Cargo; i++)
+				g.CreateUnit(UnitType.Musketeers, 29, 25, id, false)!.Fortify = true;
+			IUnit dip = AnEnvoyOnItsTurn(g, mine);
+
+			AI.Instance(mine).Move(dip);
+
+			Assert.Equal((29, 25), (dip.Goto.X, dip.Goto.Y));
+		}
+
+		// An airship never steers for a foreign harbour, so an envoy that boarded one slept in
+		// port for good.
+		[Fact]
+		public void AnAirshipIsNoBerth()
+		{
+			(Game g, Player mine) = TwoIslands();
+			g.CreateUnit(UnitType.Dirigible, 29, 25, g.PlayerNumber(mine), false);
+			IUnit dip = AnEnvoyOnItsTurn(g, mine);
+
+			AI.Instance(mine).Move(dip);
+
+			Assert.NotEqual((29, 25), (dip.Goto.X, dip.Goto.Y));
+		}
+
+		[Fact]
+		public void AnEnvoyAsleepInAPortWithNoShipWakes()
+		{
+			(Game g, Player mine) = TwoIslands();
+			IUnit dip = g.CreateUnit(UnitType.Diplomat, 29, 25, g.PlayerNumber(mine), false)!;
+			dip.Sentry = true;
+
+			AI.Instance(mine).WakeStrandedEnvoys();
+
+			Assert.False(dip.Sentry);
+		}
+
+		// Control: one waiting beside its ship stays aboard.
+		[Fact]
+		public void AnEnvoyAsleepBesideItsShipStaysAboard()
+		{
+			(Game g, Player mine) = TwoIslands();
+			g.CreateUnit(UnitType.Sail, 29, 25, g.PlayerNumber(mine), false);
+			IUnit dip = g.CreateUnit(UnitType.Diplomat, 29, 25, g.PlayerNumber(mine), false)!;
+			dip.Sentry = true;
+
+			AI.Instance(mine).WakeStrandedEnvoys();
+
+			Assert.True(dip.Sentry);
+		}
+
 		private static (Player mine, IUnit ship, IUnit dip) AnEnvoyAboardAt(UnitType kind, int x)
 		{
 			(Game g, Player mine) = TwoIslands();
