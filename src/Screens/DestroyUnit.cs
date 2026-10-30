@@ -145,7 +145,7 @@ namespace CivOne.Screens
 				if (bounty > 0) credit.AwardMilestone(bounty);
 			}
 			foreach (IUnit u in units)
-				Game.DisbandUnit(u);
+				Game.DisbandUnit(u, credit is null ? nameof(Kill) : $"killed_by:{credit.Civilization.NamePlural}");
 		}
 
 		// True when the player could actually watch this happen: the tile is explored AND

@@ -3766,6 +3766,7 @@ namespace CivOne
 			_replayData.Add(new ReplayData.CityDestroyed(_gameTurn, cityIdx, city.NameId, city.X, city.Y, city.Owner));
 			foreach (IUnit unit in _units.Where(u => u.Home == city).ToArray())
 			{
+				if (unit is Units.Settlers) DecisionLogger.LogSettlerLost(unit, nameof(DestroyCity));
 				unit.SetHome(null);
 				_units.Remove(unit);
 			}
@@ -7155,12 +7156,13 @@ namespace CivOne
 			}
 		}
 
-		public void DisbandUnit(IUnit unit)
+		public void DisbandUnit(IUnit unit, [System.Runtime.CompilerServices.CallerMemberName] string cause = "")
 		{
 			IUnit? activeUnit = ActiveUnit;
 
 			if (unit is null) return;
 			if (!_units.Contains(unit)) return;
+			if (unit is Units.Settlers) DecisionLogger.LogSettlerLost(unit, cause);
 			if (unit.Tile is Ocean && unit is IBoardable)
 			{
 				int totalCargo = unit.Tile.Units.Where(u => u is IBoardable).Sum(u => (u as IBoardable)!.Cargo) - (unit as IBoardable)!.Cargo;

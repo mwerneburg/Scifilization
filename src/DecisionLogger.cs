@@ -611,6 +611,28 @@ namespace CivOne
 			}));
 		}
 
+		// Every way a Settlers leaves the world, named by the method that removed it (or
+		// "killed_by:<civ>" from combat). Ottoman workers in game 48114c9e ran at a quarter of
+		// their quota while their cities kept raising them, and nothing said where they went.
+		internal static void LogSettlerLost(IUnit unit, string cause)
+		{
+			if (!_active) return;
+			Player? owner = Game.Instance?.GetPlayer(unit.Owner);
+			Enqueue(Fmt(new[] {
+				KV("type",      "settler_lost"),
+				KV("game_id",   _gameId),
+				KV("turn",      Game.Instance?.GameTurn ?? 0),
+				KV("is_human",  owner is not null && owner.IsHuman),
+				KV("civ",       owner?.Civilization?.NamePlural ?? "?"),
+				KV("cause",     cause),
+				KV("x",         unit.X),
+				KV("y",         unit.Y),
+				KV("in_city",   unit.Tile?.City is not null),
+				KV("home",      unit.Home?.Name ?? ""),
+				KV("home_size", unit.Home?.Size ?? 0),
+			}));
+		}
+
 		// See Game.WatchIdleUnits.
 		internal static void LogRoundTrip(IUnit unit, (int X, int Y) from, IEnumerable<string> trail, string state)
 		{
