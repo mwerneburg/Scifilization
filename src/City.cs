@@ -2439,7 +2439,7 @@ namespace CivOne
 								DecisionLogger.LogDisorderCollapse(Player, collapses);
 							if (collapses)
 							{
-								Player.Revolt();
+								Player.Collapse();
 								if (Player == Human)
 									GameTask.Insert(Show.EventArt("governmentcollapses", "The government has COLLAPSED!"));
 							}

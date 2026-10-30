@@ -204,6 +204,15 @@ namespace CivOne
 			}
 		}
 
+		// Disorder brought the government down, as opposed to a revolution the player chose.
+		// The AI reads the turn (AI.BestGovernment). Not saved: a reload forgets it.
+		internal int CollapsedTurn { get; private set; } = -1000;
+		internal void Collapse()
+		{
+			CollapsedTurn = Game.GameTurn;
+			Revolt();
+		}
+
 		public void Revolt()
 		{
 			_anarchy = (short)((HasWonder<Pyramids>() && !Game.WonderObsolete<Pyramids>()) ? 0 : 4 - (Game.GameTurn % 4) - 1);

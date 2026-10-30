@@ -1428,6 +1428,10 @@ namespace CivOne
 		// Test/diagnostic accessor.
 		internal string? BestGovernmentName() => BestGovernment()?.GetType().Name;
 
+		// ponytail: a fixed window, as with FascismCooldownTurns; tie it to disorder clearing if
+		// civs come back to a republic only to fall again.
+		private const int CollapseMemoryTurns = 50;
+
 		private IGovernment BestGovernment()
 		{
 			StrategyStance stance = GetStance();
@@ -1448,10 +1452,19 @@ namespace CivOne
 			// would, which is what puts Monarchy and Communism above the republics. Applied
 			// after the demotion above so it cannot be undone by it.
 			if (WantsWarFooting) stance = StrategyStance.Militarize;
+			// A government disorder just brought down is not re-adopted at once. Anarchy ends
+			// with the same cities still rioting, so a fresh Democracy fell again a few turns
+			// later: the Malians of game 4a58d14c collapsed seven times between t452 and t504,
+			// the Haudenosaunee seven times between t372 and t400.
+			bool recentlyFell = Game.GameTurn - Player.CollapsedTurn < CollapseMemoryTurns;
 			int currentScore = GovernmentScore(Player.Government, stance);
 			return Player.AvailableGovernments
+			             .Where(g => !(recentlyFell && g.CollapsesInDisorder))
 			             .Where(g => GovernmentScore(g, stance) > currentScore)
 			             .OrderByDescending(g => GovernmentScore(g, stance))
+			             // Monarchy and Communism tie outside a war, and with the republics out
+			             // of reach a 112-city empire fell back to Monarchy's distance corruption.
+			             .ThenByDescending(g => g is Gov.Communism && Player.Cities.Length >= 12)
 			             .FirstOrDefault();
 		}
 

@@ -46,7 +46,7 @@ namespace CivOne.Tests
 		{
 			string c3 = Between(Src("src", "City.cs"), "case 3:", "break;");
 			Assert.Contains("DecisionLogger.LogDisorderCollapse(Player, collapses)", c3);
-			Assert.True(c3.IndexOf("LogDisorderCollapse") < c3.IndexOf("Player.Revolt()"),
+			Assert.True(c3.IndexOf("LogDisorderCollapse") < c3.IndexOf("Player.Collapse()"),
 				"the collapse is logged only after the revolt, or not on the held path");
 		}
 
