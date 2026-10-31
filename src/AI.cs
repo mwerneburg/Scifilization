@@ -533,7 +533,20 @@ namespace CivOne
 					// gardens exactly as before, so this changes nothing for a civ that has
 					// no hull, no charted site, or a crossing already under way.
 					ITile? port = WantsColonist() ? BoardingTile(unit) : null;
+					// Only a hull that can reach a charted site. A Trireme in Erdenet could reach
+					// none of the 48 the Mongols had charted, and called eleven settlers to it.
+					if (port is not null && !port.Units.Any(h => h.Owner == unit.Owner && h is IBoardable
+					        && h.Class == UnitClass.Water && RegisteredSite(h, claim: false) is not null))
+						port = null;
 					if (port is not null) DonatePortEscort(unit, port);
+					// Already beside the hull: board it. In port a hull sails with what is asleep
+					// (BaseUnitSea.MoveUnits), as CatchShip does for envoys; awake, the colonist was
+					// sent to its own tile every turn and stood there.
+					if (port is not null && port.X == unit.X && port.Y == unit.Y)
+					{
+						unit.Sentry = true;
+						return;
+					}
 
 					// Camp-seeking, between founding and gardening. A civ short of iron pays
 					// +50% shields on everything that needs it (City.ProductionCost), which

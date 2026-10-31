@@ -13,8 +13,9 @@ using CivOne.Enums;
 namespace CivOne.Units
 {
 	// Fusion-powered spearhead, unlocked once the builder owns the Fusion Core wonder
-	// (see Player.UnitAvailable). Hovers over rough terrain: it never pays the Hills/
-	// Mountains last-move penalty, so it keeps its full speed everywhere.
+	// (see Player.UnitAvailable). Pays full terrain cost, but rough ground never refuses
+	// it: no last-move roll onto Hills, Mountains, Forest and the like. Not a free move
+	// everywhere on purpose; that made it overpowered (the user, Oct 2026).
 	internal class HoverTank : BaseUnitLand
 	{
 		public override bool IgnoresTerrainCost => true;
@@ -26,8 +27,8 @@ namespace CivOne.Units
 			"hard and moving fast.",
 			"",
 			"Among the most powerful land",
-			"units, it ignores the terrain",
-			"that slows lesser armour.",
+			"units. Rough ground costs it",
+			"moves but never turns it back.",
 		};
 
 		private static readonly string[] _page2 =
@@ -39,8 +40,8 @@ namespace CivOne.Units
 			"Lose the Core and you build no more.",
 			"",
 			"Spearhead your offensives with",
-			"Hover Tanks — they cross rough",
-			"country as easily as open plain.",
+			"Hover Tanks — no hill, forest",
+			"or mountain can stop them short.",
 		};
 
 		public override string[] GetPageText(byte pageNumber) => pageNumber == 1 ? _page1 : _page2;

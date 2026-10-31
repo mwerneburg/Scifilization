@@ -2590,8 +2590,9 @@ namespace CivOne
 				Log($"{Player.TribeName}: charts from {other.Player.TribeName} add {gained} colony sites");
 		}
 
-		// Best unclaimed site this hull could sail to, from memory alone.
-		private ITile? RegisteredSite(IUnit boat)
+		// Best unclaimed site this hull could sail to, from memory alone. `claim` false only
+		// asks, for the colonist call-up in AI.cs.
+		private ITile? RegisteredSite(IUnit boat, bool claim = true)
 		{
 			byte from = boat.Tile?.ContinentId ?? MISC_CONTINENT;
 			foreach (ColonySite site in _colonyRegister.Values
@@ -2602,7 +2603,7 @@ namespace CivOne
 				// Somewhere we could not simply have walked.
 				if (Map.NamedContinent(from) && site.Continent == from) continue;
 				if (Common.GotoStep(boat, site.X, site.Y) is null) continue;   // no sailable route
-				site.Claimant = boat;
+				if (claim) site.Claimant = boat;
 				return Map[site.X, site.Y];
 			}
 			return null;
@@ -3004,7 +3005,13 @@ namespace CivOne
 
 		internal ITile? BestImproveSite(IUnit settlers) => BestImproveSiteInner(settlers);
 
-		private ITile? BestImproveSiteInner(IUnit settlers)
+		// A settler whose own neighbourhood is all claimed looks further before it gives up: a
+		// settler with nowhere to go is sent home to sit. On the t570 save of game c8d7d2e8 the
+		// Haudenosaunee had nine such settlers and 189 tiles of routable work.
+		// ponytail: one wider box, not an empire-wide search; widen again if idle settlers return.
+		private const int ImproveReach = 6, FarImproveReach = 12;
+
+		private ITile? BestImproveSiteInner(IUnit settlers, int reach = ImproveReach)
 		{
 			int mapWidth = Map.WIDTH, mapHeight = Map.HEIGHT;
 			byte ownId = Game.PlayerNumber(Player);
@@ -3048,7 +3055,7 @@ namespace CivOne
 			// <= 2 + 6. A city more than 8 away therefore cannot be within 2 of anything
 			// scanned. Same answers, one pass over the city list instead of 507.
 			City[] nearCities = Player.Cities
-				.Where(c => Common.DistanceToTile(c.X, c.Y, settlers.X, settlers.Y) <= 8)
+				.Where(c => Common.DistanceToTile(c.X, c.Y, settlers.X, settlers.Y) <= reach + 2)
 				.ToArray();
 
 			System.Collections.Generic.HashSet<int>? walkable = null;   // built on the first candidate
@@ -3077,12 +3084,13 @@ namespace CivOne
 			// This does not reorder anything: ChooseSettlerImprovement still puts food first,
 			// and this pass runs only when there is no farm work left within reach.
 			if (best is null && Player.HasAdvance<RailRoad>()) Scan(Pass.Rail);
+			if (best is null && reach < FarImproveReach) return BestImproveSiteInner(settlers, FarImproveReach);
 			return best;
 
 			void Scan(Pass pass)
 			{
-			for (int dy = -6; dy <= 6; dy++)
-			for (int dx = -6; dx <= 6; dx++)
+			for (int dy = -reach; dy <= reach; dy++)
+			for (int dx = -reach; dx <= reach; dx++)
 			{
 				int tx = (settlers.X + dx + mapWidth) % mapWidth;
 				int ty = settlers.Y + dy;
@@ -3090,7 +3098,11 @@ namespace CivOne
 				ITile tile = Map[tx, ty];
 				if (tile is null || tile.IsOcean || tile.City is not null) continue;
 				if (!LandReachable(settlers, tile)) continue;
-				if (!(walkable ??= LandWithin(settlers, 10)).Contains(ty * mapWidth + tx)) continue;
+				if (!(walkable ??= LandWithin(settlers, reach + 4)).Contains(ty * mapWidth + tx)) continue;
+				// A Settlers cannot enter a tile holding a foreign unit (Settlers.
+				// FindNearestCityPollution says why). Three Lakota settlers re-picked one with two
+				// Aztec cannons on it every turn of the t570 save and never moved.
+				if (tile.Units.Any(u => u.Owner != ownId)) continue;
 				// Eligibility is WorkAvailable's, not restated here. What IS this method's
 				// own judgement is the despot rule: a settler routed to grassland it cannot
 				// usefully irrigate is a settler sent to stand still.

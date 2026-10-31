@@ -104,7 +104,9 @@ namespace CivOne.Tests
 		}
 
 		// And a rival's settler claims nothing of ours: the set is scoped to our own units, or
-		// an enemy worker parked nearby would blank out our countryside.
+		// an enemy worker parked nearby would blank out our countryside. Its claim is a Goto from
+		// elsewhere: a foreign unit standing ON the tile does block it, because a Settlers
+		// cannot enter it (IdleSettlerReachTests).
 		[Fact]
 		public void AForeignSettlerClaimsNothing()
 		{
@@ -115,9 +117,8 @@ namespace CivOne.Tests
 			ITile? before = AI.Instance(ai).BestImproveSite(idle);
 			Assert.NotNull(before);
 
-			Settlers foreigner = (Settlers)g.CreateUnit(
-				UnitType.Settlers, (byte)before!.X, (byte)before.Y, g.PlayerNumber(other))!;
-			foreigner.BuildIrrigation();
+			Settlers foreigner = (Settlers)g.CreateUnit(UnitType.Settlers, 55, 32, g.PlayerNumber(other))!;
+			foreigner.Goto = new Point(before!.X, before.Y);
 
 			ITile? after = AI.Instance(ai).BestImproveSite(idle);
 

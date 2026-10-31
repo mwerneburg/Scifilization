@@ -44,7 +44,11 @@ namespace CivOne.Tests
 			for (int i = 0; i < cities; i++)
 				Game.Instance.AddCity(p, (byte)i, 44 - i * 2, 25 - (i % 2));
 
-			IUnit hull = Game.Instance.CreateUnit(UnitType.Trireme, 45, 25, id)!;
+			// A Sail, not a Trireme: an AI Trireme hugs the coast (Common.GotoStepInner) and cannot
+			// cross this strait. The player is the human, whose own Trireme is exempt, but not under
+			// the Autopilot an earlier test may leave on, and the call-up now asks whether the hull
+			// can reach a site.
+			IUnit hull = Game.Instance.CreateUnit(UnitType.Sail, 45, 25, id)!;
 			IUnit settler = Game.Instance.CreateUnit(UnitType.Settlers, 44, 25, id)!;
 			Sim.ClearTasks();
 			return (p, settler, hull, Map.Instance[45, 25]);
@@ -121,6 +125,45 @@ namespace CivOne.Tests
 
 			Assert.False(ai.WantsColonist(),
 				"two settlers already marching at the boat is a full quota");
+		}
+
+		// Already in the hull's own city, the colonist boards: in port a hull sails with what is
+		// asleep. It used to be routed to its own tile, find no step and stand there awake; eleven
+		// Mongol settlers in Erdenet on the t570 save of game c8d7d2e8.
+		[Fact]
+		public void AColonistInTheHullsCity_BoardsIt()
+		{
+			var (p, settler, _, _) = Port();
+			// Docked in the coastal city, where the settler stands.
+			IUnit hull = Game.Instance.CreateUnit(UnitType.Sail, 44, 25, Game.Instance.PlayerNumber(p))!;
+			AI ai = AI.Instance(p);
+			ai.BestOverseasSite(hull);
+			Assert.True(ai.WantsColonist(), "scenario is broken: no colonist wanted");
+
+			ai.Move(settler);
+
+			Assert.True(settler.Sentry, $"not aboard; Goto ({settler.Goto.X},{settler.Goto.Y})");
+		}
+
+		// A hull that can reach none of the charted sites calls nobody. Erdenet's Trireme could
+		// reach none of the Mongols' 48, so a colonist would only sleep aboard for good.
+		[Fact]
+		public void AHullWithNowhereToSail_CallsNoColonist()
+		{
+			var (p, settler, _, _) = Port();
+			IUnit hull = Game.Instance.CreateUnit(UnitType.Sail, 44, 25, Game.Instance.PlayerNumber(p))!;
+			AI ai = AI.Instance(p);
+			ai.BestOverseasSite(hull);
+			// Silt up the strait: the site stays charted, the hull is left in a one-tile lake.
+			for (int y = 18; y <= 32; y++)
+			for (int x = 45; x <= 51; x++)
+				if (x != 45 || y != 25) Map.Instance.ChangeTileType(x, y, Terrain.Grassland1);
+			Map.Instance.RecalculateContinentsIfDirty();
+			Assert.True(ai.WantsColonist(), "scenario is broken: no colonist wanted");
+
+			ai.Move(settler);
+
+			Assert.False(settler.Sentry, "boarded a hull that cannot sail anywhere");
 		}
 
 		// Only one escort per crossing, however many times the settler re-decides.
