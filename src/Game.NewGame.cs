@@ -173,6 +173,7 @@ namespace CivOne
 							found = true;
 						}
 					}
+					(x, y) = BetterStartNearby(x, y);
 					if (Map[x, y].Hut) Map[x, y].Hut = false;
 				}
 				else if (useFixed)
@@ -209,6 +210,7 @@ namespace CivOne
 							found = true;
 						}
 					}
+					(x, y) = BetterStartNearby(x, y);
 					if (Map[x, y].Hut) Map[x, y].Hut = false;
 				}
 				else
@@ -272,6 +274,53 @@ namespace CivOne
 					_players[player].StartX = (short)best.X;
 				}
 			}
+		}
+
+		// An Earth start is a heartland's real coordinates, founded wherever they land, and
+		// several land far below ground a few tiles away. On Epic Earth the Ethiopian start
+		// scored 35 against 97 six tiles off, the Aztecs 44 against 73, the Persians 45, the
+		// Ottomans 54, the Greeks 57: the same five civs that came last in game after game,
+		// the Persians with 1 to 9 advances by the endgame (Oct 2026). So the settler takes
+		// the best site within reach, when it is clearly better and clear of the starts
+		// already placed. Every civ, the human included (the user, Oct 2026).
+		private (int X, int Y) BetterStartNearby(int x, int y)
+		{
+			int reach = 3 * Math.Max(1, Map.WIDTH / 160);   // 3 on Standard, 6 on Epic
+			int separation = reach + 2;
+			int here = StartSiteScore(x, y);
+			(int X, int Y) best = (x, y);
+			int bestScore = here * 115 / 100;   // a clear margin, or stay home
+			for (int dy = -reach; dy <= reach; dy++)
+			for (int dx = -reach; dx <= reach; dx++)
+			{
+				int nx = (x + dx + Map.WIDTH) % Map.WIDTH, ny = y + dy;
+				if (ny < 2 || ny >= Map.HEIGHT - 2) continue;
+				ITile t = Map[nx, ny];
+				// A centre that feeds itself, or a hill PrepareStartingTile will smooth: a capital
+				// moved onto swamp or forest would work a 1-food centre for the whole game.
+				if (!(t is Grassland || t is Plains || t is River || t is Hills)) continue;
+				if (_units.Any(u => u is Settlers && Common.DistanceToTile(nx, ny, u.X, u.Y) < separation)) continue;
+				int score = StartSiteScore(nx, ny);
+				if (score > bestScore) { bestScore = score; best = (nx, ny); }
+			}
+			return best;
+		}
+
+		// What a capital could work: the fat cross, food counted twice because growth is what a
+		// poor start lacks.
+		internal static int StartSiteScore(int x, int y)
+		{
+			int score = 0;
+			for (int dy = -2; dy <= 2; dy++)
+			for (int dx = -2; dx <= 2; dx++)
+			{
+				if (Math.Abs(dx) == 2 && Math.Abs(dy) == 2) continue;
+				int ty = y + dy;
+				if (ty < 0 || ty >= Map.HEIGHT) continue;
+				ITile t = Map.Instance[(x + dx + Map.WIDTH) % Map.WIDTH, ty];
+				if (t is not null) score += t.Food * 2 + t.Shield + t.Trade;
+			}
+			return score;
 		}
 
 		// A civ that starts on Hills founds a capital with 1 food / 1 shield and
