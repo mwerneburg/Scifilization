@@ -22,6 +22,7 @@
 
 using System.Linq;
 using CivOne.Enums;
+using CivOne.Tiles;
 using CivOne.Units;
 
 namespace CivOne.Tests
@@ -130,6 +131,27 @@ namespace CivOne.Tests
 			Sim.ClearTasks();
 
 			Assert.True(StepsEast(civilian));
+		}
+
+		// The planner has to agree with the rule on an EMPTY destination. It exempted every goal
+		// from ZOC, which is right for an attack (MoveTo confronts before it asks about ZOC) and
+		// wrong here: it offered the one step the mover refuses, and AI settlers beside an idle
+		// foreign unit re-picked it for the last 100 turns of game c332af23.
+		[Fact]
+		public void ThePlannersStepIsOneTheMoverTakes()
+		{
+			(Game g, Player p, Player foe, IUnit _) = AFrontier();
+			g.CreateUnit(UnitType.Militia, 41, 26, g.PlayerNumber(foe));   // borders both tiles
+			IUnit settler = g.CreateUnit(UnitType.Settlers, 40, 25, g.PlayerNumber(p))!;
+			settler.MovesLeft = settler.Move;
+			Sim.ClearTasks();
+
+			ITile? step = Common.GotoStep(settler, 41, 25);
+
+			Assert.NotNull(step);
+			bool moved = settler.MoveTo(step!.X - 40, step.Y - 25);
+			Sim.Settle();
+			Assert.True(moved, $"planner offered ({step.X},{step.Y}); the mover refused it");
 		}
 
 		// Map wrapping: the adjacency test has to agree with GetBorderTiles across the seam,

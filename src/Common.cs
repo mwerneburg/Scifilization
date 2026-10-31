@@ -858,7 +858,14 @@ namespace CivOne
 						&& InZoc(cx, cy) && InZoc(nx, ny);
 
 					// Always allow the goal tile (enemy cities handled by MoveTo/Confront)
-					if ((!passable || blocked || zocBlocked) && !(nx == gx && ny == gy)) continue;
+					if ((!passable || blocked) && !(nx == gx && ny == gy)) continue;
+					// ...but ZOC only when there is something on it to confront. MoveTo meets a
+					// foreign unit before it asks about ZOC, so the exemption is right for an
+					// attack and wrong for an empty goal: the planner offered a step the mover
+					// always refused. Roman settlers stood beside an idle Frankish Catapult, and
+					// Ottoman and Roman settlers beside each other, re-picking an adjacent job
+					// for the last 100 turns of game c332af23.
+					if (zocBlocked && !(nx == gx && ny == gy && (OwnerMask(nx, ny) & ~selfBit) != 0)) continue;
 					if (Trespassing(nx, ny)) continue;
 
 					// Boarding and leaving the undersea line. NOT goal-exempt, unlike the tests
