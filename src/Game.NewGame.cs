@@ -231,7 +231,7 @@ namespace CivOne
 				}
 				
 				// Starting position found, add Settlers
-				PrepareStartingTile(player, x, y);
+				PrepareStartingTile(x, y);
 				IUnit unit = CreateUnit(UnitType.Settlers, x, y)!;
 				unit.Owner = player;
 				_units.Add(unit);
@@ -265,7 +265,7 @@ namespace CivOne
 				}
 				if (best is not null)
 				{
-					PrepareStartingTile(player, best.X, best.Y);
+					PrepareStartingTile(best.X, best.Y);
 					IUnit unit = CreateUnit(UnitType.Settlers, best.X, best.Y)!;
 					unit.Owner = player;
 					_units.Add(unit);
@@ -274,16 +274,19 @@ namespace CivOne
 			}
 		}
 
-		// An NPC civ that starts on Hills founds a capital with 1 food / 1 shield and
+		// A civ that starts on Hills founds a capital with 1 food / 1 shield and
 		// often a mountain-and-jungle work ring — the Inca deadlock, where the city
 		// never grows and never completes production. Smooth the starting tile to
-		// Plains with a road and irrigation so every AI capital has workable yields
-		// from turn one. Humans keep whatever the map dealt them.
-		private void PrepareStartingTile(byte player, int x, int y)
+		// Plains with a road and irrigation so every capital has workable yields
+		// from turn one.
+		//
+		// The human included. Humans used to keep whatever the map dealt them, and on
+		// Epic Earth that is a hill for the Ottomans (central Anatolia): their capital
+		// in game 72c60037 sat at size 1-2 on 0-1 food, learned one advance in 440
+		// turns, and was destroyed, while every AI Ottoman got the smoothed tile. Nobody
+		// could win from those starts (the user, Oct 2026).
+		private void PrepareStartingTile(int x, int y)
 		{
-			// Compare against the ctor-set field, not Player.IsHuman — the latter goes
-			// through Game.Instance, which is still null while the Game is constructing.
-			if (_players[player] == HumanPlayer) return;
 			if (!(Map[x, y] is Hills)) return;
 			Map.ChangeTileType(x, y, Terrain.Plains);
 			Map[x, y].Road = true;
