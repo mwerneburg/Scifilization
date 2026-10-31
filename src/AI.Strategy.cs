@@ -6066,8 +6066,38 @@ namespace CivOne
 
 		internal ITile? BestExploreTile(IUnit unit) => BestExploreTileInner(unit);
 
+		// How far from home a hut is "close". Was a flat 3, a Standard-map number: on Epic the
+		// hut bonus below was gone 15 tiles out, which is most of the world, and 28 of 99 huts
+		// were left standing at t473 of game c332af23, all of them already seen.
+		private static int HomeHutRadius => 3 * Math.Max(1, Map.WIDTH / 80);
+
+		// Home first: the nearest hut within HomeHutRadius of one of our cities, before any
+		// walkabout (the user, Oct 2026). Only within reach of the Explorer's own scan below
+		// did a hut count at all, so one an Explorer had walked away from stayed for good.
+		// ponytail: scans a box round every city; cities are few while Explorers are wanted.
+		private ITile? HomeHut(IUnit unit)
+		{
+			int r = HomeHutRadius, w = Map.WIDTH, h = Map.HEIGHT;
+			ITile? best = null;
+			int bestDist = int.MaxValue;
+			foreach (City c in Player.Cities)
+			for (int dy = -r; dy <= r; dy++)
+			for (int dx = -r; dx <= r; dx++)
+			{
+				int tx = (c.X + dx + w) % w, ty = c.Y + dy;
+				if (ty < 0 || ty >= h) continue;
+				ITile t = Map[tx, ty];
+				if (t is null || !t.Hut || !LandReachable(unit, t)) continue;
+				if (t.Units.Any(u => u.Owner != unit.Owner)) continue;   // an Explorer cannot enter it
+				int d = Common.DistanceToTile(unit.X, unit.Y, tx, ty);
+				if (d < bestDist) { bestDist = d; best = t; }
+			}
+			return best is not null && Common.GotoStep(unit, best.X, best.Y) is not null ? best : null;
+		}
+
 		private ITile? BestExploreTileInner(IUnit unit)
 		{
+			if (HomeHut(unit) is ITile home) return home;
 			int mapWidth = Map.WIDTH, mapHeight = Map.HEIGHT;
 			ITile? best = null;
 			int bestScore = 0; // only move if it adds value
@@ -6100,7 +6130,7 @@ namespace CivOne
 				// Hut bias: BaseUnitLand.TribalHut (case 0/3) rolls Barbarians when
 				// NearestCity >= 4 AND the player has cities — ~25% of outcomes there
 				// spawn hostile units, which is a real risk to a lone Explorer. So
-				// weight close-to-home huts highly and decay the bonus past distance 3.
+				// weight close-to-home huts highly and decay the bonus past HomeHutRadius.
 				// Direct-hit (tile.Hut) > adjacent (will step onto it next turn).
 				int hutBonus = tile.Hut ? 12
 				             : tile.GetBorderTiles().Any(bt => bt is not null && bt.Hut) ? 8
@@ -6108,7 +6138,7 @@ namespace CivOne
 				if (hutBonus > 0 && ownCities.Length > 0)
 				{
 					int homeDist = ownCities.Min(c => Common.DistanceToTile(c.X, c.Y, tx, ty));
-					hutBonus = Math.Max(0, hutBonus - Math.Max(0, homeDist - 3));
+					hutBonus = Math.Max(0, hutBonus - Math.Max(0, homeDist - HomeHutRadius));
 				}
 
 				int score = CountUnseenTiles(tx, ty) - dist + hutBonus;
