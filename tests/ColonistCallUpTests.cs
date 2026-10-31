@@ -166,6 +166,31 @@ namespace CivOne.Tests
 			Assert.False(settler.Sentry, "boarded a hull that cannot sail anywhere");
 		}
 
+		// Set beside the New World, the colonist goes ashore to found, even when its civ is past
+		// the point where MayFoundCities says yes at home. The call-up never asks that, and the
+		// settler used to look only for work near its own cities and drift for home across water:
+		// Zulu, Khmer and Malian settlers stood aboard for good on the t570 save of game c8d7d2e8.
+		[Fact]
+		public void AColonistAtSea_GoesAshore_EvenWhenHomeIsFull()
+		{
+			var (p, _, _, _) = Port();
+			byte id = Game.Instance.PlayerNumber(p);
+			byte n = 5;
+			foreach ((int x, int y) in new[] { (31, 20), (34, 20), (31, 23), (34, 23), (31, 26), (34, 26), (31, 29), (34, 29), (38, 20) })
+				Game.Instance.AddCity(p, n++, x, y);   // fourteen size-1 cities: over target, far below its size bar
+			AI ai = AI.Instance(p);
+			Assert.False(ai.MayFoundCities(), "scenario is broken: home still wants cities");
+			Game.Instance.CreateUnit(UnitType.Sail, 51, 25, id);
+			IUnit settler = Game.Instance.CreateUnit(UnitType.Settlers, 51, 25, id)!;
+			Sim.ClearTasks();
+
+			ai.Move(settler);
+			Sim.Settle();
+
+			Assert.True(settler.X >= 52 || settler.Goto.X >= 52,
+				$"stayed at sea: at ({settler.X},{settler.Y}), Goto ({settler.Goto.X},{settler.Goto.Y})");
+		}
+
 		// Only one escort per crossing, however many times the settler re-decides.
 		[Fact]
 		public void TheEscort_IsNotDonatedTwice()

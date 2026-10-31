@@ -556,9 +556,18 @@ namespace CivOne
 					// game. See AI.Strategy.BestCampSite.
 					ITile? camp = BestCampSite(unit);
 
+					// A settler at sea came to found, whatever the home empire's mean size. The
+					// colonist call-up never asks MayFoundCities, so a civ above the threshold
+					// shipped settlers out, the hull set them beside open coast, and they looked
+					// only for work near their own cities, then drifted for home across water:
+					// Zulu, Khmer and Malian settlers stood aboard for good on the t570 save of
+					// game c8d7d2e8. A site picked from the boat is committed (SettleSite below).
+					// The search only: founding where the boat stands keeps its own gate, or every
+					// such colonist founds a floating city beside the coast it came to settle.
+					bool atSea = tile.IsOcean && tile.City is null;
 					ITile? settle = null;
 					ITile? best = port
-						?? (expanding
+						?? (expanding || atSea
 							? ((settle = BestSettleSite(unit)) ?? camp ?? BestImproveSite(unit))
 							: (camp ?? BestImproveSite(unit)));
 					// Remember a city site it was SENT to, so arriving on a "no" turn does not
