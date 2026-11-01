@@ -213,6 +213,10 @@ namespace CivOne.Screens
 			_redraw = false;
 			_update = false;
 			_lastGameTick = gameTick;
+			// This draw counts for the frame too. Without it the same-tick branch above drew the
+			// map a second time before anything was presented: 245-265 draws for 168-189 frames
+			// in a replayed Autopilot turn, 198 with it.
+			_lastDrawnFrame = TurnMetrics.Frames;
 			return true;
 		}
 

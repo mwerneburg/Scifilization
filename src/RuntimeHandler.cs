@@ -256,7 +256,13 @@ namespace CivOne
 		// turns fast-forward off altogether, is the way to watch an autopiloted game.
 		internal static bool WatchedHumanSlide => !Settings.Instance.Autopilot && HumanGotoInFlight && GameTask.AnimatingMove;
 
-		private const long FAST_BUDGET_MS = 8;
+		// Every batch ends in a presented frame, and under Autopilot every frame is a full map
+		// redraw: each AI unit taking its move changes the active unit, which repaints the
+		// viewport, 11-23 ms. At 8 ms the redraw cost as much as the AI's work; drawing was 13 s of
+		// a 29 s turn at t749 of game 956ad93b. 33 ms still presents ~12 frames a second through
+		// an AI turn. Replayed from the t570 save of game c8d7d2e8: 17.3 s -> 13.3 s a turn, screen
+		// 7.2 s -> 3.2 s; 50 ms gained nothing more (Nov 2026).
+		private const long FAST_BUDGET_MS = 33;
 
 		// Wall-clock budget for one batch of ticks before handing control back to SDL.
 		// TickWatch advances 60/sec in REAL time, so if a tick costs more than ~16ms
