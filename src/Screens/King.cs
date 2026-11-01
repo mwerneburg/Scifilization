@@ -117,6 +117,11 @@ namespace CivOne.Screens
 			var agg = _enemy.Civilization.Leader.Aggression;
 			bool atWar = Human.IsAtWar(_enemy);
 
+			// Renounced (Game.CheckGoodwillOverflow). He still receives the ambassador, but his
+			// Friendly disposition no longer describes him, so it must not pick his words.
+			if (_enemy.IsImplacableToward(Human))
+				return ["We have nothing to say", $"to the {Human.TribeNamePlural}."];
+
 			if (_aiInitiated)
 			{
 				if (atWar)
@@ -521,9 +526,19 @@ namespace CivOne.Screens
 				.ToArray();
 		}
 
+		// A gift to a civ that will not forgive you buys nothing (Player.AddAttitudeBonus ignores
+		// it), so he says no rather than pocket a city for free.
+		private bool RefusesGifts()
+		{
+			if (!_enemy.IsImplacableToward(Human)) return false;
+			SetResponse(FaceState.Angry, "We want nothing", $"from the {Human.TribeNamePlural}.");
+			return true;
+		}
+
 		private void OfferCity(object sender, EventArgs args)
 		{
 			CloseMenus();
+			if (RefusesGifts()) return;
 			City[] giftable = GiftableCities(Human, _enemy, MenuRowsAvailable());
 			if (giftable.Length == 0)
 			{
@@ -575,6 +590,7 @@ namespace CivOne.Screens
 		private void OfferTechnology(object sender, EventArgs args)
 		{
 			CloseMenus();
+			if (RefusesGifts()) return;
 			IAdvance[] weOffer = Human.Advances.Where(a => !_enemy.HasAdvance(a)).ToArray();
 			if (weOffer.Length == 0)
 			{
