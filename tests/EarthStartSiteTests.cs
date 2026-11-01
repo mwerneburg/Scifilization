@@ -41,5 +41,19 @@ namespace CivOne.Tests
 			Assert.False(per.X == 207 && per.Y == 79, "the Persians still start at their heartland point");
 			Assert.True(t is Grassland || t is Plains || t is River || t is Hills, $"moved onto {t.GetType().Name}");
 		}
+
+		// Moved, but not off its landmass. The score counts the sea, so the islet off Greece
+		// outscored the mainland: the Greeks of game 956ad93b started on five tiles of Aegean
+		// rock at (180,74) and held one city for 750 turns.
+		[Fact]
+		public void AStartIsNotMovedOntoAnIslet()
+		{
+			Sim.NewGame(map: "earth-epic", competition: 16);
+			Game g = Game.Instance;
+			IUnit gr = g.GetUnits().OfType<Settlers>().First(s => g.GetPlayer(s.Owner).Civilization is Civilizations.Greek);
+
+			Assert.False(gr.X == 180 && gr.Y == 74, "the Greeks start on the Aegean islet");
+			Assert.Equal(Map.Instance[178, 70].ContinentId, Map.Instance[gr.X, gr.Y].ContinentId);
+		}
 	}
 }

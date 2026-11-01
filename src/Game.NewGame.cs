@@ -299,6 +299,10 @@ namespace CivOne
 				// A centre that feeds itself, or a hill PrepareStartingTile will smooth: a capital
 				// moved onto swamp or forest would work a 1-food centre for the whole game.
 				if (!(t is Grassland || t is Plains || t is River || t is Hills)) continue;
+				// Same landmass: the score counts the sea, so an islet off the coast outscores the
+				// mainland. The Greeks of game 956ad93b were moved onto a five-tile Aegean island and
+				// held one city for 750 turns, every settler joining it (Nov 2026).
+				if (t.ContinentId != Map[x, y].ContinentId) continue;
 				if (_units.Any(u => u is Settlers && Common.DistanceToTile(nx, ny, u.X, u.Y) < separation)) continue;
 				int score = StartSiteScore(nx, ny);
 				if (score > bestScore) { bestScore = score; best = (nx, ny); }
