@@ -44,16 +44,19 @@ namespace CivOne.Tests
 
 		// Moved, but not off its landmass. The score counts the sea, so the islet off Greece
 		// outscored the mainland: the Greeks of game 956ad93b started on five tiles of Aegean
-		// rock at (180,74) and held one city for 750 turns.
+		// rock at (180,74) and held one city for 750 turns. Japan was moved across the strait
+		// to Korea, and Honshu was settled late and thin.
 		[Fact]
-		public void AStartIsNotMovedOntoAnIslet()
+		public void AStartStaysOnItsOwnLandmass()
 		{
 			Sim.NewGame(map: "earth-epic", competition: 16);
 			Game g = Game.Instance;
-			IUnit gr = g.GetUnits().OfType<Settlers>().First(s => g.GetPlayer(s.Owner).Civilization is Civilizations.Greek);
+			IUnit Start<T>() => g.GetUnits().OfType<Settlers>().First(s => g.GetPlayer(s.Owner).Civilization is T);
+			IUnit gr = Start<Civilizations.Greek>(), jp = Start<Civilizations.Japanese>();
 
 			Assert.False(gr.X == 180 && gr.Y == 74, "the Greeks start on the Aegean islet");
 			Assert.Equal(Map.Instance[178, 70].ContinentId, Map.Instance[gr.X, gr.Y].ContinentId);
+			Assert.Equal(Map.Instance[281, 73].ContinentId, Map.Instance[jp.X, jp.Y].ContinentId);
 		}
 	}
 }

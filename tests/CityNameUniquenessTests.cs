@@ -130,6 +130,24 @@ namespace CivOne.Tests
 			Assert.NotEqual(one.Name, two.Name);
 		}
 
+		// Past the end of the pool. Game 956ad93b ended with 1145 cities against 960 names, and
+		// the overflow took index 0: 194 cities named Rome. Skipping past the pool reaches the
+		// same branch as filling the map does, at the cost of two cities rather than a thousand.
+		[Fact]
+		public void PastTheEndOfThePoolANameIsCoined()
+		{
+			Game g = AWorld();
+			Player p = g.HumanPlayer;
+			p.CityNamesSkipped = g.CityNames.Length;
+			City one = g.AddCity(p, g.CityNameId(p), 20, 20)!;
+			City two = g.AddCity(p, g.CityNameId(p), 30, 30)!;
+			Sim.ClearTasks();
+
+			Assert.StartsWith("New ", one.Name);
+			Assert.StartsWith("New ", two.Name);
+			Assert.NotEqual(one.Name, two.Name);
+		}
+
 		// The guard substitutes a name; it must not refuse the founding. A settler that walks
 		// twenty turns to a site and then silently fails to build is far worse than a repeat.
 		[Fact]
@@ -165,7 +183,8 @@ namespace CivOne.Tests
 			for (int skipped = 0; skipped < g.CityNames.Length; skipped++)
 			{
 				p.CityNamesSkipped = skipped;
-				offered.Add(g.CityNames[g.CityNameId(p)]);
+				int id = g.CityNameId(p);   // first: past the pool it grows CityNames into a new array
+				offered.Add(g.CityNames[id]);
 			}
 			p.CityNamesSkipped = 0;
 

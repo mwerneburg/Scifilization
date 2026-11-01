@@ -1440,7 +1440,7 @@ namespace CivOne
 			return true;
 		}
 
-		internal readonly string[] CityNames = Common.AllCityNames.ToArray();
+		internal string[] CityNames = Common.AllCityNames.ToArray();
 		
 		private int _currentPlayer = 0;
 		private int _activeUnit;
@@ -3659,7 +3659,17 @@ namespace CivOne
 				.ThenBy(i => i)
 				.ToArray();
 			if (player.CityNamesSkipped >= available.Length)
-				return 0;
+			{
+				// The pool is 960 names and a late Epic Earth world holds more cities than that:
+				// game 956ad93b ended with 1145, and the overflow fell to index 0, so 194 of them
+				// were named Rome (Nov 2026). Coin "New <one of our own>" past the end of the
+				// list; a save keeps names past the canonical blocks (Game.Cos).
+				string? coined = civilization.CityNames.Select(n => "New " + n)
+					.FirstOrDefault(n => !CityNames.Contains(n, StringComparer.OrdinalIgnoreCase));
+				if (coined is null) return 0;
+				CityNames = CityNames.Append(coined).ToArray();
+				return CityNames.Length - 1;
+			}
 			return available[player.CityNamesSkipped];
 		}
 
