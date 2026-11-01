@@ -3928,10 +3928,15 @@ namespace CivOne
 			byte own = Game.PlayerNumber(Player);
 			IUnit? hull = berth.Units.FirstOrDefault(u => u.Owner == own && u is IBoardable);
 			if (hull is null) return;
+			// Only what sails counts: in port that is what is asleep (BaseUnitSea.MoveUnits), so
+			// the city's garrison is neither cargo nor an escort. Counting it denied every hull
+			// docked in a defended city its escort (game 956ad93b). The colonist counts once,
+			// whether it is still on the quay or already aboard.
+			bool Sails(IUnit u) => u.Class == UnitClass.Land && u != settler && (berth.City is null || u.Sentry);
 			// Room for the colonist AND the escort, or the gift costs the crossing.
-			if (berth.Units.Count(u => u.Class == UnitClass.Land) + 2 > ((IBoardable)hull).Cargo) return;
+			if (berth.Units.Count(Sails) + 2 > ((IBoardable)hull).Cargo) return;
 			// One escort per crossing.
-			if (berth.Units.Any(u => u.Owner == own && u.Role == UnitRole.Defense)) return;
+			if (berth.Units.Any(u => Sails(u) && u.Owner == own && u.Role == UnitRole.Defense)) return;
 
 			IUnit? escort = Game.CreateUnit(((IUnit)BestDefender()).Type, berth.X, berth.Y, own);
 			if (escort is null) return;

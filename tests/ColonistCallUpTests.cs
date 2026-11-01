@@ -145,6 +145,30 @@ namespace CivOne.Tests
 			Assert.True(settler.Sentry, $"not aboard; Goto ({settler.Goto.X},{settler.Goto.Y})");
 		}
 
+		// Docked in a defended city, the hull still takes an escort. The gift counted the city's
+		// whole garrison as cargo and took its defender for an escort already aboard, so a hull in
+		// port never got one: in port only what is asleep sails (BaseUnitSea.MoveUnits). The
+		// Indian colony in Australia landed alone and was razed within four turns (game 956ad93b).
+		[Fact]
+		public void AHullDockedInADefendedCity_StillGetsAnEscort()
+		{
+			var (p, settler, _, _) = Port();
+			byte id = Game.Instance.PlayerNumber(p);
+			IUnit hull = Game.Instance.CreateUnit(UnitType.Sail, 44, 25, id)!;
+			IUnit garrison = Game.Instance.CreateUnit(UnitType.Phalanx, 44, 25, id)!;
+			garrison.Fortify = true;
+			AI ai = AI.Instance(p);
+			ai.BestOverseasSite(hull);
+			Assert.True(ai.WantsColonist(), "scenario is broken: no colonist wanted");
+
+			ai.Move(settler);
+
+			Assert.True(settler.Sentry, "scenario is broken: the colonist did not board");
+			IUnit[] escorts = hull.Tile.Units.Where(u => u != garrison && u.Role == UnitRole.Defense).ToArray();
+			Assert.True(escorts.Length == 1, $"expected one escort beside the garrison; got {escorts.Length}");
+			Assert.True(escorts[0].Sentry && escorts[0].Home is null, "the escort must sleep aboard and cost nothing");
+		}
+
 		// A hull that can reach none of the charted sites calls nobody. Erdenet's Trireme could
 		// reach none of the Mongols' 48, so a colonist would only sleep aboard for good.
 		[Fact]
@@ -189,6 +213,62 @@ namespace CivOne.Tests
 
 			Assert.True(settler.X >= 52 || settler.Goto.X >= 52,
 				$"stayed at sea: at ({settler.X},{settler.Y}), Goto ({settler.Goto.X},{settler.Goto.Y})");
+		}
+
+		// Ashore, the escort goes into the colony. It landed on whichever beach tile was nearest,
+		// not the one the colonist founded on, and dug in beside a town with no one in it: an AI
+		// unit fortified is never moved again (game 956ad93b, the Indians in Australia).
+		[Fact]
+		public void AnEscortAshore_GoesIntoTheEmptyColony()
+		{
+			var (p, _, _, _) = Port();
+			byte id = Game.Instance.PlayerNumber(p);
+			Game.Instance.AddCity(p, 5, 54, 25);
+			IUnit escort = Game.Instance.CreateUnit(UnitType.Phalanx, 55, 25, id)!;
+			escort.SetHome(null);
+			Sim.ClearTasks();
+
+			AI.Instance(p).Move(escort);
+			Sim.Settle();
+
+			Assert.True(escort.X == 54 && escort.Y == 25, $"stayed out at ({escort.X},{escort.Y}), fortified {escort.Fortify}");
+		}
+
+		// Ashore before the colonist, it waits beside it rather than digging in where it stands.
+		[Fact]
+		public void AnEscortAshore_WaitsForItsColonist()
+		{
+			var (p, _, _, _) = Port();
+			byte id = Game.Instance.PlayerNumber(p);
+			Game.Instance.CreateUnit(UnitType.Sail, 51, 25, id);
+			Game.Instance.CreateUnit(UnitType.Settlers, 51, 25, id);
+			IUnit escort = Game.Instance.CreateUnit(UnitType.Phalanx, 52, 25, id)!;
+			escort.SetHome(null);
+			Sim.ClearTasks();
+
+			AI.Instance(p).Move(escort);
+
+			Assert.False(escort.Fortify, "dug in before the colonist came ashore");
+		}
+
+		// Set down from the hull, the escort follows its colonist ashore. A defender aboard never
+		// reached the step-ashore rule: unloaded, it dug in on the hull and sailed away with it.
+		[Fact]
+		public void AnUnloadedEscort_FollowsItsColonistAshore()
+		{
+			var (p, _, _, _) = Port();
+			byte id = Game.Instance.PlayerNumber(p);
+			Game.Instance.CreateUnit(UnitType.Sail, 51, 25, id);
+			IUnit escort = Game.Instance.CreateUnit(UnitType.Phalanx, 51, 25, id)!;
+			escort.SetHome(null);
+			IUnit settler = Game.Instance.CreateUnit(UnitType.Settlers, 52, 25, id)!;
+			Sim.ClearTasks();
+
+			AI.Instance(p).Move(escort);
+			Sim.Settle();
+
+			Assert.True(escort.X == settler.X && escort.Y == settler.Y,
+				$"left at ({escort.X},{escort.Y}), fortified {escort.Fortify}; the colonist is at ({settler.X},{settler.Y})");
 		}
 
 		// Only one escort per crossing, however many times the settler re-decides.

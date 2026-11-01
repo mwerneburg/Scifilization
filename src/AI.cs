@@ -789,6 +789,37 @@ namespace CivOne
 					break; // unit itself is the only remaining candidate — leave it alone
 				}
 
+				// Out in the open, a defender goes to a town of ours that has nobody, or keeps by a
+				// settler of ours, before it fortifies: fortified, an AI unit is never moved again.
+				// The port's escort lands on whichever beach tile is nearest, not the one the
+				// colonist founds on, and dug in beside a colony with no one in it; the Indian
+				// colony in Australia was razed within four turns (game 956ad93b). Ahead of the
+				// Chieftain's exploring Militia, or the escort explores; but only an unsupported
+				// unit, which is what the escort is, shadows a settler.
+				//
+				// This branch also takes a defender set down from a hull, which never reaches the
+				// step-ashore rule further down: unloaded, the escort dug in aboard and sailed
+				// away with the hull. So from the water it steps onto the colonist's tile, and it
+				// waits only while the colonist is still aboard.
+				if (unit.Tile.City is null)
+				{
+					int Dist(int x, int y) => Common.DistanceToTile(unit.X, unit.Y, x, y);
+					City? bare = Player.Cities
+						.Where(c => Dist(c.X, c.Y) <= 4 && !c.Tile.Units.Any(u => u.Role == UnitRole.Defense))
+						.OrderBy(c => Dist(c.X, c.Y)).FirstOrDefault();
+					IUnit? ward = bare is not null || unit.Home is not null ? null : Game.GetUnits()
+						.Where(u => u.Owner == unit.Owner && u is Settlers && Dist(u.X, u.Y) <= 3)
+						.OrderBy(u => Dist(u.X, u.Y)).FirstOrDefault();
+					ITile? goal = bare?.Tile ?? ward?.Tile;
+					if (goal is not null)
+					{
+						bool afloat = goal.City is null && goal.IsOcean;
+						if ((goal.X == unit.X && goal.Y == unit.Y) || (afloat && Dist(goal.X, goal.Y) <= 1)) { unit.SkipTurn(); return; }
+						ITile? toward = Dist(goal.X, goal.Y) <= 1 ? goal : Common.GotoStep(unit, goal.X, goal.Y);
+						if (toward is not null && unit.MoveTo(toward.X - unit.X, toward.Y - unit.Y)) return;
+					}
+				}
+
 				// Chieftain: militia explore toward fog-of-war instead of fortifying immediately,
 				// but only if the city still has another defender (or the unit is already in the field).
 				bool lastCityDefender = unit.Tile.City is not null
