@@ -1292,6 +1292,87 @@ namespace CivOne
 			_ => false
 		};
 
+		// ── the standing army ────────────────────────────────────────────────
+		// Military units per city an empire keeps: a garrison and a field force at peace, twice
+		// that in a city on a war's front (FrontCities). The fallback build branch already called anything past this a glut, but
+		// only it asked; every other pick built units regardless. Game cea9d583 reached 9,631
+		// units by turn 650, 2,761 of them Haudenosaunee (21 per city), with no war on Earth for
+		// 150 turns, and the AI's moves, the task queue and the screen all scale with the count:
+		// 7.6 s a turn at t500, 54.6 s at t650.
+		internal const int PeaceArmyPerCity = 3;
+		internal const int WarArmyPerCity = 6;
+
+		internal static bool IsMilitary(IUnit u)
+			=> u.Role is UnitRole.LandAttack or UnitRole.Defense or UnitRole.SeaAttack or UnitRole.AirAttack
+			   && u is not Explorer;
+
+		// A war raises the ceiling only for the cities on its front: those with an enemy city
+		// within this many tiles. On the t653 save of game cea9d583 every civ on Earth was at war
+		// with the Others, whose last cities were scattered over every continent, so a war
+		// ceiling for the whole empire left 5,152 of 8,035 soldiers standing. Not the stance:
+		// any war at all is Militarize (GetStance), and a civ that chooses Militarize at peace
+		// does so only while its army is within the peacetime ceiling (armySaturated).
+		internal const int FrontDistance = 12;
+
+		private int FrontCities()
+		{
+			City[] enemy = Game.Players
+				.Where(p => p is not null && p != Player && !p.IsDestroyed() && Player.IsAtWar(p))
+				.SelectMany(p => p.Cities).ToArray();
+			return Player.Cities.Count(c => enemy.Any(e => Common.DistanceToTile(c.X, c.Y, e.X, e.Y) <= FrontDistance));
+		}
+
+		// Both counted once a turn: every city's plan asks, the count scans every unit in the
+		// game and the stance is not free either.
+		private int _armyTurn = -1, _armyCount, _armyCap;
+		private void CountArmy(bool fresh)
+		{
+			if (!fresh && _armyTurn == Game.GameTurn) return;
+			byte own = Game.PlayerNumber(Player);
+			_armyCount = Game.GetUnits().Count(u => u.Owner == own && IsMilitary(u));
+			_armyCap = Player.Cities.Length * PeaceArmyPerCity + FrontCities() * (WarArmyPerCity - PeaceArmyPerCity);
+			_armyTurn = Game.GameTurn;
+		}
+		internal int ArmySize(bool fresh = false) { CountArmy(fresh); return _armyCount; }
+		internal int ArmyCap(bool fresh = false) { CountArmy(fresh); return _armyCap; }
+
+		// The outsiders keep their own doctrines (PlanProductionInto); the barbarians build
+		// in BarbarianProduction. Neither is an empire with a peacetime to keep.
+		private bool KeepsAStandingArmy => !Game.IsOutsider(Player) && Player.Civilization is not Barbarian;
+
+		// Over the ceiling, a few of the weakest units standing in our cities are retired each
+		// turn, refunding half their cost to a city building an improvement (Game.DecommissionUnit).
+		// Two defenders stay in every city, and no city with an enemy at the gate gives anyone up.
+		internal void ConsiderDecommission()
+		{
+			if (Player.IsDestroyed() || !KeepsAStandingArmy) return;
+			int excess = ArmySize(fresh: true) - ArmyCap();
+			if (excess <= 0) return;
+			// A tenth of the surplus a turn: stood down, not dissolved overnight, yet a surplus of
+			// two thousand is mostly gone in twenty turns.
+			int budget = Math.Max(1, excess / 10);
+
+			byte own = Game.PlayerNumber(Player);
+			bool Hostile(IUnit u) => u.Owner != own && (u.Owner == 0 || Player.IsAtWar(Game.GetPlayer(u.Owner)));
+			IUnit[] candidates = Game.GetUnits()
+				.Where(u => u.Owner == own && IsMilitary(u) && !u.Sentry && u.Tile?.City is City c && c.Owner == own)
+				.OrderBy(u => u.Tile.City!.CurrentProduction is IBuilding and not IWonder ? 0 : 1)
+				.ThenBy(u => u.Attack + u.Defense)
+				.ToArray();
+			var calm = new Dictionary<City, bool>();
+			foreach (IUnit u in candidates)
+			{
+				if (budget == 0) break;
+				City city = u.Tile.City!;
+				if (u.Role == UnitRole.Defense && city.Tile.Units.Count(d => d.Role == UnitRole.Defense) <= 2) continue;
+				if (!calm.TryGetValue(city, out bool quiet))
+					calm[city] = quiet = !city.Tile.GetBorderTiles().Any(t => t.Units.Any(Hostile));
+				if (!quiet) continue;
+				Game.DecommissionUnit(u);
+				budget--;
+			}
+		}
+
 		internal void ConsiderGarrisonUpkeep()
 		{
 			if (Player.IsDestroyed()) return;
@@ -1302,7 +1383,7 @@ namespace CivOne
 					.Where(u => u.Role == UnitRole.Defense && u.X == city.X && u.Y == city.Y)
 					.ToArray();
 				if (garrison.Length <= 1) continue;
-				Game.DisbandUnit(garrison.Last());
+				Game.DecommissionUnit(garrison.Last());
 			}
 		}
 
@@ -4969,11 +5050,26 @@ namespace CivOne
 
 		private List<IProduction> PlanProductionInto(List<IProduction> plan, City city, StrategyStance stance)
 		{
+			// The standing army's ceiling (ArmyCap). A city with an enemy within three tiles may
+			// still arm, and an empty city may still raise its first defender.
+			bool? threatened = null;
+			bool OverArmyCap(IUnit u)
+			{
+				if (!IsMilitary(u) || !KeepsAStandingArmy || ArmySize() < ArmyCap()) return false;
+				if (u.Role == UnitRole.Defense && city.Tile?.Units.Any(d => d.Role == UnitRole.Defense) != true) return false;
+				byte own = Game.PlayerNumber(Player);
+				threatened ??= Game.GetUnits().Any(e => e.Owner != own
+					&& (e.Owner == 0 || Player.IsAtWar(Game.GetPlayer(e.Owner)))
+					&& Common.DistanceToTile(e.X, e.Y, city.X, city.Y) <= 3);
+				return !threatened.Value;
+			}
+
 			void Consider(IProduction p)
 			{
 				// Wonders are exempt — they carry no maintenance and are the one build
 				// worth going hungry for.
 				if (p is IBuilding b && p is not IWonder && !EarnsItsKeep(b, city)) return;
+				if (p is IUnit pu && OverArmyCap(pu)) return;
 				// One envoy of each kind per city at a time: both are spent on arrival, so a
 				// second only stacks up behind one that is stuck. The Federation's 64 diplomats
 				// came from 39 cities, up to 5 apiece (game a82cf446, turn 550).
@@ -6063,6 +6159,9 @@ namespace CivOne
 			// path above can now decline a candidate on upkeep grounds, so this backstop
 			// adds a defender DIRECTLY rather than through Consider, which could decline
 			// it too. A unit carries no maintenance, so it is always affordable.
+			// Over the army ceiling, a built-out city funds research rather than another defender.
+			if (plan.Count == 0 && OverArmyCap((IUnit)BestDefender()) && Player.ProductionAvailable(new ResearchGrant()))
+				plan.Add(new ResearchGrant());
 			if (plan.Count == 0) plan.Add(BestDefender());
 
 			return plan;

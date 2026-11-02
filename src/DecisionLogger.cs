@@ -25,7 +25,7 @@ using CivOne.Units;
 // Schema (flat, intentionally simple for easy pandas/numpy ingestion):
 //
 //   type          string   "settler" | "city_prod" | "game_outcome" | "salvage" | "defection" | "plague"
-//                          | "landfall" | "disorder_collapse" | "advance" | "disband" | "idle_unit"
+//                          | "landfall" | "disorder_collapse" | "advance" | "disband" | "decommission" | "idle_unit"
 //                          | "round_trip"
 //   game_id       string   8-char hex, one per GAME — survives save/load, so a resumed
 //                          run keeps one identity and its game_outcome scores all of it
@@ -608,6 +608,24 @@ namespace CivOne
 				KV("city_size", city.Size),
 				KV("unit",      unit.Name),
 				KV("distance",  distance),
+			}));
+		}
+
+		// A unit retired on purpose (Game.DecommissionUnit), with the shields it returned to its
+		// city: 0 when the city was not building an improvement.
+		internal static void LogDecommission(City? city, IUnit unit, int refund)
+		{
+			if (!_active) return;
+			Player? owner = Game.Instance?.GetPlayer(unit.Owner);
+			Enqueue(Fmt(new[] {
+				KV("type",      "decommission"),
+				KV("game_id",   _gameId),
+				KV("turn",      Game.Instance?.GameTurn ?? 0),
+				KV("is_human",  owner?.IsHuman ?? false),
+				KV("civ",       owner?.Civilization?.NamePlural ?? "?"),
+				KV("city",      city?.Name ?? ""),
+				KV("unit",      unit.Name),
+				KV("refund",    refund),
 			}));
 		}
 

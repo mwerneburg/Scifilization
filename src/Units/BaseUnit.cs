@@ -1345,7 +1345,7 @@ namespace CivOne.Units
 		
 		protected MenuItem<int> MenuHomeCity() => MenuItem<int>.Create("Home City").SetShortcut("h").OnSelect((s, a) => SetHome());
 		
-		protected MenuItem<int> MenuDisbandUnit() => MenuItem<int>.Create("Disband Unit").SetShortcut("D").OnSelect((s, a) => Game.DisbandUnit(this));
+		protected MenuItem<int> MenuDisbandUnit() => MenuItem<int>.Create("Disband Unit").SetShortcut("D").OnSelect((s, a) => Game.DecommissionUnit(this));
 
 		// Returns the unit type this unit can upgrade to (one step), or null if none.
 		public virtual UnitType? UpgradesTo => null;

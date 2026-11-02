@@ -1441,6 +1441,7 @@ namespace CivOne
 					city.AutoAssignCitizens(city.GovernorOrder, city.GovernorGrowth, city.GovernorCulture, city.GovernorCommerce);
 			AI?.ConsiderSliders();
 			AI?.ConsiderGarrisonUpkeep();
+			AI?.ConsiderDecommission();
 			AI?.ConsiderDivestment();
 			AI?.ConsiderWorkers();
 			AI?.ConsiderExplorers();

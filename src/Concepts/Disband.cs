@@ -16,12 +16,13 @@ namespace CivOne.Concepts
 			"DISBAND removes a unit from the",
 			"game for good.",
 			"",
-			"Disband inside a city and part of",
+			"Disband inside a city that is",
+			"building an IMPROVEMENT and half",
 			"its build cost returns as shields",
-			"toward the city's production.",
+			"toward it.",
 			"",
-			"Disband in the field and it is",
-			"simply gone.",
+			"Toward a unit or a wonder, or out",
+			"in the field, it is simply gone.",
 		};
 
 		private static readonly string[] _page2 =

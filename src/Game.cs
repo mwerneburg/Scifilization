@@ -7331,6 +7331,22 @@ namespace CivOne
 			}
 		}
 
+		// A unit retired on purpose, by its owner's order or the AI's. Inside one of its own
+		// cities that is building an improvement, half the unit's base cost goes into that
+		// city's box: the steel goes back to the foundry (the user, Nov 2026). Building a unit
+		// or a wonder, or out in the field, it is simply disbanded. Returns the refund.
+		internal int DecommissionUnit(IUnit unit)
+		{
+			City? city = unit.Tile?.City;
+			int refund = city is not null && city.Owner == unit.Owner
+			             && city.CurrentProduction is IBuilding and not IWonder
+				? unit.Price * 10 / 2 : 0;
+			if (refund > 0) city!.Shields += refund;
+			DecisionLogger.LogDecommission(city, unit, refund);
+			DisbandUnit(unit);
+			return refund;
+		}
+
 		public void DisbandUnit(IUnit unit, [System.Runtime.CompilerServices.CallerMemberName] string cause = "")
 		{
 			IUnit? activeUnit = ActiveUnit;
