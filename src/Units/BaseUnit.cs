@@ -283,6 +283,9 @@ namespace CivOne.Units
 
 		private bool AttackOutcome(IUnit attackUnit, ITile defendTile) => AttackOutcome(attackUnit, Defender(defendTile));
 
+		// Test seam: one combat roll against this defender, with no movement or casualties.
+		internal bool TestAttackOutcome(IUnit defendUnit) => AttackOutcome(this, defendUnit);
+
 		private bool AttackOutcome(IUnit attackUnit, IUnit defendUnit)
 		{
 			int attackStrength = AttackStrength(defendUnit);
@@ -290,6 +293,10 @@ namespace CivOne.Units
 			int randomAttack = Common.Random.Next(attackStrength);
 			int randomDefense = Common.Random.Next(defenseStrength);
 			bool win = (randomAttack > randomDefense);
+			// Deacon: its owner's units defend with advantage. A lost defence is fought again,
+			// and the second result stands (docs/cursed_wonders.md #13).
+			if (win && Game.DeaconBlesses(Game.GetPlayer(defendUnit.Owner)))
+				win = Common.Random.Next(attackStrength) > Common.Random.Next(defenseStrength);
 			if (win && attackUnit.Owner == 0 && defendUnit.Tile.City is not null)
 			{
 				 // If the attacking unit is a Barbarian unit and the defending unit is inside a city, then, if the attacking unit won, the procedure will be repeated once

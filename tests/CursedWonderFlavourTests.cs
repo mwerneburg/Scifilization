@@ -46,6 +46,7 @@ namespace CivOne.Tests
 			("ThePortal",            "expect a great many things"),
 			("TheInternet",          "mostly constructive"),
 			("NanobotFactory",       "mathematically proven to hold"),
+			("Deacon",               "allowed to finish"),
 		};
 
 		private static BaseWonder Build(string typeName)
@@ -128,7 +129,7 @@ namespace CivOne.Tests
 			{
 				"Pyramids", "Great Wall", "Lighthouse", "Angkor Wat", "Shakespeare",
 				"Newton", "Cure for Cancer", "Manhattan", "Stonehenge", "Portal",
-				"Internet", "Nanobot", "Gozira", "Leviathan", "Grey Goo",
+				"Internet", "Nanobot", "Gozira", "Leviathan", "Grey Goo", "Deacon",
 			})
 				Assert.DoesNotContain(name.ToLowerInvariant(), text);
 		}

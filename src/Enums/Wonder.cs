@@ -56,5 +56,6 @@ namespace CivOne.Enums
 		TheReprocessor           = 43,
 		Starlab                  = 44,
 		KyotoAccord              = 45,
+		Deacon                   = 46,
 	}
 }

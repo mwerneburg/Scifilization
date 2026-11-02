@@ -384,6 +384,13 @@ namespace CivOne
 					DoorX                   = DoorX,
 					DoorY                   = DoorY,
 					OracleVoiceActive       = OracleVoiceActive,
+					DeaconState             = DeaconState,
+					DeaconX                 = DeaconX,
+					DeaconY                 = DeaconY,
+					DeaconBuilder           = DeaconBuilder,
+					DeaconTarget            = DeaconTarget,
+					DeaconDefcon            = DeaconDefcon,
+					DeaconAngerUntil        = DeaconAngerUntil,
 					GlobalWarmingCount      = GlobalWarmingCount,
 					OriginalOceanTiles      = OriginalOceanTiles,
 					LastHurricaneYear       = LastHurricaneYear,
@@ -737,6 +744,13 @@ namespace CivOne
 			DoorX = g.DoorX;
 			DoorY = g.DoorY;
 			OracleVoiceActive = g.OracleVoiceActive;
+			DeaconState = (byte)g.DeaconState;
+			DeaconX = g.DeaconX;
+			DeaconY = g.DeaconY;
+			DeaconBuilder = (byte)g.DeaconBuilder;
+			DeaconTarget = (byte)g.DeaconTarget;
+			DeaconDefcon = (byte)g.DeaconDefcon;
+			DeaconAngerUntil = g.DeaconAngerUntil;
 			GlobalWarmingCount = (ushort)Math.Max(0, g.GlobalWarmingCount);
 			// 0 = written before the field existed; LarderScore falls back to today's sea.
 			OriginalOceanTiles = Math.Max(0, g.OriginalOceanTiles);
