@@ -3941,6 +3941,7 @@ namespace CivOne
 			// Use the raw index field, not the ActiveUnit property, to avoid the
 			// circular: ActiveUnit → IsAboard → tile.Units → GetUnits → ActiveUnit
 			IUnit? cur = (_activeUnit >= 0 && _activeUnit < _units.Count) ? _units[_activeUnit] : null;
+			WorldScans++;
 			return _units.Where(u => u.X == x && u.Y == y).OrderBy(u => (u == cur) ? 0 : (u.Fortify || u.FortifyActive ? 1 : 2)).ToArray();
 		}
 
@@ -3968,7 +3969,13 @@ namespace CivOne
 		internal int CityRosterVersion => _cityRosterVersion;
 		internal void BumpCityRoster() => _cityRosterVersion++;
 
-		public City[] GetCities() => _cities.ToArray();
+		public City[] GetCities() { WorldScans++; return _cities.ToArray(); }
+
+		// Whole-world scans: GetCities and a tile's units (GetUnits(x, y)) each walk an entire
+		// list, and asked per tile they were most of a late settler's turn. Counted so a test
+		// can pin a search to a handful of them without timing it (SettlerSearchCostTests).
+		// Per thread, because the suite runs test classes in parallel.
+		[ThreadStatic] internal static long WorldScans;
 
 		// Non-allocating read-only view of the units, the counterpart of CitiesList. Same
 		// contract: callers must not mutate the unit list while enumerating.

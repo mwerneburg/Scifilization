@@ -175,10 +175,10 @@ namespace CivOne.Tests
 			var method = typeof(AI).GetMethod("SiteSuitability",
 				System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
 
-			int grass = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25] })!;
+			int grass = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25], null })!;
 			Map.Instance.ChangeTileType(40, 25, Terrain.Desert);
 			((BaseTile)Map.Instance[40, 25]).Special = false;
-			int desert = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25] })!;
+			int desert = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25], null })!;
 
 			Assert.True(grass > desert,
 				$"a plains centre ({grass}) did not outscore a desert one ({desert}) in the same ring");
@@ -196,10 +196,10 @@ namespace CivOne.Tests
 
 			Map.Instance.ChangeTileType(40, 25, Terrain.ForestedHills);
 			((BaseTile)Map.Instance[40, 25]).Special = false;
-			int wooded = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25] })!;
+			int wooded = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25], null })!;
 			Map.Instance.ChangeTileType(40, 25, Terrain.Hills);
 			((BaseTile)Map.Instance[40, 25]).Special = false;
-			int bare = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25] })!;
+			int bare = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25], null })!;
 
 			Assert.True(bare > wooded, $"bare hills ({bare}) did not outscore forested hills ({wooded})");
 		}
@@ -216,10 +216,10 @@ namespace CivOne.Tests
 			// Grassland: 2 food, 0 shield. Hills: 0 food, 2 shield. Same ring either way.
 			Map.Instance.ChangeTileType(40, 25, Terrain.Grassland1);
 			((BaseTile)Map.Instance[40, 25]).Special = false;
-			int food = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25] })!;
+			int food = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25], null })!;
 			Map.Instance.ChangeTileType(40, 25, Terrain.Hills);
 			((BaseTile)Map.Instance[40, 25]).Special = false;
-			int shields = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25] })!;
+			int shields = (int)method.Invoke(AI.Instance(p), new object[] { Map.Instance[40, 25], null })!;
 
 			// The GAP is the assertion, not the sign. The radius pass already counts the
 			// centre once, so a food centre edges a shield one by a point or two without any

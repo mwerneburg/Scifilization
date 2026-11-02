@@ -2378,7 +2378,9 @@ namespace CivOne
 
 		// ── city-site scoring ──────────────────────────────────────────────────
 
-		private int SiteSuitability(ITile center)
+		// `nearby`: the caller's cities within 9 of `center`, when it has them to hand. No city
+		// farther away changes the score.
+		private int SiteSuitability(ITile center, City[]? nearby = null)
 		{
 			int score = 0;
 			int mapWidth = Map.WIDTH, mapHeight = Map.HEIGHT;
@@ -2443,7 +2445,7 @@ namespace CivOne
 			if (center.GetBorderTiles().Any(t => t is Mountains)) score -= 3;
 
 			// City proximity penalties
-			foreach (City city in Game.GetCities())
+			foreach (City city in nearby ?? Game.GetCities())
 			{
 				int dist = Common.DistanceToTile(center.X, center.Y, city.X, city.Y);
 				if (dist < 4) { score -= 20; continue; } // working-radius overlap
@@ -2846,6 +2848,14 @@ namespace CivOne
 				    .Where(s => s != settlers && s.Owner == ownId && !s.Goto.IsEmpty)
 				    .Select(s => (s.Goto.X, s.Goto.Y)));
 
+			// Every city in the world was scanned per tile, here and again in SiteSuitability: over
+			// a thousand on the t653 save of game cea9d583, for up to 33 x 33 tiles. Nothing past 9
+			// tiles of a site changes either answer, and distance is Chebyshev, so the cities within
+			// radius + 9 of the settler give the same answers.
+			City[] nearCities = Game.GetCities()
+				.Where(c => Common.DistanceToTile(c.X, c.Y, settlers.X, settlers.Y) <= radius + 9)
+				.ToArray();
+
 			System.Collections.Generic.HashSet<int>? walkable = null;   // built on the first candidate
 			for (int dy = -radius; dy <= radius; dy++)
 			for (int dx = -radius; dx <= radius; dx++)
@@ -2862,9 +2872,9 @@ namespace CivOne
 				if (!CentreCanFeed(tile)) continue;
 				if (!LandReachable(settlers, tile)) continue;
 				if (!(walkable ??= LandWithin(settlers, radius + 4)).Contains(ty * mapWidth + tx)) continue;
-				if (Game.GetCities().Any(c => Common.DistanceToTile(c.X, c.Y, tx, ty) < 4)) continue;
+				if (nearCities.Any(c => Common.DistanceToTile(c.X, c.Y, tx, ty) < 4)) continue;
 				if (claimedGotos.Contains((tx, ty))) continue;
-				int score = SiteSuitability(tile) - SiteDistanceWeight * Common.DistanceToTile(settlers.X, settlers.Y, tx, ty);
+				int score = SiteSuitability(tile, nearCities) - SiteDistanceWeight * Common.DistanceToTile(settlers.X, settlers.Y, tx, ty);
 				if (score > bestScore) { bestScore = score; best = tile; }
 			}
 			return best;
@@ -3180,10 +3190,6 @@ namespace CivOne
 				if (tile is null || tile.IsOcean || tile.City is not null) continue;
 				if (!LandReachable(settlers, tile)) continue;
 				if (!(walkable ??= LandWithin(settlers, reach + 4)).Contains(ty * mapWidth + tx)) continue;
-				// A Settlers cannot enter a tile holding a foreign unit (Settlers.
-				// FindNearestCityPollution says why). Three Lakota settlers re-picked one with two
-				// Aztec cannons on it every turn of the t570 save and never moved.
-				if (tile.Units.Any(u => u.Owner != ownId)) continue;
 				// Eligibility is WorkAvailable's, not restated here. What IS this method's
 				// own judgement is the despot rule: a settler routed to grassland it cannot
 				// usefully irrigate is a settler sent to stand still.
@@ -3213,8 +3219,17 @@ namespace CivOne
 				// equal distance the plain is strictly better. Distance alone let the hill win
 				// on nothing but its position in the row-major scan — the same trap as the
 				// Arctic harvester landings and the north-west harvester march.
-				if (d < bestDist || (d == bestDist && best is not null && tile.Shield > best.Shield))
-				{ bestDist = d; best = tile; }
+				if (!(d < bestDist || (d == bestDist && best is not null && tile.Shield > best.Shield))) continue;
+				// A Settlers cannot enter a tile holding a foreign unit (Settlers.
+				// FindNearestCityPollution says why). Three Lakota settlers re-picked one with two
+				// Aztec cannons on it every turn of the t570 save and never moved.
+				//
+				// Asked last, of a tile about to win: ITile.Units scans every unit in the game, and
+				// asked of every tile in the box it was most of the settler's turn. 22 ms a settler
+				// on the t653 save of game cea9d583, 9,895 units; a tile it refuses could never have
+				// won, so the answers are the same.
+				if (tile.Units.Any(u => u.Owner != ownId)) continue;
+				bestDist = d; best = tile;
 			}
 			}
 		}
