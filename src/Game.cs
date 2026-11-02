@@ -1154,6 +1154,16 @@ namespace CivOne
 			=> p.Civilization is TheOthers or TheThing or Skynet or Federation;
 		internal bool OutsidersAbroad => _players.Any(p => p is not null && IsOutsider(p) && p.Cities.Length > 0);
 
+		// The recovery fleet's pickets take every colony ship until the Registry is gone from
+		// Earth: a human player would make the concerted effort to eradicate them, and that is
+		// what reopens the road (the user, Nov 2026). Before they land, or if they never do,
+		// the road stays shut. Game cea9d583 had fourteen full ships taken while the Others
+		// held one city.
+		internal bool ColonyShipsIntercepted => SETISignalReceived
+			&& (Quarantined || VisitorType == VisitorArchetype.Conquerors
+			    || (VisitorType == VisitorArchetype.Owners
+			        && !(_players.FirstOrDefault(p => p?.Civilization is TheOthers) is Player others && others.IsDestroyed())));
+
 		// The organism, the Registry and the machines are not people. A strike on any of them
 		// is pest control and costs nothing. The barbarians ARE people — late in a game they are
 		// whole cities that broke away (the user, Oct 2026) — but they keep no embassies, so
@@ -3061,6 +3071,8 @@ namespace CivOne
 					int needed = SpaceshipStructuresNeeded(component, module);
 					if (component < 2 || module < 3 || structural < needed) continue;
 					if (Progress(p).SpaceshipLaunchTurn != 0) continue;
+					// Built, and held on the pad while the pickets are out there.
+					if (ColonyShipsIntercepted) continue;
 
 					Progress(p).SpaceshipLaunchTurn = _gameTurn;
 					Progress(p).SpaceshipArrivalTurn = _gameTurn
@@ -3087,7 +3099,7 @@ namespace CivOne
 
 					// The Federation's pickets take colony ships too; the launch screen has always
 					// said so (SpaceShips.cs), and until now the arrival let them through.
-					if (SETISignalReceived && (VisitorType is VisitorArchetype.Owners or VisitorArchetype.Conquerors || Quarantined))
+					if (ColonyShipsIntercepted)
 					{
 						// Owners timeline: nothing leaves. The recovery fleet's pickets take
 						// every colony ship — launched before or after the arrival at Earth,
