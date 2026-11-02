@@ -12,14 +12,14 @@ namespace CivOne.Tests
 {
 	public class ColonyShipBlockadeTests
 	{
-		private static (Game g, byte rival) AnOwnersWorld(bool othersHoldACity)
+		private static (Game g, byte rival) AnOwnersWorld(bool othersHoldACity, bool federation = false)
 		{
 			Sim.NewGame(width: 80, height: 50);
 			Game g = Game.Instance;
 			g.SETISignalReceived = true;
-			g.VisitorType = VisitorArchetype.Owners;
+			g.VisitorType = federation ? VisitorArchetype.Conquerors : VisitorArchetype.Owners;
 
-			var others = new Player(Common.Civilizations.First(c => c is Civilizations.TheOthers), "The Registry");
+			var others = new Player(Common.Civilizations.First(c => federation ? c is Civilizations.Federation : c is Civilizations.TheOthers), "The Registry");
 			g.AddPlayer(others);
 			if (othersHoldACity)
 			{
@@ -93,6 +93,29 @@ namespace CivOne.Tests
 			PlayARound(g);
 
 			Assert.True(g.Progress(rival).ColonyFounded);
+		}
+
+		// The Federation's pickets hold the road the same way, and lift the same way.
+		[Fact]
+		public void TheShipIsHeldWhileTheFederationHoldsACity()
+		{
+			(Game g, byte rival) = AnOwnersWorld(othersHoldACity: true, federation: true);
+			AFinishedHull(g, rival);
+
+			PlayARound(g);
+
+			Assert.Equal(0, g.Progress(rival).SpaceshipLaunchTurn);
+		}
+
+		[Fact]
+		public void TheShipLaunchesOnceTheFederationIsGone()
+		{
+			(Game g, byte rival) = AnOwnersWorld(othersHoldACity: false, federation: true);
+			AFinishedHull(g, rival);
+
+			PlayARound(g);
+
+			Assert.NotEqual(0, g.Progress(rival).SpaceshipLaunchTurn);
 		}
 
 		// Before the fleet lands there is no Registry on Earth to eradicate; the road is shut.

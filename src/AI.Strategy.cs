@@ -3598,7 +3598,7 @@ namespace CivOne
 		// the way (Oct 2026). The airship covers 16 tiles a turn, the walk lasts six.
 		internal const int WalkReach = 8;
 
-		private bool Airlift(City target) => Player.HasAdvance<Flight>() && target.Tile is not null
+		private bool Airlift(City target) => Player.HasAdvance<Flight>() && target.Tile is not null && !target.SeaLocked
 			&& !Player.Cities.Any(c => c.Tile?.ContinentId == target.Tile.ContinentId
 			                        && Common.DistanceToTile(c.X, c.Y, target.X, target.Y) <= WalkReach)
 			&& Player.Cities.Any(c => Common.DistanceToTile(c.X, c.Y, target.X, target.Y) <= AirReach);
@@ -3666,6 +3666,9 @@ namespace CivOne
 			bool expendable = CruiseMissile.IsExpendable(unit) || warhead;
 			byte own = unit.Owner;
 			bool Enemy(byte o) => o != own && (o == 0 || Player.IsAtWar(Game.GetPlayer(o)));
+			// A city with no land around it is the air's to soften whatever the target: an army
+			// can only go in from the boats (the user, Nov 2026; Tauranga, game cea9d583).
+			bool SeaLockedEnemy(ITile t) => t.City is City sc && sc.SeaLocked && Enemy(sc.Owner);
 			// Out AND home again from the mark — half the fuel from HERE stranded a second
 			// sortie: a Bomber eight tiles out with eight left took a mark four further on.
 			// And struck THIS turn: anything may attack an aircraft on the ground, and of 22
@@ -3679,15 +3682,30 @@ namespace CivOne
 			IUnit? mark = Game.GetUnits()
 				.Where(u => u.Tile is not null && Enemy(u.Owner) && Player.Visible(u.X, u.Y)
 				         && (warhead
-				             ? _attackTarget is not null && u.X == _attackTarget.X && u.Y == _attackTarget.Y
+				             ? (_attackTarget is not null && u.X == _attackTarget.X && u.Y == _attackTarget.Y) || SeaLockedEnemy(u.Tile)
 				             : u.Tile.City?.HasBuilding<SamBattery>() != true)   // a SAM cannot stop a warhead
 				         && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= fuel
 				         && (expendable || (Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= unit.MovesLeft
 				                            && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) + HomeFrom(u) <= fuel)))
 				.OrderBy(u => _attackTarget is not null && u.X == _attackTarget.X && u.Y == _attackTarget.Y ? 0 : 1)
+				.ThenBy(u => SeaLockedEnemy(u.Tile) ? 0 : 1)
 				.ThenBy(u => Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y))
 				.FirstOrDefault();
 			if (mark is not null) { unit.Goto = new Point(mark.X, mark.Y); return; }
+
+			// Out of reach of one: move up to the airfield nearest it, within this turn's flight.
+			City? island = Game.GetCities()
+				.Where(c => c.Tile is not null && SeaLockedEnemy(c.Tile) && Player.Visible(c.X, c.Y))
+				.OrderBy(c => Common.DistanceToTile(unit.X, unit.Y, c.X, c.Y)).FirstOrDefault();
+			if (island is not null)
+			{
+				int now = Common.DistanceToTile(unit.X, unit.Y, island.X, island.Y);
+				City? airfield = Player.Cities
+					.Where(c => c.Tile is not null && Common.DistanceToTile(c.X, c.Y, island.X, island.Y) < now
+					         && Common.DistanceToTile(unit.X, unit.Y, c.X, c.Y) <= Math.Min(fuel, unit.MovesLeft))
+					.OrderBy(c => Common.DistanceToTile(c.X, c.Y, island.X, island.Y)).FirstOrDefault();
+				if (airfield is not null) { unit.Goto = new Point(airfield.X, airfield.Y); return; }
+			}
 
 			if (unit.Tile?.City is not null) { unit.SkipTurn(); return; }
 			City? home = Player.Cities.Where(c => c.Tile is not null)
@@ -3725,7 +3743,9 @@ namespace CivOne
 			                 && Player.Cities.Any(oc => Common.DistanceToTile(oc.X, oc.Y, c.X, c.Y) <= AirReach)
 			                 // Somewhere dry to set them down. An Olvir city on open water has
 			                 // none, and the Lakota sat 29 aboard at Tours waiting on one.
-			                 && c.Tile.GetBorderTiles().Any(t => t is not null && !t.IsOcean))));
+			                 // A city with no land at all is stormed from the ships instead
+			                 // (City.SeaLocked), and is never airlifted to (Airlift).
+			                 && (c.SeaLocked || c.Tile.GetBorderTiles().Any(t => t is not null && !t.IsOcean)))));
 
 			// When the human is dominant and we're at war with them, hit their cities first.
 			Player? human = HumanOpponent;
@@ -4113,7 +4133,8 @@ namespace CivOne
 						if (landing is not null)
 						{
 							// Already at the landing zone — unload so troops can storm the beach
-							if (Common.DistanceToTile(unit.X, unit.Y, _attackTarget.X, _attackTarget.Y) <= 2)
+							// Beside a sea-locked city, because they go in from the boat.
+							if (Common.DistanceToTile(unit.X, unit.Y, _attackTarget.X, _attackTarget.Y) <= (_attackTarget.SeaLocked ? 1 : 2))
 							{
 								(unit as BaseUnitSea)!.Unload();
 								return;

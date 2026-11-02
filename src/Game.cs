@@ -1154,15 +1154,17 @@ namespace CivOne
 			=> p.Civilization is TheOthers or TheThing or Skynet or Federation;
 		internal bool OutsidersAbroad => _players.Any(p => p is not null && IsOutsider(p) && p.Cities.Length > 0);
 
-		// The recovery fleet's pickets take every colony ship until the Registry is gone from
-		// Earth: a human player would make the concerted effort to eradicate them, and that is
-		// what reopens the road (the user, Nov 2026). Before they land, or if they never do,
-		// the road stays shut. Game cea9d583 had fourteen full ships taken while the Others
-		// held one city.
+		// The recovery fleet's pickets take every colony ship until the invader is gone from
+		// Earth, the Registry or the Federation alike: a human player would make the concerted
+		// effort to eradicate them, and that is what reopens the road (the user, Nov 2026).
+		// Before they land, or if they never do, the road stays shut. Game cea9d583 had
+		// fourteen full ships taken while the Others held one city.
 		internal bool ColonyShipsIntercepted => SETISignalReceived
-			&& (Quarantined || VisitorType == VisitorArchetype.Conquerors
-			    || (VisitorType == VisitorArchetype.Owners
-			        && !(_players.FirstOrDefault(p => p?.Civilization is TheOthers) is Player others && others.IsDestroyed())));
+			&& (Quarantined
+			    || (VisitorType is VisitorArchetype.Owners or VisitorArchetype.Conquerors
+			        && !(_players.FirstOrDefault(p => VisitorType == VisitorArchetype.Owners
+			                 ? p?.Civilization is TheOthers : p?.Civilization is Federation) is Player invader
+			             && invader.IsDestroyed())));
 
 		// The organism, the Registry and the machines are not people. A strike on any of them
 		// is pest control and costs nothing. The barbarians ARE people — late in a game they are

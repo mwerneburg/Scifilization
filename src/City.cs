@@ -2183,6 +2183,11 @@ namespace CivOne
 
 		public ITile Tile => Map[X, Y];
 
+		// A city with no land beside it: a one-tile island, or a city on open water. No army
+		// can walk up to it, so it is stormed from the ships (BaseUnit.MoveTo). The Others'
+		// last city in game cea9d583, Tauranga, stood like this for 38 turns.
+		internal bool SeaLocked => Tile.GetBorderTiles().All(t => t is null || t.IsOcean);
+
 		public bool BuildingSold { get; private set; }
 
 		public void AddBuilding(IBuilding building)

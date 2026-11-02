@@ -83,7 +83,8 @@ namespace CivOne.IO
 			],
 			["ERROR/AMPHIB"] = [
 				"Units cannot attack from aboard",
-				"ship. Put them ashore first.",
+				"ship, except a city with no land",
+				"around it. Put them ashore first.",
 			],
 			["ERROR/TRIREME"] = [
 				"A TRIREME must end its turn",
