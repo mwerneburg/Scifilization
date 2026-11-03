@@ -113,16 +113,19 @@ namespace CivOne.Tests
 			Assert.Null(Target(ai));
 		}
 
-		// Nowhere dry beside it, nowhere to land: an Olvir city on open water is not a target.
+		// Nowhere dry beside it, nowhere to land: the Lakota sat 29 aboard at Tours waiting on
+		// one. Such a city is now taken from the ships (City.SeaLocked; the user, Nov 2026), so
+		// it IS a target, and no airship is raised for it.
 		[Fact]
-		public void ACityWithNoDryGroundBesideItIsNotATarget()
+		public void ACityWithNoDryGroundBesideItIsATargetButNoAirlift()
 		{
-			(Game _, Player _, City _, City target, AI ai) = AnIslandWar();
+			(Game g, Player us, City _, City target, AI ai) = AnIslandWar();
 			foreach (ITile t in target.Tile.GetBorderTiles()) Map.Instance.ChangeTileType(t.X, t.Y, Terrain.Ocean);
 
 			ai.ConsiderWar();
 
-			Assert.Null(Target(ai));
+			Assert.Same(target, Target(ai));
+			Assert.DoesNotContain(us.Cities.SelectMany(c => c.ProductionQueue), p => p is Dirigible);
 		}
 
 		// ── the muster ───────────────────────────────────────────────────────

@@ -306,8 +306,12 @@ namespace CivOne.Tests
 		[Fact]
 		public void QuarantineInterceptsTheShips()
 		{
-			string src = File.ReadAllText(Path.Combine(Sim.RepoRoot(), "src", "Game.cs"));
-			Assert.Contains("VisitorType is VisitorArchetype.Owners or VisitorArchetype.Conquerors || Quarantined", src);
+			(Game g, Player[] _) = FourCivs();
+			g.SETISignalReceived = true;
+			g.VisitorType = VisitorArchetype.Evaluators;
+			g.Quarantined = true;
+
+			Assert.True(g.ColonyShipsIntercepted);
 		}
 
 		[Fact]
