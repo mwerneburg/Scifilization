@@ -3683,6 +3683,7 @@ namespace CivOne
 				.Where(u => u.Tile is not null && Enemy(u.Owner) && Player.Visible(u.X, u.Y)
 				         && (warhead
 				             ? (_attackTarget is not null && u.X == _attackTarget.X && u.Y == _attackTarget.Y) || SeaLockedEnemy(u.Tile)
+				               || (Player.Civilization is Federation && u.Tile.City is not null)   // the last stand takes any city
 				             : u.Tile.City?.HasBuilding<SamBattery>() != true)   // a SAM cannot stop a warhead
 				         && Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= fuel
 				         && (expendable || (Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y) <= unit.MovesLeft
@@ -4745,6 +4746,20 @@ namespace CivOne
 			return have < Math.Max(1, Player.Cities.Length / 4);
 		}
 
+		// The Federation's last stand: down to its last cities it reaches for the bomb, without
+		// warning (the user, Nov 2026). One warhead for every three cities, on order or built.
+		// The Others never do: they came for livestock, not a scorched field.
+		internal const int FederationLastStandCities = 15;
+		private bool WarheadsShort()
+		{
+			if (Player.Civilization is not Federation || Player.Cities.Length > FederationLastStandCities) return false;
+			if (!Player.ProductionAvailable(new Nuclear())) return false;
+			byte id = Game.PlayerNumber(Player);
+			int have = Game.GetUnits().Count(u => u.Owner == id && u is Nuclear)
+				+ Player.Cities.Count(c => c.CurrentProduction is Nuclear);
+			return have < Math.Max(1, Player.Cities.Length / 3);
+		}
+
 		private IProduction BestAttacker()
 		{
 			if (Player.HasAdvance<Automobile>())       return new Armor();
@@ -5157,6 +5172,7 @@ namespace CivOne
 				byte thId = Game.PlayerNumber(Player);
 				int agents = Game.GetUnits().Count(u => u.Owner == thId && u is Diplomat);
 
+				if (WarheadsShort()) Consider(new Nuclear());
 				if (Player.ProductionAvailable(new HoverTank())) Consider(new HoverTank());
 				if (BombersShort()) Consider(new Bomber());
 				// Sabotage is a tool, not a doctrine — one agent per two cities is plenty.

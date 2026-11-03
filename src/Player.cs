@@ -874,8 +874,9 @@ namespace CivOne
 			if (_advances.Any(a => unit.ObsoleteTech is not null && unit.ObsoleteTech.Id == a))
 				return false;
 			
-			// Require Manhattan Project to be built for Nuclear unit
-			if ((unit is Nuclear) && !Game.Instance.WonderBuilt<ManhattanProject>())
+			// Require Manhattan Project to be built for Nuclear unit. Not the Federation's:
+			// a spacefaring power brought its own (AI.WarheadsShort).
+			if ((unit is Nuclear) && !Game.Instance.WonderBuilt<ManhattanProject>() && Civilization is not Civilizations.Federation)
 				return false;
 
 			// The fusion war machine is unlocked by the builder's OWN Fusion Core wonder.

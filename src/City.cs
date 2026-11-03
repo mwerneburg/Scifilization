@@ -1369,7 +1369,7 @@ namespace CivOne
 				foreach (IUnit unit in Reflect.GetUnits().Where(u => Player.ProductionAvailable(u)))
 				{
 					if (unit.Class == UnitClass.Water && !Map[X, Y].GetBorderTiles().Any(t => t.IsOcean)) continue;
-					if (unit is Nuclear && !Game.WonderBuilt<ManhattanProject>()) continue;
+					if (unit is Nuclear && !Game.WonderBuilt<ManhattanProject>() && Player.Civilization is not Civilizations.Federation) continue;
 					if ((unit is Transport || unit is Submarine || unit is Carrier || unit is Battleship || unit is Cruiser) && !HasBuilding<Shipyard>()) continue;
 					yield return unit;
 				}
