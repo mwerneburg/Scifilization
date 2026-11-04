@@ -275,9 +275,12 @@ namespace CivOne.Tests
 		// shared by every test in the run, so five sibling tests each driving a nuclear
 		// strike leave five near-identical lines, and "find a matching line" would be
 		// satisfied by any of them — including with the code under test removed.
-		public static int DecisionLineCount(string needle) => DecisionLines(needle).Count;
+		// `also`: a second string the line must carry, a value only this test writes. A line
+		// a previous test enqueued can reach the disk after the count, and the type alone
+		// would take it for this test's own (GameOutcomeWinnerTests, Nov 2026).
+		public static int DecisionLineCount(string needle, string? also = null) => DecisionLines(needle, also).Count;
 
-		private static System.Collections.Generic.List<string> DecisionLines(string needle)
+		private static System.Collections.Generic.List<string> DecisionLines(string needle, string? also = null)
 		{
 			var hits = new System.Collections.Generic.List<string>();
 			string path = System.IO.Path.Combine(Settings.Instance.DataDirectory, "decisions.jsonl");
@@ -288,7 +291,7 @@ namespace CivOne.Tests
 			using var reader = new System.IO.StreamReader(fs);
 			string? line;
 			while ((line = reader.ReadLine()) is not null)
-				if (line.Contains(needle)) hits.Add(line);
+				if (line.Contains(needle) && (also is null || line.Contains(also))) hits.Add(line);
 			return hits;
 		}
 
@@ -297,12 +300,12 @@ namespace CivOne.Tests
 		// straight after the action it is checking finds nothing — poll rather than sleep a
 		// fixed amount. Sim points StorageDirectory at a throwaway temp dir, so the file is
 		// this run's own and never the player's.
-		public static string AwaitDecisionLine(string needle, int after = 0, int timeoutMs = 5000)
+		public static string AwaitDecisionLine(string needle, int after = 0, int timeoutMs = 5000, string? also = null)
 		{
 			var clock = System.Diagnostics.Stopwatch.StartNew();
 			while (clock.ElapsedMilliseconds < timeoutMs)
 			{
-				var hits = DecisionLines(needle);
+				var hits = DecisionLines(needle, also);
 				if (hits.Count > after) return hits[after];
 				System.Threading.Thread.Sleep(50);
 			}
