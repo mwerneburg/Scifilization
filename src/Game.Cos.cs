@@ -220,6 +220,8 @@ namespace CivOne
 					MilestoneScore   = player.MilestoneScore,
 					Culture          = player.Culture,
 					PeakPopulace     = player.PeakPopulace,
+					NuclearThreat    = player.ThreatLaunchTurn != 0 || player.LastThreatTurn > -1000
+					                   ? new[] { player.ThreatX, player.ThreatY, player.ThreatLaunchTurn, player.LastThreatTurn } : null,
 					AtWarWith        = Enumerable.Range(0, playerCount)
 				                   .Where(j => j != p && _players[p].IsAtWar(_players[j]))
 				                   .ToArray(),
@@ -628,6 +630,8 @@ namespace CivOne
 				_players[i].SetMilestoneScore(cos.Players[i].MilestoneScore ?? 0);
 				_players[i].SetCulture(cos.Players[i].Culture ?? 0);
 				_players[i].SetPeakPopulace(cos.Players[i].PeakPopulace ?? 0);
+				if (cos.Players[i].NuclearThreat is int[] nt && nt.Length == 4)
+					(_players[i].ThreatX, _players[i].ThreatY, _players[i].ThreatLaunchTurn, _players[i].LastThreatTurn) = (nt[0], nt[1], nt[2], nt[3]);
 				// Victory progress, per civilization. AddPlayer has already sized these.
 				Progress(i).SpaceshipLaunchTurn  = cos.Players[i].SpaceshipLaunchTurn;
 				Progress(i).SpaceshipArrivalTurn = cos.Players[i].SpaceshipArrivalTurn;

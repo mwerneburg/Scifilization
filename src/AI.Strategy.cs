@@ -1506,6 +1506,56 @@ namespace CivOne
 			if (Common.Random.Next(100) < FascismChance) _warAmbition = 25;
 		}
 
+		// ── the desperado's ultimatum (the user, Nov 2026) ──────────────────
+		// A Fascist state with a warhead in its silo demands a city of the human: cede it, or
+		// in ten turns the warhead flies. One threat at a time, thirty quiet turns after one
+		// ends, and it dies with the regime. A Fusion Core makes it a bluff, and it bluffs all
+		// the same. Against an AI rival there is no channel to threaten through
+		// (ConsiderDiplomacy is human-directed), so those warheads answer only a city taken
+		// (FlyStrike). Under autopilot nobody is threatened: HumanOpponent is null.
+		internal const int UltimatumTurns = 10, UltimatumQuietTurns = 30, DesperadoWarheads = 3;
+
+		private bool DesperadoWarheadsShort()
+		{
+			if (Player.Government is not Gov.Fascism || !Player.ProductionAvailable(new Nuclear())) return false;
+			byte id = Game.PlayerNumber(Player);
+			return Game.GetUnits().Count(u => u.Owner == id && u is Nuclear)
+				+ Player.Cities.Count(c => c.CurrentProduction is Nuclear) < DesperadoWarheads;
+		}
+
+		internal void ConsiderUltimatum()
+		{
+			Player? human = HumanOpponent;
+			if (Player.ThreatLaunchTurn != 0)
+			{
+				// Stands down when the regime falls or the city is no longer the human's to give.
+				City? held = Map[Player.ThreatX, Player.ThreatY].City;
+				if (Player.Government is not Gov.Fascism || human is null || held is null || held.Player != human)
+					Player.EndThreat();
+				else if (Game.GameTurn >= Player.ThreatLaunchTurn && !Player.IsAtWar(human))
+					Player.DeclareWar(human);   // the launch is the war, if a grudge was all it had
+				return;
+			}
+			if (Player.Government is not Gov.Fascism || Game.GameTurn - Player.LastThreatTurn < UltimatumQuietTurns) return;
+			if (human is null || human == Player || human.IsDestroyed()) return;
+			if (!Player.IsAtWar(human) && !Player.HasGrudge(human)) return;
+
+			// The visible city nearest a warhead, within its flight.
+			byte own = Game.PlayerNumber(Player);
+			IUnit[] silos = Game.GetUnits().Where(u => u.Owner == own && u is Nuclear).ToArray();
+			if (silos.Length == 0) return;
+			int Reach(City c) => silos.Min(u => Common.DistanceToTile(u.X, u.Y, c.X, c.Y));
+			City? target = human.Cities
+				.Where(c => Player.Visible(c.X, c.Y) && silos.Any(u => Common.DistanceToTile(u.X, u.Y, c.X, c.Y) <= u.Move))
+				.OrderBy(Reach).FirstOrDefault();
+			if (target is null) return;
+
+			(Player.ThreatX, Player.ThreatY, Player.ThreatLaunchTurn) = (target.X, target.Y, Game.GameTurn + UltimatumTurns);
+			Log($"{Player.TribeName}: nuclear ultimatum, cede {target.Name} by turn {Player.ThreatLaunchTurn}");
+			GameTask.Enqueue(Show.MeetKing(Player, aiInitiated: true, demands: new List<AIDemand>
+				{ new AIDemand(AIDemandKind.NuclearUltimatum, city: target, duration: UltimatumTurns) }));
+		}
+
 		// Test/diagnostic accessor.
 		internal string? BestGovernmentName() => BestGovernment()?.GetType().Name;
 
@@ -3666,6 +3716,15 @@ namespace CivOne
 			bool expendable = CruiseMissile.IsExpendable(unit) || warhead;
 			byte own = unit.Owner;
 			bool Enemy(byte o) => o != own && (o == 0 || Player.IsAtWar(Game.GetPlayer(o)));
+			// A desperado's warheads wait on its word (ConsiderUltimatum): the human's city
+			// once the ultimatum runs out, or a rival holding one of ours, at the taker's own
+			// cities rather than the one it took, which we want back.
+			bool desperado = warhead && Player.Government is Gov.Fascism;
+			bool Due(City c) => Player.ThreatLaunchTurn != 0 && Game.GameTurn >= Player.ThreatLaunchTurn
+				&& c.X == Player.ThreatX && c.Y == Player.ThreatY;
+			var avenge = new HashSet<byte>(!desperado ? Enumerable.Empty<byte>() : Game.GetCities()
+				.Where(c => c.OriginalOwner == own && c.Owner != own && c.Player != Human && Enemy(c.Owner))
+				.Select(c => c.Owner));
 			// A city with no land around it is the air's to soften whatever the target: an army
 			// can only go in from the boats (the user, Nov 2026; Tauranga, game cea9d583).
 			bool SeaLockedEnemy(ITile t) => t.City is City sc && sc.SeaLocked && Enemy(sc.Owner);
@@ -3681,7 +3740,8 @@ namespace CivOne
 			// 33 of 37 Federation Bombers died flying into Earth's 177 of them (Oct 2026).
 			IUnit? mark = Game.GetUnits()
 				.Where(u => u.Tile is not null && Enemy(u.Owner) && Player.Visible(u.X, u.Y)
-				         && (warhead
+				         && (desperado ? u.Tile.City is City dc && (Due(dc) || (avenge.Contains(dc.Owner) && dc.OriginalOwner != own))
+				             : warhead
 				             ? (_attackTarget is not null && u.X == _attackTarget.X && u.Y == _attackTarget.Y) || SeaLockedEnemy(u.Tile)
 				               || (Player.Civilization is Federation && u.Tile.City is not null)   // the last stand takes any city
 				             : u.Tile.City?.HasBuilding<SamBattery>() != true)   // a SAM cannot stop a warhead
@@ -3692,7 +3752,12 @@ namespace CivOne
 				.ThenBy(u => SeaLockedEnemy(u.Tile) ? 0 : 1)
 				.ThenBy(u => Common.DistanceToTile(unit.X, unit.Y, u.X, u.Y))
 				.FirstOrDefault();
-			if (mark is not null) { unit.Goto = new Point(mark.X, mark.Y); return; }
+			if (mark is not null)
+			{
+				if (desperado && mark.Tile.City is City dm && Due(dm)) Player.EndThreat();
+				unit.Goto = new Point(mark.X, mark.Y);
+				return;
+			}
 
 			// Out of reach of one: move up to the airfield nearest it, within this turn's flight.
 			City? island = Game.GetCities()
@@ -5304,6 +5369,9 @@ namespace CivOne
 			// exactly one unit free, so a second garrison eats the city-center shield and
 			// deadlocks production forever (the Inca case).
 			if (hostileNear && defenders < Math.Min(2, (int)city.Size)) Consider(BestDefender());
+
+			// The desperado's deterrent: a Fascist state builds a few warheads (ConsiderUltimatum).
+			if (DesperadoWarheadsShort()) Consider(new Nuclear());
 
 			// A hunter, when there is quarry here and nothing of ours on this continent able to
 			// kill it. Every other attacker entry waits on SenateRaisesArmies, and a Republic or

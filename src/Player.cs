@@ -204,6 +204,13 @@ namespace CivOne
 			}
 		}
 
+		// The desperado's ultimatum (AI.ConsiderUltimatum): the human's city it demanded and
+		// the turn its warhead may fly at it; 0 = no threat standing. LastThreatTurn spaces
+		// them out. Saved, so a reload forgives nothing.
+		internal int ThreatX, ThreatY, ThreatLaunchTurn;
+		internal int LastThreatTurn = -1000;
+		internal void EndThreat() { ThreatLaunchTurn = 0; LastThreatTurn = Game.GameTurn; }
+
 		// Disorder brought the government down, as opposed to a revolution the player chose.
 		// The AI reads the turn (AI.BestGovernment). Not saved: a reload forgets it.
 		internal int CollapsedTurn { get; private set; } = -1000;
@@ -1450,6 +1457,7 @@ namespace CivOne
 			AI?.ConsiderRushBuy();
 			AI?.ConsiderWar();
 			AI?.ConsiderDiplomacy();
+			AI?.ConsiderUltimatum();
 			AI?.ConsiderMapTrade();
 			AI?.ConsiderAmbassadors();
 		}

@@ -11,7 +11,7 @@ using CivOne.Advances;
 
 namespace CivOne
 {
-	internal enum AIDemandKind { ReturnCity, GiveMap, GiveTech, GiveMoney, CedeCity, GrievancePack, BegForAid, OfferTribute }
+	internal enum AIDemandKind { ReturnCity, GiveMap, GiveTech, GiveMoney, CedeCity, GrievancePack, BegForAid, OfferTribute, NuclearUltimatum }
 
 	internal class AIDemand
 	{

@@ -156,6 +156,8 @@ namespace CivOne.Screens
 			var agg = _enemy.Civilization.Leader.Aggression;
 			if (_demands.Any(d => d.Kind == AIDemandKind.BegForAid))
 				return [$"Our people starve, {Human.LeaderName}.", "We come not to demand, but to beg."];
+			if (_demands.FirstOrDefault(d => d.Kind == AIDemandKind.NuclearUltimatum) is AIDemand nu)
+				return [$"We have the bomb, {Human.LeaderName}.", $"Give us {nu.City!.Name}, or in {nu.Duration}", "turns we use it."];
 			if (_demands.Any(d => d.Kind == AIDemandKind.OfferTribute))
 				return [$"We cannot win this war, {Human.LeaderName}.", "Let us buy the peace instead."];
 			if (_demands.Any(d => d.Kind == AIDemandKind.GrievancePack))
@@ -188,6 +190,7 @@ namespace CivOne.Screens
 				AIDemandKind.GiveTech  => $"Transfer {d.Advance!.Name} → {d.Duration} turns of goodwill",
 				AIDemandKind.GiveMoney => $"Pay ${d.Amount} tribute → {d.Duration} turns of goodwill",
 				AIDemandKind.CedeCity  => $"Cede {d.City!.Name} → {d.Duration} turns of goodwill",
+				AIDemandKind.NuclearUltimatum => $"Cede {d.City!.Name} → the warhead stays in its silo",
 				AIDemandKind.OfferTribute => $"Accept tribute: ${d.Amount}/turn → peace while the gold flows",
 				_                      => "Unknown demand"
 			};
@@ -259,6 +262,14 @@ namespace CivOne.Screens
 						$"{d.Duration} turns of goodwill — agreed.");
 					break;
 
+				case AIDemandKind.NuclearUltimatum:
+					d.City!.Owner = aiNum;
+					_enemy.EndThreat();
+					SetResponse(FaceState.Smiling,
+						$"{d.City!.Name} is ours. A wise choice.",
+						"The silo stays shut.");
+					break;
+
 				case AIDemandKind.OfferTribute:
 					// EstablishTribute makes peace and installs the self-renewing
 					// treaty; the gold arrives each turn the payer stays solvent.
@@ -295,6 +306,13 @@ namespace CivOne.Screens
 				SetResponse(FaceState.Neutral,
 					"Then we are truly alone.",
 					"History will remember your silence.");
+				return;
+			}
+			if (_demands.FirstOrDefault(d => d.Kind == AIDemandKind.NuclearUltimatum) is AIDemand nd)
+			{
+				SetResponse(FaceState.Angry,
+					$"Then {nd.City!.Name} has {nd.Duration} turns.",
+					"Evacuate it, if you love it.");
 				return;
 			}
 			if (_demands.Any(d => d.Kind == AIDemandKind.OfferTribute))

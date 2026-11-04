@@ -283,6 +283,8 @@ namespace CivOne.Persistence
 		// saves written under the live-populace rule, where it reads back as zero and
 		// Player.PeakPopulace starts the high-water mark at today's count.
 		public int? PeakPopulace { get; set; }
+		// Player.ThreatX, ThreatY, ThreatLaunchTurn, LastThreatTurn; absent = never threatened.
+		public int[]? NuclearThreat { get; set; }
 
 		// Player numbers this player will never forgive. See Player._implacable.
 		public List<int>? Implacable { get; set; }
