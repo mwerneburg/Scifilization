@@ -119,5 +119,27 @@ namespace CivOne.Tests
 			if (federation) Assert.Equal(new Point(mark.X, mark.Y), nuke.Goto);
 			else Assert.NotEqual(new Point(mark.X, mark.Y), nuke.Goto);
 		}
+
+		// Every Earth civ warns the human first; the last stand warns nobody, the human
+		// included: no ultimatum, and the warhead flies at once.
+		[Fact]
+		public void TheLastStandWarnsNobody()
+		{
+			(Game g, Player fed) = AnInvader(1);
+			Player human = g.HumanPlayer;
+			City home = fed.Cities[0];
+			City mark = g.AddCity(human, 2, home.X + 8, home.Y)!;
+			g.CreateUnit(UnitType.Musketeers, mark.X, mark.Y, g.PlayerNumber(human));
+			fed.Explore(home.X, home.Y, range: 20);
+			fed.DeclareWar(human);
+			typeof(AI).GetField("_attackTarget", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(AI.Instance(fed), null);
+			IUnit nuke = g.CreateUnit(UnitType.Nuclear, home.X, home.Y, g.PlayerNumber(fed))!;
+
+			AI.Instance(fed).ConsiderUltimatum();
+			typeof(AI).GetMethod("FlyStrike", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(AI.Instance(fed), new object[] { nuke });
+
+			Assert.Equal(0, fed.ThreatLaunchTurn);
+			Assert.Equal(new Point(mark.X, mark.Y), nuke.Goto);
+		}
 	}
 }

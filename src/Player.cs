@@ -111,6 +111,8 @@ namespace CivOne
 			internal set
 			{
 				if (value is null) return;
+				// A nuclear ultimatum dies with the government that made it (AI.ConsiderUltimatum).
+				if (ThreatLaunchTurn != 0 && value.Id != _government?.Id) EndThreat();
 				_government = value;
 				InvalidateCityCaches();
 			}

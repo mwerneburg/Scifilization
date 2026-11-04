@@ -1506,13 +1506,16 @@ namespace CivOne
 			if (Common.Random.Next(100) < FascismChance) _warAmbition = 25;
 		}
 
-		// ── the desperado's ultimatum (the user, Nov 2026) ──────────────────
-		// A Fascist state with a warhead in its silo demands a city of the human: cede it, or
-		// in ten turns the warhead flies. One threat at a time, thirty quiet turns after one
-		// ends, and it dies with the regime. A Fusion Core makes it a bluff, and it bluffs all
-		// the same. Against an AI rival there is no channel to threaten through
-		// (ConsiderDiplomacy is human-directed), so those warheads answer only a city taken
-		// (FlyStrike). Under autopilot nobody is threatened: HumanOpponent is null.
+		// ── the nuclear ultimatum (the user, Nov 2026) ──────────────────────
+		// An Earth civ with a warhead in its silo demands a city of the human: cede it, or in
+		// ten turns the warhead flies. Only a Fascist state builds them on purpose (the
+		// desperado), but every Earth civ warns before it strikes the human; none ever strikes
+		// unwarned (FlyStrike). One threat at a time, thirty quiet turns after one ends, and it
+		// dies with the government that made it (Player.Government). A Fusion Core makes it a
+		// bluff, and it bluffs all the same. Against an AI rival there is no channel to
+		// threaten through (ConsiderDiplomacy is human-directed), so warheads there keep their
+		// old rules (FlyStrike). The Federation never warns: its last stand is a surprise.
+		// Under autopilot nobody is threatened: HumanOpponent is null.
 		internal const int UltimatumTurns = 10, UltimatumQuietTurns = 30, DesperadoWarheads = 3;
 
 		private bool DesperadoWarheadsShort()
@@ -1528,15 +1531,16 @@ namespace CivOne
 			Player? human = HumanOpponent;
 			if (Player.ThreatLaunchTurn != 0)
 			{
-				// Stands down when the regime falls or the city is no longer the human's to give.
+				// Stands down when the city is no longer the human's to give (the regime falling
+				// ends it in Player.Government).
 				City? held = Map[Player.ThreatX, Player.ThreatY].City;
-				if (Player.Government is not Gov.Fascism || human is null || held is null || held.Player != human)
+				if (human is null || held is null || held.Player != human)
 					Player.EndThreat();
 				else if (Game.GameTurn >= Player.ThreatLaunchTurn && !Player.IsAtWar(human))
 					Player.DeclareWar(human);   // the launch is the war, if a grudge was all it had
 				return;
 			}
-			if (Player.Government is not Gov.Fascism || Game.GameTurn - Player.LastThreatTurn < UltimatumQuietTurns) return;
+			if (Game.IsOutsider(Player) || Game.GameTurn - Player.LastThreatTurn < UltimatumQuietTurns) return;
 			if (human is null || human == Player || human.IsDestroyed()) return;
 			if (!Player.IsAtWar(human) && !Player.HasGrudge(human)) return;
 
@@ -3719,7 +3723,10 @@ namespace CivOne
 			// A desperado's warheads wait on its word (ConsiderUltimatum): the human's city
 			// once the ultimatum runs out, or a rival holding one of ours, at the taker's own
 			// cities rather than the one it took, which we want back.
+			// And no Earth warhead strikes the human unwarned, Fascist or not: the human's
+			// cities are marked only when the ultimatum is due. The Federation never warns.
 			bool desperado = warhead && Player.Government is Gov.Fascism;
+			bool warns = warhead && Player.Civilization is not Federation;
 			bool Due(City c) => Player.ThreatLaunchTurn != 0 && Game.GameTurn >= Player.ThreatLaunchTurn
 				&& c.X == Player.ThreatX && c.Y == Player.ThreatY;
 			var avenge = new HashSet<byte>(!desperado ? Enumerable.Empty<byte>() : Game.GetCities()
@@ -3740,7 +3747,8 @@ namespace CivOne
 			// 33 of 37 Federation Bombers died flying into Earth's 177 of them (Oct 2026).
 			IUnit? mark = Game.GetUnits()
 				.Where(u => u.Tile is not null && Enemy(u.Owner) && Player.Visible(u.X, u.Y)
-				         && (desperado ? u.Tile.City is City dc && (Due(dc) || (avenge.Contains(dc.Owner) && dc.OriginalOwner != own))
+				         && (warns && u.Owner == Game.PlayerNumber(Human) ? u.Tile.City is City hc && Due(hc)
+				             : desperado ? u.Tile.City is City dc && avenge.Contains(dc.Owner) && dc.OriginalOwner != own
 				             : warhead
 				             ? (_attackTarget is not null && u.X == _attackTarget.X && u.Y == _attackTarget.Y) || SeaLockedEnemy(u.Tile)
 				               || (Player.Civilization is Federation && u.Tile.City is not null)   // the last stand takes any city
@@ -3754,7 +3762,7 @@ namespace CivOne
 				.FirstOrDefault();
 			if (mark is not null)
 			{
-				if (desperado && mark.Tile.City is City dm && Due(dm)) Player.EndThreat();
+				if (mark.Tile.City is City dm && Due(dm)) Player.EndThreat();
 				unit.Goto = new Point(mark.X, mark.Y);
 				return;
 			}
@@ -6183,7 +6191,10 @@ namespace CivOne
 					p is Settlers || p is Longboat || p is HydroEngineer   // cost a citizen
 					|| p is ICaravan                                        // needs a destination
 					|| p is Diplomat                                        // needs a target
-					|| (p is Explorer && fallbackExplorers >= 2);           // already at the cap
+					|| (p is Explorer && fallbackExplorers >= 2)            // already at the cap
+					// Only the last stand and the desperado build warheads. Rolled here, they
+					// were 123 in silos by 1996, none ever flown (the user, Nov 2026; c58808e6).
+					|| p is Nuclear;
 
 				// Unit glut guard. A built-out city reaching this fallback rolled uniformly
 				// over everything available, and for a technologically stalled civ most of

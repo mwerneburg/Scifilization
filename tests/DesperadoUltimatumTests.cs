@@ -4,7 +4,8 @@
 // warheads, demands a city of the human ("cede it, or in ten turns we launch"), and launches
 // when the clock runs out. Ceding the city, or the regime falling, ends the threat; one threat
 // at a time, thirty quiet turns after one ends. Against AI rivals there is no threat to make:
-// the warheads answer only a city taken. And the threat survives a save.
+// the warheads answer only a city taken. And the threat survives a save. Every Earth civ warns
+// before it strikes the human, Fascist or not, and only the desperado builds warheads.
 
 using System;
 using System.Collections.Generic;
@@ -212,10 +213,13 @@ namespace CivOne.Tests
 			Assert.NotEqual(new Point(40, 25), nuke!.Goto);
 		}
 
-		[Fact]
-		public void AndFliesWhenItRunsOut()
+		[Theory]
+		[InlineData(true)]
+		[InlineData(false)]
+		public void AndFliesWhenItRunsOut(bool fascist)
 		{
 			(Game g, Player us, Player _, Player _, IUnit? nuke) = AWorld();
+			if (!fascist) us.Government = new CivOne.Governments.Democracy();
 			g.GameTurn = 100;   // a launch turn of 0 reads as no threat at all
 			AI.Instance(us).ConsiderUltimatum();
 			us.ThreatLaunchTurn = g.GameTurn;
@@ -227,17 +231,69 @@ namespace CivOne.Tests
 			Assert.Equal(g.GameTurn, us.LastThreatTurn);
 		}
 
-		// The war's attack target is not licence: without the ultimatum, nothing flies.
-		[Fact]
-		public void NoStrikeWithoutWarning()
+		// The war's attack target is not licence: without the ultimatum, nothing flies at the
+		// human, from a Fascist state or any other (the user, Nov 2026).
+		[Theory]
+		[InlineData(true)]
+		[InlineData(false)]
+		public void NoStrikeWithoutWarning(bool fascist)
 		{
 			(Game _, Player us, Player _, Player _, IUnit? nuke) = AWorld();
+			if (!fascist) us.Government = new CivOne.Governments.Democracy();
 			typeof(AI).GetField("_attackTarget", BindingFlags.NonPublic | BindingFlags.Instance)!
 				.SetValue(AI.Instance(us), Map.Instance[40, 25].City);
 
 			FlyStrike(us, nuke!);
 
 			Assert.NotEqual(new Point(40, 25), nuke!.Goto);
+		}
+
+		// ── every Earth civ warns (the user, Nov 2026) ───────────────────────
+
+		[Fact]
+		public void ADemocracyAtWarWarnsToo()
+		{
+			(Game _, Player us, Player _, Player _, IUnit? _) = AWorld();
+			us.Government = new CivOne.Governments.Democracy();
+
+			AI.Instance(us).ConsiderUltimatum();
+
+			Assert.Equal((40, 25), (us.ThreatX, us.ThreatY));
+		}
+
+		// The warning is owed to the human only: a democracy's warhead still takes its war's
+		// target when that target is an AI rival's city.
+		[Fact]
+		public void ADemocracyStillStrikesARivalsCity()
+		{
+			(Game _, Player us, Player _, Player _, IUnit? nuke) = AWorld();
+			us.Government = new CivOne.Governments.Democracy();
+			typeof(AI).GetField("_attackTarget", BindingFlags.NonPublic | BindingFlags.Instance)!
+				.SetValue(AI.Instance(us), Map.Instance[20, 25].City);
+
+			FlyStrike(us, nuke!);
+
+			Assert.Equal(new Point(20, 25), nuke!.Goto);
+		}
+
+		// Only the last stand and the desperado build warheads: the built-out city's random
+		// fallback rolled them too, 123 in silos by 1996 and none ever flown (game c58808e6).
+		[Fact]
+		public void TheFallbackNeverRollsAWarhead()
+		{
+			Sim.NewGame(width: 80, height: 50, difficulty: 1);   // Chieftain always asks for a Militia first
+			Settings.Instance.Autopilot = true;
+			Player p = Game.Instance.HumanPlayer;
+			p.AddAdvance(new Rocketry(), false);
+			City city = Game.Instance.AddCity(p, 0, 40, 25)!;
+			city.AddWonder(new CivOne.Wonders.ManhattanProject());
+			// Garrisoned, so no rule asks for a defender: nothing left but the fallback.
+			for (int i = 0; i < 2; i++) Game.Instance.CreateUnit(UnitType.Musketeers, 40, 25, Game.Instance.PlayerNumber(p));
+			Assert.Contains(city.AvailableProduction, x => x is Nuclear);
+
+			// The fallback picks at random among about nine items, so once proves nothing.
+			for (int i = 0; i < 100; i++)
+				Assert.DoesNotContain(AI.Instance(p).ProductionPlan(city), x => x is Nuclear);
 		}
 
 		// ── retaliation ──────────────────────────────────────────────────────
