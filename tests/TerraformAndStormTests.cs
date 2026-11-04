@@ -321,27 +321,26 @@ namespace CivOne.Tests
 		[Fact]
 		public void ProductionFallback_RespectsTheExplorerCap()
 		{
-			Sim.NewGame(width: 80, height: 50);
+			Sim.NewGame(width: 80, height: 50, difficulty: 1);   // Chieftain always asks for a Militia first
 			Settings.Instance.Autopilot = true;
 			Player player = Game.Instance.HumanPlayer;
 			City city = Game.Instance.AddCity(player, 0, 40, 25)!;
 			byte id = Game.Instance.PlayerNumber(player);
 
-			for (int i = 0; i < 3; i++)
-				Game.Instance.CreateUnit(UnitType.Explorer, 40, 25, id);
-			Assert.True(Game.Instance.GetUnits().Count(u => u.Owner == id && u is Explorer) >= 2,
-				"precondition: already at or past the cap");
-
-			// Re-plan many times: the fallback picks at random, so once proves nothing.
-			for (int i = 0; i < 40; i++)
+			// Exactly at the cap, garrisoned, and under the unit ceiling (three a city) with a
+			// second city: past the ceiling the fallback drops every unit, the cap unread.
+			Game.Instance.AddCity(player, 1, 20, 25);
+			for (int i = 0; i < 2; i++)
 			{
-				Sim.ClearTasks();
-				AI.Instance(player).CityProduction(city);
-				var plan = new System.Collections.Generic.List<IProduction>();
-				if (city.CurrentProduction is not null) plan.Add(city.CurrentProduction);
-				plan.AddRange(city.ProductionQueue);
-				Assert.DoesNotContain(plan, p => p is Explorer);
+				Game.Instance.CreateUnit(UnitType.Explorer, 40, 25, id);
+				Game.Instance.CreateUnit(UnitType.Musketeers, 40, 25, id);
 			}
+
+			// Re-plan many times: the fallback picks at random, so once proves nothing. The
+			// planner directly: CityProduction returns early for a city with no net shields,
+			// and with that and Chieftain's Militia this passed with the cap removed.
+			for (int i = 0; i < 100; i++)
+				Assert.DoesNotContain(AI.Instance(player).ProductionPlan(city), p => p is Explorer);
 		}
 
 		// Under Despotism the tile penalty claws back yields ABOVE 2 food, so irrigation
