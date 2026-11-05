@@ -2137,13 +2137,7 @@ namespace CivOne
 
 			// ── Track war duration and peacetime city baseline ───────────────────
 			bool atWar = Game.Players.Any(p => p != Player && !p.IsDestroyed() && Player.IsAtWar(p));
-			if (atWar)
-				_turnsAtWar++;
-			else
-			{
-				_turnsAtWar      = 0;
-				_peacetimeCities = Player.Cities.Length;
-			}
+			if (!atWar) _peacetimeCities = Player.Cities.Length;
 			if (atWar) MarshalStrikeGroup();
 			foreach (Player p in Game.Players.Where(p => p != Player && !p.IsDestroyed() && Player.IsAtWar(p)))
 			{
@@ -2222,9 +2216,6 @@ namespace CivOne
 					bool losingTerritory = Player.Cities.Length < _peacetimeCities
 					                    && Player.Cities.Length > 0;
 
-					// War exhaustion: long campaign with an empty treasury.
-					bool exhausted = _turnsAtWar > 40 && Player.Gold < 50;
-
 					// Outsiders abroad: Earth's quarrels wait (Game.OutsidersAbroad).
 					bool united = Game.OutsidersAbroad;
 
@@ -2239,11 +2230,16 @@ namespace CivOne
 						// anyone made every new war a stalemate on its first turn, so it ended in
 						// a few turns and could be declared again. Japan opened 28 wars on the
 						// Khmer in one game, a median of 6 turns apart.
+						//
+						// War exhaustion (over 40 turns at war and under 50 gold) was the same leak:
+						// 60 of the 83 wars under 31 turns old in three logged games ended that way.
+						// Per enemy it could never decide anything, as a war that long is already a
+						// stalemate or a loss of territory, so it went.
 						Player.WarTurnsWith.TryGetValue(Game.PlayerNumber(enemy), out int warTurns);
 						bool stalemate = warTurns > 30 && Player.Cities.Length >= _peacetimeCities;
-						if (!(losingTerritory || exhausted || stalemate || united)) continue;
+						if (!(losingTerritory || stalemate || united)) continue;
 
-						int peaceChance = losingTerritory ? 30 : stalemate || united ? 25 : 20;
+						int peaceChance = losingTerritory ? 30 : 25;
 						if (Common.Random.Next(100) < peaceChance)
 						{
 							Player.MakePeace(enemy);

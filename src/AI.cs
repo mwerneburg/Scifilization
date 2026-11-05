@@ -93,7 +93,6 @@ namespace CivOne
 		private int _warAmbition     = 0;
 		internal bool WantsWarFooting => _warAmbition > 0;
 
-		private int _turnsAtWar      = 0;
 		private int _peacetimeCities = 0; // city count when we were last at peace
 		private int _lastTributeOfferTurn = -100; // turn of the last tribute offer to the human
 

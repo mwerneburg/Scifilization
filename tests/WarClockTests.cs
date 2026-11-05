@@ -34,15 +34,14 @@ namespace CivOne.Tests
 			return (us, a, b);
 		}
 
-		private static void Turn(Player us)
+		private static void Turn(Player us, int gold = 1000)
 		{
-			us.Gold = 1000;
+			us.Gold = gold;
 			AI.Instance(us)!.ConsiderWar();
 		}
 
-		private static void SetCivClock(Player us, int turns)
+		private static void HoldingItsGround(Player us)
 		{
-			typeof(AI).GetField("_turnsAtWar", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(AI.Instance(us), turns);
 			typeof(AI).GetField("_peacetimeCities", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(AI.Instance(us), us.Cities.Length);
 		}
 
@@ -52,7 +51,8 @@ namespace CivOne.Tests
 		{
 			(Player us, Player old, Player fresh) = ThreeCivs();
 			us.DeclareWar(old);
-			SetCivClock(us, 100);
+			HoldingItsGround(us);
+			us.WarTurnsWith[Game.Instance.PlayerNumber(old)] = 100;
 			us.DeclareWar(fresh);
 
 			for (int t = 0; t < 25; t++) Turn(us);
@@ -60,11 +60,41 @@ namespace CivOne.Tests
 			Assert.True(us.IsAtWar(fresh), "a war under 30 turns old ended as a stalemate");
 		}
 
+		// Being broke after a long war elsewhere used to end the new one too.
+		[Fact]
+		public void ABrokeCivStillFightsANewWar()
+		{
+			(Player us, Player old, Player fresh) = ThreeCivs();
+			us.DeclareWar(old);
+			HoldingItsGround(us);
+			us.WarTurnsWith[Game.Instance.PlayerNumber(old)] = 100;
+			us.DeclareWar(fresh);
+
+			for (int t = 0; t < 25; t++) Turn(us, gold: 10);
+
+			Assert.True(us.IsAtWar(fresh), "a broke civ's new war ended as exhaustion");
+		}
+
+		// Its own long wars still end, broke or not.
+		[Fact]
+		public void ABrokeCivsLongWarStillEnds()
+		{
+			(Player us, Player them, Player _) = ThreeCivs();
+			HoldingItsGround(us);
+			us.DeclareWar(them);
+
+			int turns = 0;
+			while (us.IsAtWar(them) && turns < 200) { Turn(us, gold: 10); turns++; }
+
+			Assert.False(us.IsAtWar(them), "the war never ended");
+			Assert.True(turns > 30, $"it ended after {turns} turns");
+		}
+
 		[Fact]
 		public void AWarWithOneEnemyEndsInStalemateAfterThirtyTurns()
 		{
 			(Player us, Player them, Player _) = ThreeCivs();
-			SetCivClock(us, 0);
+			HoldingItsGround(us);
 			us.DeclareWar(them);
 
 			int turns = 0;
@@ -79,7 +109,7 @@ namespace CivOne.Tests
 		public void PeaceRestartsTheClock()
 		{
 			(Player us, Player them, Player other) = ThreeCivs();
-			SetCivClock(us, 0);
+			HoldingItsGround(us);
 			us.DeclareWar(them);
 			int turns = 0;
 			while (us.IsAtWar(them) && turns < 200) { Turn(us); turns++; }
