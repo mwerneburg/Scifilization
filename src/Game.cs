@@ -1062,8 +1062,8 @@ namespace CivOne
 			ITile step = Map[craft.X + stepX, craft.Y + stepY];
 			// Land only, and never onto a city: they walk the shoreline, they do not invade.
 			if (step is null || step.IsOcean || step.City is not null) return;
-			craft.X = (byte)step.X;
-			craft.Y = (byte)step.Y;
+			craft.X = step.X;
+			craft.Y = step.Y;
 		}
 
 		internal void ProcessScavengerExtraction()
@@ -5389,7 +5389,7 @@ namespace CivOne
 
 			foreach (IAdvance adv in builder.Advances.ToArray())
 				if (!splinter.HasAdvance(adv)) splinter.AddAdvance(adv, false);
-			short dowry = (short)(builder.Gold / 2);
+			int dowry = builder.Gold / 2;
 			builder.Gold -= dowry;
 			splinter.Gold = dowry;
 			int cultureShare = builder.Culture / 2;

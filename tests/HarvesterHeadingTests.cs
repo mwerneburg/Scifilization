@@ -64,6 +64,25 @@ namespace CivOne.Tests
 			Assert.Equal((31, 30), ((int)craft.X, (int)craft.Y));
 		}
 
+		// Epic's eastern columns are past a byte: a step to x=301 was written back as x=45.
+		[Fact]
+		public void ACraftInTheFarEastStaysThere()
+		{
+			Sim.NewGame(width: 320, height: 200);
+			for (int y = 80; y <= 120; y++)
+			for (int x = 280; x <= 319; x++)
+			{
+				Map.Instance.ChangeTileType(x, y, Terrain.Grassland1);
+				if (Map.Instance[x, y] is BaseTile t) t.Special = false;
+			}
+			Water(303, 100);
+			IUnit craft = Game.Instance.CreateUnit(UnitType.Harvester, 300, 100, 0)!;
+
+			Game.Instance.WalkHarvester(craft);
+
+			Assert.Equal((301, 100), ((int)craft.X, (int)craft.Y));
+		}
+
 		// The west-coast case from the run: sea to the west, and the craft must go west.
 		[Fact]
 		public void ACraftOnAWestCoastFollowsTheShore()
