@@ -3321,7 +3321,7 @@ namespace CivOne
 		// Built once per player turn: HuntQuarry runs for every unit we move and WakeHunters
 		// for every unit asleep, and a scan of the whole unit list per unit is the late-game
 		// slowdown all over again. Nothing on the list moves during our own turn; what we kill
-		// is parked at X = 255.
+		// is parked at Y = 255 (not X, which is a real column on the Epic map).
 		private readonly List<IUnit> _quarry = new();
 		private int _quarryTurn = -1;
 
@@ -3481,7 +3481,7 @@ namespace CivOne
 
 			// Our ground, not a crusade: Quarry holds only what stands near a city of ours.
 			return Quarry()
-				.Where(u => u.X != 255)   // killed earlier this turn
+				.Where(u => u.Y != 255)   // killed earlier this turn
 				// Only what this unit can plausibly beat. Feeding Legions one at a time to a
 				// defence-6 harvester is worse for the civ than ignoring it, and it is how an
 				// AI empties its army into a wall. Gozira (defence 24) is nobody's quarry,
@@ -5395,7 +5395,7 @@ namespace CivOne
 			// HuntQuarry had nobody to send. Like the hunt itself this is stance-independent
 			// and raises no war footing; it buys one hunter per beast, counting the ones on order.
 			IUnit hunter = (IUnit)BestAttacker();
-			List<IUnit> prey = Quarry().Where(u => u.X != 255 && hunter.Attack >= u.Defense
+			List<IUnit> prey = Quarry().Where(u => u.Y != 255 && hunter.Attack >= u.Defense
 				&& Common.DistanceToTile(u.X, u.Y, city.X, city.Y) <= (u.Owner == 0 && IsMegafauna(u) ? HuntRadius : RaidRadius))
 				.ToList();
 			if (prey.Count > 0)
@@ -6455,7 +6455,7 @@ namespace CivOne
 			bool Enemy(byte o) => o != own && (o == 0 || Player.IsAtWar(Game.GetPlayer(o)));
 			bool Port(ITile t) => t.City is not null && t.GetBorderTiles().Any(b => b is not null && b.IsOcean);
 			return Game.GetUnits()
-				.Where(u => Enemy(u.Owner) && u.X != 255
+				.Where(u => Enemy(u.Owner) && u.Y != 255
 				         && Common.DistanceToTile(ship.X, ship.Y, u.X, u.Y) <= SeaStrikeReach
 				         && Player.Visible(u.X, u.Y))
 				.Select(u => (Unit: u, u.Tile))

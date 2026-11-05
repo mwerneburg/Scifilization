@@ -96,7 +96,9 @@ namespace CivOne
 			}
 			set
 			{
-				if (X == 255 || Y == 255) return;
+				// Y alone: the Epic map is 320 wide, so X = 255 is a real column. Testing it too
+				// left every city founded there at size 0, off its owner's roster (game 19a9f770).
+				if (Y == 255) return;
 
 				// Player.Cities filters on Size > 0, so a crossing of zero changes the roster
 				// even when no city is added, destroyed or handed over.
@@ -223,7 +225,7 @@ namespace CivOne
 		// two owners are fighting, so pruning on value alone would delete exactly the routes
 		// the war was supposed to merely interrupt, and peace could never restore them.
 		private bool SuspendedByWar(City partner)
-			=> partner.X != 255 && Owner != partner.Owner
+			=> partner.Y != 255 && Owner != partner.Owner
 			&& Game.GetPlayer(Owner).IsAtWar(Game.GetPlayer(partner.Owner));
 
 		internal void PruneWorthlessRoutes()
@@ -659,11 +661,11 @@ namespace CivOne
 
 		private int RouteBonus(City partner)
 		{
-			if (partner.X == 255) return 0;
+			if (partner.Y == 255) return 0;
 			if (Owner != partner.Owner && Game.GetPlayer(Owner).IsAtWar(Game.GetPlayer(partner.Owner))) return 0;
 			int distance = System.Math.Min(RouteDistanceCap, Common.TradeDistance(X, Y, partner.X, partner.Y));
 			float multiplier = 1.0f;
-			if (X != 255 && Tile.ContinentId == partner.Tile.ContinentId) multiplier *= 0.5f;
+			if (Y != 255 && Tile.ContinentId == partner.Tile.ContinentId) multiplier *= 0.5f;
 			// A domestic route is halved again unless a road, rail or tube network joins the
 			// two cities: Civ 1's 0.25 made home trade not worth a caravan, and a connected
 			// pair is the one that has earned the traffic.

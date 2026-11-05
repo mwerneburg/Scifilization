@@ -907,7 +907,9 @@ namespace CivOne
 					NameId        = (nameIdMap is not null && cd.NameId >= 0 && cd.NameId < nameIdMap.Length)
 					                ? nameIdMap[cd.NameId] : cd.NameId,
 					OriginalOwner = (byte)(cd.OriginalOwner ?? cd.Owner),
-					Size          = (byte)cd.Size,
+					// A city founded in column 255 was saved at size 0 (City.Size), so it comes
+					// back here as what it should have been. Nothing else is saved at size 0.
+					Size          = (byte)(cd.Size == 0 && cd.X == 255 ? 1 : cd.Size),
 					Food          = cd.Food,
 					Shields       = cd.Shields
 				};
