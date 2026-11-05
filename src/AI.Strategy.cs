@@ -4262,6 +4262,12 @@ namespace CivOne
 					}
 				}
 
+				if (SeaPrey(unit) is ITile prey)
+				{
+					unit.Goto = new Point(prey.X, prey.Y);
+					return;
+				}
+
 				// Nothing to ferry and no war to fight: go and chart something. Preferred
 				// over the harbour patrol below, which is what every idle ship used to do
 				// for the entire game.
@@ -6388,6 +6394,35 @@ namespace CivOne
 				return null;
 
 			return best;
+		}
+
+		// How far a warship looks for a fight: a fifth of the world, 16 tiles on a standard map
+		// and 64 on Epic. A flat 16 found nothing for any of the 115 warships of the t750 save
+		// of a 320x200 game, whose nearest enemy was 33 tiles away at best.
+		internal static int SeaStrikeReach => Map.WIDTH / 5;
+
+		// What a warship sails at: the nearest enemy ship, or garrisoned enemy port, that it
+		// can see and can at least match. It had no such order: in the 1996 save of game
+		// c58808e6 all ten Battleships sat in port. An empty city is left out, because a ship
+		// cannot take one. A Submarine hunts ships only, and a Carrier leaves it to its aircraft.
+		internal ITile? SeaPrey(IUnit ship)
+		{
+			if (ship is not BaseUnitSea hunter || ship.Attack == 0 || ship is IBoardable || ship is Carrier) return null;
+			byte own = ship.Owner;
+			bool Enemy(byte o) => o != own && (o == 0 || Player.IsAtWar(Game.GetPlayer(o)));
+			bool Port(ITile t) => t.City is not null && t.GetBorderTiles().Any(b => b is not null && b.IsOcean);
+			return Game.GetUnits()
+				.Where(u => Enemy(u.Owner) && u.X != 255
+				         && Common.DistanceToTile(ship.X, ship.Y, u.X, u.Y) <= SeaStrikeReach
+				         && Player.Visible(u.X, u.Y))
+				.Select(u => (Unit: u, u.Tile))
+				.Where(x => x.Tile.City is null ? x.Unit.Class == UnitClass.Water : ship is not Submarine && Port(x.Tile))
+				.Select(x => x.Tile).Distinct()
+				.Where(hunter.EvenOrBetter)
+				.OrderBy(t => Common.DistanceToTile(ship.X, ship.Y, t.X, t.Y))
+				// Three, because a lake's far shore costs a whole failed search to rule out.
+				.Take(3)
+				.FirstOrDefault(t => Common.GotoStep(ship, t.X, t.Y) is not null);
 		}
 
 		// Where a ship should sail to chart the world. The naval AI had exactly two

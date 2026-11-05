@@ -80,8 +80,9 @@ namespace CivOne
             if (unit.Role == UnitRole.Civilian)
                 return MovementFailureResolution.ClearMissionWait;
 
-            // Transport ships: regroup at embarkation point
-            if (unit.Role == UnitRole.Transport)
+            // Transport ships: regroup at embarkation point. A warship too: its target city
+            // has been emptied, and it cannot take one, so it must not wait there for good.
+            if (unit.Role == UnitRole.Transport || (unit.Role == UnitRole.SeaAttack && unit.Attack > 0))
                 return MovementFailureResolution.ClearMissionWait;
 
             // Default: retry conservative approach (don't disband)
