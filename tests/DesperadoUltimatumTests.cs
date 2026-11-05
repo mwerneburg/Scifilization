@@ -276,6 +276,21 @@ namespace CivOne.Tests
 			Assert.Equal(new Point(20, 25), nuke!.Goto);
 		}
 
+		// The limit of three counts queues. Game 7c41d897's Lakota reached four through one.
+		[Fact]
+		public void AQueuedWarheadCountsTowardTheLimit()
+		{
+			(Game g, Player us, Player _, Player _, IUnit? _) = AWorld();
+			g.CreateUnit(UnitType.Nuclear, 30, 25, g.PlayerNumber(us));
+			City home = Map.Instance[30, 25].City!;
+			Assert.Contains(AI.Instance(us).ProductionPlan(home), x => x is Nuclear);
+
+			City other = g.AddCity(us, 4, 25, 25)!;
+			other.EnqueueProduction(new Nuclear());
+
+			Assert.DoesNotContain(AI.Instance(us).ProductionPlan(home), x => x is Nuclear);
+		}
+
 		// Only the last stand and the desperado build warheads: the built-out city's random
 		// fallback rolled them too, 123 in silos by 1996 and none ever flown (game c58808e6).
 		[Fact]

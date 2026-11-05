@@ -56,6 +56,19 @@ namespace CivOne.Tests
 
 		// The standing commitment: it is never completed, even when shields arrive from
 		// outside the city (the Adam Smith bond pool can donate them).
+		// The bank is an int now. The grant's old clamp to 16 bits would cut a big bank down.
+		[Fact]
+		public void ResearchGrant_DoesNotCutABigBank()
+		{
+			City city = GrantCity(out Player player);
+			player.Science = 40000;
+			Assert.True(city.ShieldIncome > 0, "the fixture city makes no shields");
+
+			city.NewTurn();
+
+			Assert.True(player.Science >= 40000, $"the bank fell to {player.Science}");
+		}
+
 		[Fact]
 		public void ResearchGrant_NeverCompletes()
 		{

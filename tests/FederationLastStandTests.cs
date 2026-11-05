@@ -63,6 +63,19 @@ namespace CivOne.Tests
 			Assert.False(PlansAWarhead(p));
 		}
 
+		// A queued warhead is on order too.
+		[Fact]
+		public void WarheadsInAQueueCountTowardTheStockpile()
+		{
+			(Game g, Player p) = AnInvader(15);
+			for (int i = 0; i < 4; i++) g.CreateUnit(UnitType.Nuclear, p.Cities[1].X, p.Cities[1].Y, g.PlayerNumber(p));
+			Assert.True(PlansAWarhead(p));
+
+			p.Cities[2].EnqueueProduction(new Nuclear());
+
+			Assert.False(PlansAWarhead(p));
+		}
+
 		// One for every three cities: five on hand at fifteen is the stockpile.
 		[Fact]
 		public void TheStockpileStopsAtOnePerThreeCities()

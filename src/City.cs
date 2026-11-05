@@ -2625,7 +2625,7 @@ namespace CivOne
 					// so it lands before the ProcessScience below picks the total up on the
 					// same turn, exactly as a city's own science does.
 					else if (CurrentProduction is ResearchGrant)
-						Player.Science = (short)Math.Min(short.MaxValue, Player.Science + income);
+						Player.Science += income;
 					else
 						Shields += income;
 				}

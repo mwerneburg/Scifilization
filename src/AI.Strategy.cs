@@ -1523,7 +1523,7 @@ namespace CivOne
 			if (Player.Government is not Gov.Fascism || !Player.ProductionAvailable(new Nuclear())) return false;
 			byte id = Game.PlayerNumber(Player);
 			return Game.GetUnits().Count(u => u.Owner == id && u is Nuclear)
-				+ Player.Cities.Count(c => c.CurrentProduction is Nuclear) < DesperadoWarheads;
+				+ OnOrder(p => p is Nuclear) < DesperadoWarheads;
 		}
 
 		internal void ConsiderUltimatum()
@@ -2145,6 +2145,12 @@ namespace CivOne
 				_peacetimeCities = Player.Cities.Length;
 			}
 			if (atWar) MarshalStrikeGroup();
+			foreach (Player p in Game.Players.Where(p => p != Player && !p.IsDestroyed() && Player.IsAtWar(p)))
+			{
+				byte number = Game.PlayerNumber(p);
+				Player.WarTurnsWith.TryGetValue(number, out int turns);
+				Player.WarTurnsWith[number] = turns + 1;
+			}
 
 			// ── Tribute pact (Layer 1) ───────────────────────────────────────────
 			// A militarily outclassed AI civ at war with an AI neighbour it has an embassy
@@ -2219,25 +2225,29 @@ namespace CivOne
 					// War exhaustion: long campaign with an empty treasury.
 					bool exhausted = _turnsAtWar > 40 && Player.Gold < 50;
 
-					// Stalemate: a long war in which we haven't lost ground either. Without
-					// this exit, two solvent civs in a going-nowhere war stay at war forever
-					// (neither loses territory, neither goes broke), which locks both in the
-					// Militarize stance for the rest of the game.
-					bool stalemate = _turnsAtWar > 30 && Player.Cities.Length >= _peacetimeCities;
-
 					// Outsiders abroad: Earth's quarrels wait (Game.OutsidersAbroad).
 					bool united = Game.OutsidersAbroad;
 
-					if (losingTerritory || exhausted || stalemate || united)
+					foreach (Player enemy in aiEnemies)
 					{
+						// Stalemate: a long war in which we haven't lost ground either. Without
+						// this exit, two solvent civs in a going-nowhere war stay at war forever
+						// (neither loses territory, neither goes broke), which locks both in the
+						// Militarize stance for the rest of the game.
+						//
+						// Long with THIS enemy. The clock was the civ's: thirty turns at war with
+						// anyone made every new war a stalemate on its first turn, so it ended in
+						// a few turns and could be declared again. Japan opened 28 wars on the
+						// Khmer in one game, a median of 6 turns apart.
+						Player.WarTurnsWith.TryGetValue(Game.PlayerNumber(enemy), out int warTurns);
+						bool stalemate = warTurns > 30 && Player.Cities.Length >= _peacetimeCities;
+						if (!(losingTerritory || exhausted || stalemate || united)) continue;
+
 						int peaceChance = losingTerritory ? 30 : stalemate || united ? 25 : 20;
-						foreach (Player enemy in aiEnemies)
+						if (Common.Random.Next(100) < peaceChance)
 						{
-							if (Common.Random.Next(100) < peaceChance)
-							{
-								Player.MakePeace(enemy);
-								break; // one treaty per turn
-							}
+							Player.MakePeace(enemy);
+							break; // one treaty per turn
 						}
 					}
 				}
@@ -4292,7 +4302,7 @@ namespace CivOne
 			// Explorers: head for the nearest unseen tile
 			if (unit is Explorer)
 			{
-				ITile? dest = BestExploreTile(unit);
+				ITile? dest = BestExploreTile(unit) ?? NearestFog(unit);
 				if (dest is not null)
 				{
 					unit.Goto = new Point(dest.X, dest.Y);
@@ -4835,7 +4845,7 @@ namespace CivOne
 			if (!Player.ProductionAvailable(new Nuclear())) return false;
 			byte id = Game.PlayerNumber(Player);
 			int have = Game.GetUnits().Count(u => u.Owner == id && u is Nuclear)
-				+ Player.Cities.Count(c => c.CurrentProduction is Nuclear);
+				+ OnOrder(p => p is Nuclear);
 			return have < Math.Max(1, Player.Cities.Length / 3);
 		}
 
@@ -6412,6 +6422,33 @@ namespace CivOne
 			return best;
 		}
 
+		// The scan above sees 8 tiles, which is a good part of a Standard map and 0.45% of an Epic
+		// one. An Explorer with that box charted went to sleep for good: at t225 of an Epic Earth
+		// game 11 of 13 were asleep, all 11 with over 500 unseen tiles among their civ's home
+		// continents. It walks to the nearest unseen land it can reach instead. The scan is
+		// the whole map, but runs only when the box is empty, and the walk or the sleep follows.
+		internal ITile? NearestFog(IUnit unit)
+		{
+			ITile? best = null;
+			int bestDist = int.MaxValue;
+			for (int y = 0; y < Map.HEIGHT; y++)
+			for (int x = 0; x < Map.WIDTH; x++)
+			{
+				if (Player.Visible(x, y)) continue;
+				ITile tile = Map[x, y];
+				if (tile is null || tile.IsOcean || !LandReachable(unit, tile)) continue;
+				int dist = Common.DistanceToTile(unit.X, unit.Y, x, y);
+				if (dist < bestDist) { bestDist = dist; best = tile; }
+			}
+			return best is not null && Common.GotoStep(unit, best.X, best.Y) is not null ? best : null;
+		}
+
+		// What the civ has on order, in every city's queue as well as on its stocks. A cap that
+		// read only the stocks let a queued item through: the Lakota of game 7c41d897 held 4
+		// warheads against a limit of 3, the fourth out of a queue.
+		private int OnOrder(Func<IProduction, bool> what, City? except = null) =>
+			Player.Cities.Where(c => c != except).Sum(c => (what(c.CurrentProduction) ? 1 : 0) + c.ProductionQueue.Count(what));
+
 		// Warships a civ keeps for a war at sea: a squadron, not a navy.
 		internal const int WarFleet = 3;
 
@@ -6436,7 +6473,7 @@ namespace CivOne
 			if (!enemyAcrossTheWater) return false;
 			byte own = Game.PlayerNumber(Player);
 			return Game.GetUnits().Count(u => u.Owner == own && IsWarship(u))
-			     + Player.Cities.Count(c => c != city && c.CurrentProduction is IUnit u && IsWarship(u)) < WarFleet;
+			     + OnOrder(p => p is IUnit u && IsWarship(u), except: city) < WarFleet;
 		}
 
 		// How far a warship looks for a fight: a fifth of the world, 16 tiles on a standard map

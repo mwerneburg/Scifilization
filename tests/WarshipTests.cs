@@ -347,6 +347,17 @@ namespace CivOne.Tests
 		}
 
 		[Fact]
+		public void AShipInAnotherCitysQueueCounts()
+		{
+			(Game g, Player us, Player _, City port) = AWarAcrossTheSea();
+			for (int i = 0; i < AI.WarFleet - 1; i++) Make(g, us, UnitType.Cruiser, PortX, SeaY);
+			City other = g.AddCity(us, 5, 20, 19 + 1)!;
+			other.EnqueueProduction(new Cruiser());
+
+			Assert.False(AI.Instance(us).FleetWanted(port));
+		}
+
+		[Fact]
 		public void AnEnemyOutOfReachWantsNoFleet()
 		{
 			(Game g, Player us, Player _, City _) = AWarAcrossTheSea();

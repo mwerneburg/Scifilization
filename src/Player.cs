@@ -491,7 +491,7 @@ namespace CivOne
 			}
 		}
 		
-		public short Science { get; internal set; }
+		public int Science { get; internal set; }
 
 		public int Pollution => Cities.Sum(c => c.SmokeStacks);
 
@@ -636,6 +636,7 @@ namespace CivOne
 		{
 			_embassies.Remove(k);
 			_warWith.Remove(k);
+			WarTurnsWith.Remove(k);
 			_peaceTreaty.Remove(k);
 			_attitudeBonus.Remove(k);
 			_implacable.Remove(k);
@@ -809,12 +810,17 @@ namespace CivOne
 		// recursively pull in further pacts.
 		private static bool _honoringPacts;
 
+		// How long this civ has been at war with each enemy: AI.ConsiderWar counts, peace clears.
+		internal readonly Dictionary<byte, int> WarTurnsWith = new Dictionary<byte, int>();
+
 		public void MakePeace(Player enemy)
 		{
 			byte enemyNumber = Game.PlayerNumber(enemy);
 			byte ownNumber = Game.PlayerNumber(this);
 			_warWith.Remove(enemyNumber);
 			enemy._warWith.Remove(ownNumber);
+			WarTurnsWith.Remove(enemyNumber);
+			enemy.WarTurnsWith.Remove(ownNumber);
 
 			// A settled war is no longer held against the human's economic streak.
 			Game.ForgetWarStart(ownNumber, enemyNumber);
