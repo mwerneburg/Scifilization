@@ -2,10 +2,12 @@
 //
 // AI warships had no order but "chart the world" and "go to the nearest port of ours". In the
 // 1996 save of game c58808e6 all ten Battleships sat in port. Now one sails at the nearest
-// enemy ship or garrisoned port it can see and can at least match (AI.SeaPrey).
+// enemy ship or garrisoned port it can see and can at least match (AI.SeaPrey), and a port at
+// war across the water builds a small fleet to do it with (AI.FleetWanted).
 
 using System.Drawing;
 using System.Linq;
+using CivOne.Advances;
 using CivOne.Enums;
 using CivOne.Tiles;
 using CivOne.Units;
@@ -43,6 +45,8 @@ namespace CivOne.Tests
 			port.Size = enemy.Size = 6;
 			g.CreateUnit(UnitType.Musketeers, PortX, SeaY, g.PlayerNumber(us));
 			if (war) us.DeclareWar(them);
+			// Reshaping tiles does not renumber the water, and FleetWanted reads the numbers.
+			Map.Instance.RecalculateWaterBodies();
 			Sim.ClearTasks();
 			return (g, us, them, port, enemy);
 		}
@@ -245,6 +249,215 @@ namespace CivOne.Tests
 
 			Make(g, them, UnitType.Transport, 33, SeaY);
 			Assert.Equal((33, SeaY), (AI.Instance(us).SeaPrey(sub)!.X, AI.Instance(us).SeaPrey(sub)!.Y));
+		}
+
+		// ── the fleet ────────────────────────────────────────────────────────
+
+		// A garrisoned enemy port across the water, and our own port with a yard and Steel.
+		private static (Game g, Player us, Player them, City port) AWarAcrossTheSea(bool war = true)
+		{
+			(Game g, Player us, Player them, City port, City _) = ASeaWar(war);
+			Make(g, them, UnitType.Phalanx, EnemyX, SeaY);
+			Make(g, us, UnitType.Musketeers, PortX, SeaY);
+			foreach (IAdvance a in Common.Advances) us.AddAdvance(a, false);
+			port.AddBuilding(new CivOne.Buildings.Shipyard());
+			Sim.ClearTasks();
+			return (g, us, them, port);
+		}
+
+		private static IProduction[] Plan(Player p, City c) => AI.Instance(p).ProductionPlan(c).ToArray();
+
+		[Fact]
+		public void APortAtWarAcrossTheSeaPlansTheBestWarshipItCanBuild()
+		{
+			(Game _, Player us, Player _, City port) = AWarAcrossTheSea();
+
+			Assert.Contains(Plan(us, port), x => x is Battleship);
+		}
+
+		[Fact]
+		public void WithoutSteelItTakesTheNextBest()
+		{
+			(Game _, Player us, Player _, City port) = AWarAcrossTheSea();
+			Assert.True(AI.Instance(us).FleetWanted(port));
+			IProduction[] available = port.AvailableProduction.ToArray();
+			Assert.Contains(available, x => x is Battleship);
+
+			us.DeleteAdvance(new CivOne.Advances.Steel());
+
+			Assert.DoesNotContain(Plan(us, port), x => x is Battleship);
+			Assert.Contains(Plan(us, port), x => x is Cruiser);
+		}
+
+		// Ironclad gives way to the Cruiser at Combustion, so it is the ship of the years before.
+		[Fact]
+		public void BeforeThatAnIronclad()
+		{
+			(Game _, Player us, Player _, City port) = AWarAcrossTheSea();
+			us.DeleteAdvance(new CivOne.Advances.Steel());
+			us.DeleteAdvance(new CivOne.Advances.Combustion());
+
+			Assert.Contains(Plan(us, port), x => x is Ironclad);
+		}
+
+		// Steel with Steam Engine and no Combustion: both are on offer, and the big guns win.
+		[Fact]
+		public void ABattleshipOutranksAnIronclad()
+		{
+			(Game _, Player us, Player _, City port) = AWarAcrossTheSea();
+			us.DeleteAdvance(new CivOne.Advances.Combustion());
+			Assert.Contains(port.AvailableProduction, x => x is Ironclad);
+
+			IProduction[] plan = Plan(us, port);
+
+			Assert.Contains(plan, x => x is Battleship);
+			Assert.DoesNotContain(plan, x => x is Ironclad);
+		}
+
+		[Fact]
+		public void AtPeaceThereIsNoFleet()
+		{
+			(Game _, Player us, Player _, City port) = AWarAcrossTheSea(war: false);
+
+			Assert.False(AI.Instance(us).FleetWanted(port));
+		}
+
+		[Fact]
+		public void TheFleetStopsAtItsSize()
+		{
+			(Game g, Player us, Player _, City port) = AWarAcrossTheSea();
+			for (int i = 0; i < AI.WarFleet - 1; i++) Make(g, us, UnitType.Cruiser, PortX, SeaY);
+			Assert.True(AI.Instance(us).FleetWanted(port));
+
+			Make(g, us, UnitType.Cruiser, PortX, SeaY);
+
+			Assert.False(AI.Instance(us).FleetWanted(port));
+		}
+
+		// Two ports starting ships in one turn would each see a fleet with room.
+		[Fact]
+		public void AShipOnTheStocksElsewhereCounts()
+		{
+			(Game g, Player us, Player _, City port) = AWarAcrossTheSea();
+			for (int i = 0; i < AI.WarFleet - 1; i++) Make(g, us, UnitType.Cruiser, PortX, SeaY);
+			City other = g.AddCity(us, 5, 20, 19 + 1)!;
+			other.SetProduction(new Cruiser());
+
+			Assert.False(AI.Instance(us).FleetWanted(port));
+		}
+
+		[Fact]
+		public void AnEnemyOutOfReachWantsNoFleet()
+		{
+			(Game g, Player us, Player _, City _) = AWarAcrossTheSea();
+			// The west shore of our island: the same sea, but further than a warship looks.
+			City west = g.AddCity(us, 6, 20, SeaY)!;
+			Assert.True(Common.DistanceToTile(west.X, west.Y, EnemyX, SeaY) > AI.SeaStrikeReach, "fixture: in reach");
+
+			Assert.False(AI.Instance(us).FleetWanted(west));
+		}
+
+		// From their side, because their sight of our port is the one thing never explored here.
+		[Fact]
+		public void AnEnemyOutOfSightWantsNoFleet()
+		{
+			(Game _, Player us, Player them, City _) = AWarAcrossTheSea();
+			Assert.False(them.Visible(PortX, SeaY), "fixture: they can see our port");
+			Assert.True(them.IsAtWar(us));
+
+			Assert.False(AI.Instance(them).FleetWanted(them.Cities[0]));
+		}
+
+		// A sea inside our island, big enough to get a number of its own, in reach of the enemy.
+		[Fact]
+		public void APortOnAnotherSeaWantsNoFleet()
+		{
+			(Game g, Player us, Player _, City port) = AWarAcrossTheSea();
+			for (int y = 21; y <= 29; y++)
+			for (int x = 21; x <= 23; x++)
+				Map.Instance.ChangeTileType(x, y, Terrain.Ocean);
+			City town = g.AddCity(us, 7, 24, 23)!;
+			Map.Instance.RecalculateWaterBodies();
+			byte inland = Map.Instance[22, 25].OceanId, sea = Map.Instance[PortX + 1, SeaY].OceanId;
+			Assert.True(Map.NamedOcean(inland) && inland != sea, "fixture: not a sea of its own");
+			Assert.True(Common.DistanceToTile(town.X, town.Y, EnemyX, SeaY) <= AI.SeaStrikeReach, "fixture: out of reach");
+			Assert.True(AI.Instance(us).FleetWanted(port));
+
+			Assert.False(AI.Instance(us).FleetWanted(town));
+		}
+
+		// Every unnamed water shares one id, so a matching id here joins nothing.
+		[Fact]
+		public void TwoPondsAreNotASea()
+		{
+			(Game g, Player us, Player _, City port) = AWarAcrossTheSea();
+			foreach (City c in g.GetCities())
+				foreach (ITile t in c.Tile.GetBorderTiles().Where(t => t.IsOcean))
+					t.OceanId = Map.MiscOcean;
+
+			Assert.False(AI.Instance(us).FleetWanted(port));
+		}
+
+		[Fact]
+		public void BarbariansDoNotKeepACivBuildingShips()
+		{
+			(Game g, Player us, Player them, City port) = AWarAcrossTheSea(war: false);
+			Player barbarians = g.Players.First(p => p.Civilization is CivOne.Civilizations.Barbarian);
+			g.AddCity(barbarians, 8, 42, 20);
+
+			Assert.False(AI.Instance(us).FleetWanted(port));
+		}
+
+		[Fact]
+		public void WithNoYardAnywhereOnePortBuildsOne()
+		{
+			(Game g, Player us, Player _, City port) = AWarAcrossTheSea();
+			port.RemoveBuilding<CivOne.Buildings.Shipyard>();
+			port.Size = 12;
+
+			IProduction[] plan = Plan(us, port);
+
+			Assert.Contains(plan, x => x is CivOne.Buildings.Shipyard);
+			Assert.DoesNotContain(plan, x => x is Battleship or Cruiser);
+		}
+
+		[Fact]
+		public void AYardElsewhereMeansNoSecondYard()
+		{
+			(Game g, Player us, Player _, City yard) = AWarAcrossTheSea();
+			Map.Instance.ChangeTileType(PortX, 21, Terrain.Grassland1);
+			City second = g.AddCity(us, 9, PortX, 21)!;
+			second.Size = 12;
+			Assert.True(AI.Instance(us).FleetWanted(second));
+			Assert.True(yard.HasBuilding<CivOne.Buildings.Shipyard>());
+
+			Assert.DoesNotContain(Plan(us, second), x => x is CivOne.Buildings.Shipyard);
+		}
+
+		// ── the record ───────────────────────────────────────────────────────
+
+		// Cruiser on Cavalry appears nowhere else in the tests, so no other test's queued line
+		// can answer for this one (the logger writes on a background thread). A land fight goes
+		// first and the ship's line is awaited, so the land fight's has had time to be written.
+		[Fact]
+		public void AShipsAttackIsLoggedAndALandUnitsIsNot()
+		{
+			(Game g, Player us, Player them, City _) = AWarAcrossTheSea();
+			const string landFight = "\"type\":\"sea_fight\"";
+			int landBefore = Sim.DecisionLineCount(landFight, "\"defender\":\"Knights\"");
+			int before = Sim.DecisionLineCount(landFight, "\"defender\":\"Cavalry\"");
+			IUnit knights = Make(g, them, UnitType.Knights, 33, SeaY);
+			IUnit cavalry = Make(g, them, UnitType.Cavalry, 34, SeaY);
+
+			((BaseUnit)Make(g, us, UnitType.Legion, 32, SeaY)).TestAttackOutcome(knights);
+			bool won = ((BaseUnit)Make(g, us, UnitType.Cruiser, 33, SeaY + 1)).TestAttackOutcome(cavalry);
+
+			string line = Sim.AwaitDecisionLine("\"defender\":\"Cavalry\"", before, also: landFight);
+			Assert.Contains($"\"civ\":\"{us.Civilization.NamePlural}\"", line);
+			Assert.Contains("\"unit\":\"Cruiser\"", line);
+			Assert.Contains($"\"victim\":\"{them.Civilization.NamePlural}\"", line);
+			Assert.Contains($"\"won\":{(won ? "true" : "false")}", line);
+			Assert.Equal(landBefore, Sim.DecisionLineCount(landFight, "\"defender\":\"Knights\""));
 		}
 
 		// Prey each could beat: armed, and they still stay out of it.

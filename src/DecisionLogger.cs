@@ -86,6 +86,13 @@ using CivOne.Units;
 //   econ_streak   int      consecutive turns the Pax Mercatoria claim has held
 //   cult_streak   int      consecutive turns the Cultural Ascendancy claim has held
 //
+//   --- sea_fight fields (type="sea_fight", every attack made by a ship) ---
+//   civ, unit     string   the attacker
+//   victim        string   the defender's civ
+//   defender      string   the unit that met the attack
+//   city          string   the city it stood in; empty at sea or in the open
+//   won           bool     the attacker won
+//
 //   --- defection fields (a city changing flags for culture, not for arms) ---
 //   city          string   the city that changed hands
 //   city_size     int      size at the moment it defected (the rule only takes small ones)
@@ -626,6 +633,27 @@ namespace CivOne
 				KV("city",      city?.Name ?? ""),
 				KV("unit",      unit.Name),
 				KV("refund",    refund),
+			}));
+		}
+
+		// A ship's attack, whoever it fell on. Nothing recorded these, so an autoplay could not
+		// say whether a warship had ever fired (game 57b60740).
+		internal static void LogSeaFight(IUnit attacker, IUnit defender, bool won)
+		{
+			if (!_active) return;
+			Player? owner = Game.Instance?.GetPlayer(attacker.Owner);
+			Player? victim = Game.Instance?.GetPlayer(defender.Owner);
+			Enqueue(Fmt(new[] {
+				KV("type",       "sea_fight"),
+				KV("game_id",    _gameId),
+				KV("turn",       Game.Instance?.GameTurn ?? 0),
+				KV("is_human",   owner?.IsHuman ?? false),
+				KV("civ",        owner?.Civilization?.NamePlural ?? "?"),
+				KV("unit",       attacker.Name),
+				KV("victim",     victim?.Civilization?.NamePlural ?? "?"),
+				KV("defender",   defender.Name),
+				KV("city",       defender.Tile?.City?.Name ?? ""),
+				KV("won",        won),
 			}));
 		}
 

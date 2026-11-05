@@ -5985,6 +5985,22 @@ namespace CivOne
 			    && city.AvailableProduction.Any(a => a is Shipyard))
 				Consider(new Shipyard());
 
+			// A small fleet for a war that can be fought at sea. Nothing asked for a warship: of
+			// 20,049 production picks in game 57b60740, four were, all rolled by the fallback in
+			// peacetime, so the orders in SeaPrey had almost nothing to give them to.
+			if (FleetWanted(city))
+			{
+				if (city.HasBuilding<Shipyard>())
+				{
+					IProduction? warship = new IProduction[] { new Battleship(), new Cruiser(), new Ironclad() }
+						.FirstOrDefault(w => city.AvailableProduction.Any(a => a.GetType() == w.GetType()));
+					if (warship is not null) Consider(warship);
+				}
+				else if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>() || (c != city && c.CurrentProduction is Shipyard))
+				         && city.AvailableProduction.Any(a => a is Shipyard))
+					Consider(new Shipyard());
+			}
+
 			// Pollution control. A city past the tolerated smog level (City.cs:1193 gives
 			// the first 20 units free) pays unhappiness for it and rolls for a new polluted
 			// tile every single turn, and enough polluted tiles trigger global warming for
@@ -6394,6 +6410,33 @@ namespace CivOne
 				return null;
 
 			return best;
+		}
+
+		// Warships a civ keeps for a war at sea: a squadron, not a navy.
+		internal const int WarFleet = 3;
+
+		private static bool IsWarship(IUnit u) => u is Ironclad or Cruiser or Battleship or Submarine;
+
+		// Whether this port should arm: an enemy port in sight, within a warship's reach and on
+		// the same sea, and the fleet not yet full. Barbarians do not count, as they hold no
+		// diplomacy and would keep a civ building ships for good (see GetStance). Unnamed waters
+		// all share one id, so they say nothing about whether two ports are joined.
+		internal bool FleetWanted(City city)
+		{
+			var seas = new HashSet<byte>(city.Tile.GetBorderTiles()
+				.Where(t => t is not null && t.IsOcean && Map.NamedOcean(t.OceanId))
+				.Select(t => t.OceanId));
+			if (seas.Count == 0) return false;
+			bool enemyAcrossTheWater = Game.Players
+				.Where(p => p is not null && p != Player && p.Civilization is not Barbarian && Player.IsAtWar(p))
+				.SelectMany(p => p.Cities)
+				.Any(c => Common.DistanceToTile(city.X, city.Y, c.X, c.Y) <= SeaStrikeReach
+				       && Player.Visible(c.X, c.Y)
+				       && c.Tile.GetBorderTiles().Any(t => t is not null && t.IsOcean && seas.Contains(t.OceanId)));
+			if (!enemyAcrossTheWater) return false;
+			byte own = Game.PlayerNumber(Player);
+			return Game.GetUnits().Count(u => u.Owner == own && IsWarship(u))
+			     + Player.Cities.Count(c => c != city && c.CurrentProduction is IUnit u && IsWarship(u)) < WarFleet;
 		}
 
 		// How far a warship looks for a fight: a fifth of the world, 16 tiles on a standard map

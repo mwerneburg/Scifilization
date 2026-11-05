@@ -306,6 +306,8 @@ namespace CivOne.Units
 				win = (randomAttack >= randomDefense);
 			}
 
+			if (attackUnit.Class == UnitClass.Water) DecisionLogger.LogSeaFight(attackUnit, defendUnit, win);
+
 			// 50% chance to award veteran status to the winner
 			if (Common.Random.Next(100) < 50)
 			{
