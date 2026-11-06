@@ -5454,8 +5454,14 @@ namespace CivOne
 				// itself ashore as a land Settlers would. Counting only IBoardable hulls, as
 				// the Trireme rule below does, left this cap counting everything except the
 				// boat it caps.
+				//
+				// Not a Trireme, though: it cannot leave the coast, so it crosses to nowhere a
+				// boxed-in civ could settle. Counting them, two idle Triremes in port stopped the
+				// Longboats for good, and the Maori built 3 to 7 Triremes in most games.
+				// Queued boats count, so several ports cannot launch past the cap at once.
 				int afloat = Game.GetUnits().Count(u => u.Owner == boxedId
-				                                     && (u is Longboat || u is IBoardable));
+				                                     && (u is Longboat || (u is IBoardable && u is not Trireme)))
+				           + OnOrder(p => p is Longboat, except: city);
 				// Two crossings in flight, not one and not unbounded. The rule this replaces
 				// was uncapped, on the reasoning that "one at sea at a time" colonises a new
 				// world at one city per crossing — true, but it was written for a rule sitting
@@ -5969,7 +5975,10 @@ namespace CivOne
 			                                       && !Map.Instance.IsFreshwaterAt(t.X, t.Y)))
 			{
 				byte hullId = Game.PlayerNumber(Player);
-				int hulls = Game.GetUnits().Count(u => u.Owner == hullId && u is IBoardable);
+				// Queued hulls count: reading only the ships afloat let several ports start one
+				// in the same few turns, and the Maori launched 3 to 7 Triremes in bursts.
+				int hulls = Game.GetUnits().Count(u => u.Owner == hullId && u is IBoardable)
+				          + OnOrder(p => p is IBoardable, except: city);
 				// The newest hull this port can launch. Only a Trireme was ever asked for, so at
 				// turn 576 of game a82cf446 every AI transport afloat was one; a Transport also
 				// wants a Shipyard, which the refit rule below provides.

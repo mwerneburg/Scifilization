@@ -245,5 +245,70 @@ namespace CivOne.Tests
 
 			Assert.Equal(new System.Drawing.Point(room.X, room.Y), settler.Goto);
 		}
+
+		// ── the caps ─────────────────────────────────────────────────────────
+		//
+		// The Maori fill New Zealand by about t150 and then stall. Triremes counted against the
+		// Longboat cap though they cannot leave the coast, so two idle in port stopped the one
+		// boat that crosses; and neither cap counted queued boats, so ports built Triremes in
+		// bursts of 3 to 7 against a cap of 2.
+
+		private static City AnotherPort(Game g, Player p) => g.AddCity(p, 1, 39, 25)!;
+
+		[Fact]
+		public void TriremesInPortDoNotStopTheLongboats()
+		{
+			(Game g, Player p, City c) = AnIslandCiv();
+			for (int i = 0; i < 2; i++) g.CreateUnit(UnitType.Trireme, c.X, c.Y, g.PlayerNumber(p), false);
+
+			Assert.Contains(Plan(p, c), x => x is Longboat);
+		}
+
+		// The boats that do cross still fill it.
+		[Fact]
+		public void TwoLongboatsAfloatFillTheCap()
+		{
+			(Game g, Player p, City c) = AnIslandCiv();
+			for (int i = 0; i < 2; i++) g.CreateUnit(UnitType.Longboat, c.X, c.Y, g.PlayerNumber(p), false);
+
+			Assert.DoesNotContain(Plan(p, c), x => x is Longboat);
+		}
+
+		[Fact]
+		public void AQueuedLongboatCounts()
+		{
+			(Game g, Player p, City c) = AnIslandCiv();
+			g.CreateUnit(UnitType.Longboat, c.X, c.Y, g.PlayerNumber(p), false);
+			AnotherPort(g, p).EnqueueProduction(new Longboat());
+
+			Assert.DoesNotContain(Plan(p, c), x => x is Longboat);
+		}
+
+		// The general hull rule, for a civ that has charted home and little else.
+		private static (Game g, Player p, City c) AnExploringIslandCiv()
+		{
+			(Game g, Player p, City c) = AnIslandCiv();
+			Assert.True(p.ExploredHomeContinentFraction > 0.90, "fixture: home is not charted");
+			Assert.True(p.ExploredLandFraction < 0.60, "fixture: the world is charted");
+			return (g, p, c);
+		}
+
+		[Fact]
+		public void AnExploringIslandPlansAHull()
+		{
+			(Game _, Player p, City c) = AnExploringIslandCiv();
+
+			Assert.Contains(Plan(p, c), x => x is Trireme);
+		}
+
+		[Fact]
+		public void AQueuedHullCounts()
+		{
+			(Game g, Player p, City c) = AnExploringIslandCiv();
+			g.CreateUnit(UnitType.Trireme, c.X, c.Y, g.PlayerNumber(p), false);
+			AnotherPort(g, p).EnqueueProduction(new Trireme());
+
+			Assert.DoesNotContain(Plan(p, c), x => x is Trireme);
+		}
 	}
 }
