@@ -92,9 +92,11 @@ namespace CivOne.Units
 			Game.Instance.DisbandUnit(unit);
 		}
 
+		internal const int WonderShields = 50;
+
 		public static void HelpBuildWonder(IUnit unit, City city)
 		{
-			city.Shields += 50;
+			city.Shields += WonderShields;
 			Game.Instance.DisbandUnit(unit);
 		}
 	}

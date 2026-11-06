@@ -179,9 +179,10 @@ namespace CivOne.Tests
 			Assert.Equal(Terrain.Mountains, Map.Instance[cx, cy].Type);
 		}
 
-		// The counter must still bite where the sea actually reaches.
+		// The counter must still bite where the sea actually reaches, up to the last event
+		// that raises it.
 		[Fact]
-		public void Coastline_IsStillFloodedAtHighCounts()
+		public void Coastline_IsStillFloodedOnTheLastRise()
 		{
 			Sim.NewGame(width: 80, height: 50);
 			Game g = Game.Instance;
@@ -194,11 +195,41 @@ namespace CivOne.Tests
 			Map.Instance.ChangeTileType(cx, cy, Terrain.Forest);
 			Map.Instance.RecalculateContinentsIfDirty();
 
-			g.GlobalWarmingCount = 9;
+			g.GlobalWarmingCount = Game.SeaRiseEvents - 1;
 			Pollute(4000);
 			g.HandleGlobalWarming();
 
 			Assert.Equal(Terrain.Jungle, Map.Instance[cx, cy].Type);   // forest floods to jungle
+		}
+
+		// Past the last rise the sea stays put and the land dries: game 96367b22 ended 94.7%
+		// ocean after 8 events. A swamp ringed by sea is what drowned every time before.
+		[Fact]
+		public void PastTheLastRise_NothingDrownsAndTheForestsDry()
+		{
+			Sim.NewGame(width: 80, height: 50);
+			Game g = Game.Instance;
+			for (int dy = -2; dy <= 2; dy++)
+			for (int dx = -2; dx <= 2; dx++)
+				Map.Instance.ChangeTileType(40 + dx, 25 + dy, Terrain.Ocean);
+			Map.Instance.ChangeTileType(40, 25, Terrain.Swamp);
+			// A forest on this event's dry-out mesh: (11x + 13y) & 7 == count & 7.
+			for (int y = 20; y <= 30; y++)
+			for (int x = 50; x <= 70; x++)
+				Map.Instance.ChangeTileType(x, y, Terrain.Grassland1);
+			g.GlobalWarmingCount = Game.SeaRiseEvents;
+			int fx = Enumerable.Range(55, 8).First(x => ((11 * x + 13 * 25) & 7) == ((Game.SeaRiseEvents + 1) & 7));
+			Map.Instance.ChangeTileType(fx, 25, Terrain.Forest);
+			Map.Instance.RecalculateContinentsIfDirty();
+			int land = Map.Instance.AllTiles().Count(t => !t.IsOcean);
+
+			Pollute(4000);
+			g.HandleGlobalWarming();
+
+			Assert.Equal(Game.SeaRiseEvents + 1, g.GlobalWarmingCount);
+			Assert.Equal(land, Map.Instance.AllTiles().Count(t => !t.IsOcean));
+			Assert.Equal(Terrain.Swamp, Map.Instance[40, 25].Type);
+			Assert.Equal(Terrain.Plains, Map.Instance[fx, 25].Type);
 		}
 
 		// Warming dries the world out: everything that is not already Desert or Plains is sent

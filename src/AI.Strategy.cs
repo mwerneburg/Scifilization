@@ -4423,6 +4423,14 @@ namespace CivOne
 			// impossible walk across the ocean.
 			if (unit is Caravan)
 			{
+				// Our Dome part comes before any trade route. A Caravan already standing in the
+				// city adds its shields; one elsewhere on the continent walks there.
+				if (DomeBuilder() is City dome && dome.Tile?.ContinentId == unit.Tile?.ContinentId)
+				{
+					if (unit.X == dome.X && unit.Y == dome.Y) CaravanActions.HelpBuildWonder(unit, dome);
+					else unit.Goto = new Point(dome.X, dome.Y);
+					return;
+				}
 				if (IdleRetryTurn(unit)) { unit.SkipTurn(); return; }
 				// Caravans deliver trade-route gold by entering a foreign city
 				// (Caravan.cs:127, EstablishTradeRoute). Target the nearest reachable foreign
@@ -4860,6 +4868,17 @@ namespace CivOne
 
 		// Only the single highest-production city should chase a wonder.
 		// Ties are broken by map position for stability across turns.
+		// Our assigned Dome parts not yet built that we can build now.
+		private IEnumerable<IWonder> OpenDomeParts() =>
+			Game.GetDomeAssignments(Player)
+				.Select(id => Reflect.GetWonders().FirstOrDefault(w => w.Id == (byte)id))
+				.Where(w => w is not null && !Game.WonderBuilt(w) && Player.ProductionAvailable(w))!;
+
+		// The city of ours building that part, or any of our parts.
+		internal City? DomeBuilder(IWonder? part = null) =>
+			Player.Cities.FirstOrDefault(c => c.CurrentProduction is IWonder w && !Game.WonderBuilt(w)
+				&& (part is null ? Game.GetDomeAssignments(Player).Any(id => (byte)id == w.Id) : w.Id == part.Id));
+
 		private bool IsTopProductionCity(City city)
 		{
 			City[] cities = Player.Cities;
@@ -4880,14 +4899,7 @@ namespace CivOne
 		private IWonder? SelectWonder(City city, StrategyStance stance)
 		{
 			if (!IsTopProductionCity(city)) return null;
-
-			// Prioritise dome component(s) assigned to this civilisation, if any
-			foreach (var wonderId in Game.Instance.GetDomeAssignments(Player))
-			{
-				IWonder assigned = Reflect.GetWonders().FirstOrDefault(w => w.Id == (byte)wonderId);
-				if (assigned is not null && !Game.WonderBuilt(assigned) && Player.ProductionAvailable(assigned))
-					return assigned;
-			}
+			// Dome parts are not chosen here: PlanProductionInto puts them first.
 
 			// Not before a third city, while there is room to found one: a tiny empire's
 			// capital is its only source of settlers, and the horizon test below cannot see
@@ -4908,8 +4920,8 @@ namespace CivOne
 			//
 			// A wonder is a commitment of hundreds of shields. A city that cannot make that
 			// inside WonderHorizonTurns should be building something it can actually use.
-			// Deliberately placed AFTER the dome-component block above: those are assigned by
-			// the story rather than chosen, and are not this rule's business.
+			// Dome parts are assigned by the story rather than chosen, and are not this rule's
+			// business.
 			bool CanFinish(IWonder w) =>
 				city.ShieldIncome > 0
 				&& city.ProductionCost(w) / city.ShieldIncome <= WonderHorizonTurns;
@@ -5222,6 +5234,25 @@ namespace CivOne
 			{
 				if (!city.HasBuilding<Hospital>() && Player.ProductionAvailable(new Hospital())) plan.Add(new Hospital());
 				if (!city.HasBuilding<SewerSystem>() && Player.ProductionAvailable(new SewerSystem())) plan.Add(new SewerSystem());
+			}
+
+			// Our Dome parts, ahead of everything: the top production city starts each one and keeps
+			// it once started, and every other city with a garrison on that continent sends
+			// Caravans to it. In game 96367b22 the warning came at turn 432, with all three civs
+			// at war from turn 420, and no city chose a part until turn 479.
+			foreach (IWonder part in OpenDomeParts())
+			{
+				City? builder = DomeBuilder(part);
+				if (builder == city || (builder is null && IsTopProductionCity(city))) plan.Add(part);
+			}
+			if (DomeBuilder() is City dome && dome != city && defenders > 0
+			    && dome.Tile.ContinentId == city.Tile.ContinentId
+			    && Player.ProductionAvailable(new Caravan()) && !city.Units.Any(u => u is Caravan))
+			{
+				byte own = Game.PlayerNumber(Player);
+				int sent = Game.GetUnits().Count(u => u.Owner == own && u is Caravan);
+				if (sent * CaravanActions.WonderShields < dome.ProductionCost(dome.CurrentProduction) - dome.Shields)
+					plan.Add(new Caravan());
 			}
 
 			// The Others: an occupation, not a civilisation. Cephalopods incapable of sympathy

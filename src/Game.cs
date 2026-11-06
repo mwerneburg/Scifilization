@@ -2146,12 +2146,19 @@ namespace CivOne
 			}
 		}
 
+		// The sea rises on the first three events only; later ones dry the land instead. Each
+		// flood turned the coast to swamp and the next drowned the swamp, so the continents
+		// went from the shore inward: game 96367b22 ended on 8 events and 94.7% ocean, against
+		// 65% in games with one.
+		internal const int SeaRiseEvents = 3;
+
 		internal void HandleGlobalWarming()
 		{
 			int polluted = Map.AllTiles().Count(t => t.Pollution);
 			if (polluted < WarmingThreshold) return;
 
 			GlobalWarmingCount++;
+			bool seaRises = GlobalWarmingCount <= SeaRiseEvents;
 
 			// Sea-level-rise pass (ported from ChrisWi/CivOne
 			// GlobalWarmingScourgeWithFloodService): low-lying / polar / wet tiles
@@ -2162,7 +2169,7 @@ namespace CivOne
 			// Cities immune. Irreversible — no engineer can reclaim ocean.
 			int polarChance = Math.Min(GlobalWarmingCount * 20, 100);
 			int otherChance = Math.Min(GlobalWarmingCount * 10, 100);
-			foreach (ITile tile in Map.AllTiles().ToArray())
+			foreach (ITile tile in seaRises ? Map.AllTiles().ToArray() : System.Array.Empty<ITile>())
 			{
 				if (tile.City is not null || tile.IsOcean) continue;
 				bool isPolar = tile.Y < 3 || tile.Y >= Map.HEIGHT - 3
@@ -2198,7 +2205,7 @@ namespace CivOne
 				// level rising onto ground that touches no sea is not a flood.
 				int oceanThreshold = Math.Max(1, 7 - GlobalWarmingCount);
 
-				if (adjacentOcean >= oceanThreshold)
+				if (seaRises && adjacentOcean >= oceanThreshold)
 				{
 					// Flood: near-coast tiles become swamp/jungle
 					Map.ChangeTileType(tile.X, tile.Y, tile is Tiles.Forest ? Terrain.Jungle : Terrain.Swamp);
