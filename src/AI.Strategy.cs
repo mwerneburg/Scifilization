@@ -6432,10 +6432,17 @@ namespace CivOne
 		// game 11 of 13 were asleep, all 11 with over 500 unseen tiles among their civ's home
 		// continents. It walks to the nearest unseen land it can reach instead. The scan is
 		// the whole map, but runs only when the box is empty, and the walk or the sleep follows.
+		//
+		// Only fog within ExploreReach of one of our cities, so a civ on Eurasia leaves the far
+		// corners dark (the user, Nov 2026). Walking to them crossed other civs' wars: in game
+		// 99ea98b8 the Persian capital built 19 Explorers in 70 turns, mostly while at war.
+		internal static int ExploreReach => Map.WIDTH / 5;
+
 		internal ITile? NearestFog(IUnit unit)
 		{
 			ITile? best = null;
 			int bestDist = int.MaxValue;
+			City[] home = Player.Cities;
 			for (int y = 0; y < Map.HEIGHT; y++)
 			for (int x = 0; x < Map.WIDTH; x++)
 			{
@@ -6443,7 +6450,8 @@ namespace CivOne
 				ITile tile = Map[x, y];
 				if (tile is null || tile.IsOcean || !LandReachable(unit, tile)) continue;
 				int dist = Common.DistanceToTile(unit.X, unit.Y, x, y);
-				if (dist < bestDist) { bestDist = dist; best = tile; }
+				if (dist < bestDist && home.Any(c => Common.DistanceToTile(c.X, c.Y, x, y) <= ExploreReach))
+				{ bestDist = dist; best = tile; }
 			}
 			return best is not null && Common.GotoStep(unit, best.X, best.Y) is not null ? best : null;
 		}

@@ -1059,6 +1059,25 @@ namespace CivOne
 			}
 		}
 
+		internal const int DomeResearchWeight = 40;
+
+		// Every advance still missing on the way to the advance our unbuilt Dome parts need.
+		private HashSet<byte> DomeRoad()
+		{
+			var road = new HashSet<byte>();
+			void Walk(IAdvance a)
+			{
+				if (Player.HasAdvance(a) || !road.Add(a.Id)) return;
+				foreach (IAdvance before in a.RequiredTechs) Walk(before);
+			}
+			foreach (var id in Game.GetDomeAssignments(Player))
+			{
+				Wonders.IWonder? part = Reflect.GetWonders().FirstOrDefault(w => w.Id == (byte)id);
+				if (part?.RequiredTech is IAdvance needs && !Game.WonderBuilt(part)) Walk(needs);
+			}
+			return road;
+		}
+
 		internal void ChooseResearch()
 		{
 			if (Player.CurrentResearch is not null) return;
@@ -1114,6 +1133,14 @@ namespace CivOne
 					if (available[i] is Navigation) weights[i] += 8;
 				}
 			}
+
+			// The Dome part this civ was handed, when it cannot build it yet: that part's advance
+			// and the road to it. Nothing steered research there, so one late part lost the race
+			// for everyone. In game 99ea98b8 the Sensor Net's holder learned Superconductor 35
+			// turns after the Owners arrived, and 14 civs had it first.
+			HashSet<byte> domeRoad = DomeRoad();
+			for (int i = 0; i < available.Length; i++)
+				if (domeRoad.Contains(available[i].Id)) weights[i] += DomeResearchWeight;
 
 			int total = weights.Sum();
 

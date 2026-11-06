@@ -213,6 +213,13 @@ namespace CivOne
 		// play differently, and those are two genuine futures. So the game id is stable and a
 		// SESSION id changes on every load — continuations join for scoring, branches stay
 		// distinguishable, and neither needs the reader to know the trick.
+		//
+		// Off unless CIVONE_DECISION_LOG=1. It wrote about 20 MB a game into every player's data
+		// folder and never trimmed it: 520 MB on the developer's machine by Nov 2026. build.sh
+		// and the tests set it. The game id is minted either way, because saves and the hall of
+		// fame carry it.
+		internal const string EnableVariable = "CIVONE_DECISION_LOG";
+
 		internal static void BeginGame(string? resumeId = null)
 		{
 			_gameId = string.IsNullOrEmpty(resumeId)
@@ -220,6 +227,7 @@ namespace CivOne
 				: resumeId!;
 			_sessionId = Guid.NewGuid().ToString("N").Substring(0, 8);
 			OutcomeLogged = false;
+			if (Environment.GetEnvironmentVariable(EnableVariable) != "1") { _active = false; return; }
 			try
 			{
 				string dir  = Settings.Instance.DataDirectory;

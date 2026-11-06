@@ -40,6 +40,17 @@ namespace CivOne.Tasks
 				return;
 			}
 
+			// Under Autopilot the AI chooses. Autopilot answers this screen with Enter, which
+			// took the first advance listed, in the game's internal order, so the human slot
+			// researched nothing like a civilization does. The headless harness already does
+			// this (Sim.KeepHumanResearching).
+			if (Settings.Autopilot)
+			{
+				AI.Instance(_player).ChooseResearch();
+				EndTask();
+				return;
+			}
+
 			if (_player.Science == 0 && _player.Cities.Sum(x => x.Science) == 0)
 			{
 				// This task is only for human players

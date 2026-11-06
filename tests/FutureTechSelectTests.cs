@@ -71,6 +71,11 @@ namespace CivOne.Tests
 		public void AnOrdinaryChoiceStillAsks()
 		{
 			Sim.NewGame(width: 40, height: 30, competition: 4);
+			// A player at the controls. Under Autopilot the AI chooses and nothing asks
+			// (TechSelect), and Autopilot can be left on by an earlier test.
+			bool auto = Settings.Instance.Autopilot;
+			Settings.Instance.Autopilot = false;
+			try {
 			Player human = Game.Instance.HumanPlayer;
 			human.CurrentResearch = null;
 			human.Science = 1;
@@ -83,6 +88,7 @@ namespace CivOne.Tests
 
 			Assert.Equal(before + 1, OpenDialogs());
 			Assert.Null(human.CurrentResearch);
+			} finally { Settings.Instance.Autopilot = auto; }
 		}
 	}
 }

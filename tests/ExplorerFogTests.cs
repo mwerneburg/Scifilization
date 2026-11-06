@@ -35,6 +35,8 @@ namespace CivOne.Tests
 			Game g = Game.Instance;
 			Player ai = g.Players.First(p => p is not null && g.PlayerNumber(p) != 0 && p != g.HumanPlayer);
 			for (int x = East - 25; x <= East; x++) ai.Explore(x, Row, range: 5);
+			// Home: fog is worth walking to only within ExploreReach of one of our cities.
+			g.AddCity(ai, 0, East, Row);
 			IUnit explorer = g.CreateUnit(UnitType.Explorer, East - 5, Row, g.PlayerNumber(ai), false)!;
 			Sim.ClearTasks();
 			return (ai, explorer);
@@ -87,6 +89,20 @@ namespace CivOne.Tests
 			(Player ai, IUnit explorer) = ACharteredBox();
 
 			Assert.Null(AI.Instance(ai).BestExploreTile(explorer));
+		}
+
+		// The far corners of a big continent stay dark: fog beyond ExploreReach of every city is
+		// no reason to set off, however long the walk to it.
+		[Fact]
+		public void FogBeyondReachOfHomeIsLeftAlone()
+		{
+			(Player ai, IUnit explorer) = ACharteredBox();
+			for (int x = West + 10; x < East - 25; x++)
+			for (int y = Row - 3; y <= Row + 3; y++)
+				ai.Explore(x, y, range: 1);
+			Assert.True(East - (West + 9) > AI.ExploreReach, "the fixture's fog is within reach");
+
+			Assert.Null(AI.Instance(ai).NearestFog(explorer));
 		}
 	}
 }

@@ -70,6 +70,9 @@ namespace CivOne.Tests
 		public static void EnsureRuntime()
 		{
 			if (_runtimeRegistered) return;
+			// The decision log is off unless asked for, and a dozen tests and every harness game read it.
+			// Once per process, so a test can switch it off.
+			Environment.SetEnvironmentVariable(DecisionLogger.EnableVariable, "1");
 			if (RuntimeHandler.Runtime is null)
 			{
 				string dir = Environment.GetEnvironmentVariable("CIVONE_HARNESS_STORAGE") ?? "";
