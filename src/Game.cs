@@ -4129,7 +4129,7 @@ namespace CivOne
 		// Assign dome components to eligible civs (round-robin, shuffled).
 		// Excludes Barbarians and Olvir. If fewer than 5 eligible civs, some get multiple.
 		// Called once when the Tau Ceti approach warning fires.
-		private void AssignDomeComponents()
+		internal void AssignDomeComponents()
 		{
 			if (DomeAssignments.Count > 0) return; // already assigned
 
@@ -4154,12 +4154,36 @@ namespace CivOne
 				(components[i], components[j]) = (components[j], components[i]);
 			}
 
-			for (int i = 0; i < components.Count; i++)
+			// Each part to a civ that can build it now where one can, and nobody holds two while
+			// someone holds none. Round-robin handed them out blind: in a headless game the Emitter
+			// Array and Sensor Net went to the two civs furthest from Fusion Power, 52 and 71 turns
+			// away, and the human slot finished both after the landing.
+			bool Knows(int i, Enums.Wonder w) => eligible[i].HasAdvance(DomeFiveComponents.First(c => (Enums.Wonder)c.Id == w).RequiredTech);
+			int Knowers(Enums.Wonder w) => Enumerable.Range(0, eligible.Length).Count(i => Knows(i, w));
+			int[] given = new int[eligible.Length];
+			void Give(int i, Enums.Wonder w)
 			{
-				byte pid = PlayerNumber(eligible[i % eligible.Length]);
+				byte pid = PlayerNumber(eligible[i]);
 				if (!DomeAssignments.TryGetValue(pid, out var list))
 					DomeAssignments[pid] = list = new List<Enums.Wonder>();
-				list.Add(components[i]);
+				list.Add(w);
+				given[i]++;
+				components.Remove(w);
+			}
+			// The human first, with a part it can build that most others could build too.
+			if (eligible[0] == HumanPlayer)
+				Give(0, components.Where(w => Knows(0, w)).OrderByDescending(Knowers).DefaultIfEmpty(components[0]).First());
+			// Then the rarest first, so a part only one civ can build is not lost to one anyone could.
+			foreach (var w in components.OrderBy(Knowers).ToList())
+				Give(Enumerable.Range(0, eligible.Length).OrderBy(i => given[i]).ThenByDescending(i => Knows(i, w)).First(), w);
+
+			// Replan the holders' cities now, as the plague warning does. A city otherwise replans
+			// only when its build and queue run out, which left the first part 5-7 turns behind the
+			// warning in headless games.
+			foreach (City c in _cities.Where(c => c.Size > 0 && DomeAssignments.ContainsKey(c.Owner)).ToArray())
+			{
+				Player owner = GetPlayer(c.Owner);
+				if (!owner.IsHuman || Settings.Instance.Autopilot) owner.AI?.CityProduction(c);
 			}
 		}
 

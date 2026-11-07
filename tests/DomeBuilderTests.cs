@@ -74,6 +74,64 @@ namespace CivOne.Tests
 			Assert.IsType<Caravan>(other[0]);
 		}
 
+		// The warning replans the holders at once; otherwise the part waits for the current build
+		// and the queue behind it.
+		[Fact]
+		public void TheWarningReplansAtOnce()
+		{
+			var (p, big, small) = TwoCities();
+			Game g = Game.Instance;
+			g.DomeAssignments.Clear();
+			foreach (City c in new[] { big, small })
+			{
+				c.SetProduction(new Settlers());
+				c.EnqueueProduction(new Settlers());
+			}
+			g.AssignDomeComponents();
+			Assert.True(g.GetDomeAssignments(p).Any(), "fixture: this civ was handed no part");
+
+			Assert.IsAssignableFrom<IDomeComponent>(big.CurrentProduction);
+			Assert.IsType<Caravan>(small.CurrentProduction);
+		}
+
+		// Round-robin by advance count handed parts to civs that could not build them; a part
+		// goes to a civ that knows its advance, however far down the table that civ is.
+		[Fact]
+		public void APartGoesToACivThatCanBuildIt()
+		{
+			Sim.NewGame(width: 80, height: 50);
+			Game g = Game.Instance;
+			Player[] nations = g.HumanityNations();
+			Assert.True(nations.Length > 5, "fixture: with five or fewer nations everyone gets a part anyway");
+			foreach (Player n in nations)
+				foreach (IAdvance a in Common.Advances.Where(a => a is not FutureTech && a is not FusionPower)) n.AddAdvance(a, false);
+			Player slow = nations.Last(n => n != g.HumanPlayer);
+			foreach (IAdvance a in Common.Advances.Take(30)) slow.DeleteAdvance(a);
+			slow.AddAdvance(new FusionPower(), false);
+			Assert.True(nations.All(n => n == slow || n.Advances.Length > slow.Advances.Length), "fixture: the civ with Fusion Power should be the least advanced");
+
+			g.AssignDomeComponents();
+
+			Assert.Contains(Wonder.DomeEmitterArray, g.GetDomeAssignments(slow));
+			Assert.True(g.GetDomeAssignments(g.HumanPlayer).Any(), "the human keeps its part");
+		}
+
+		[Fact]
+		public void LearningThePartsAdvanceReplansAtOnce()
+		{
+			var (p, big, small) = TwoCities();
+			p.DeleteAdvance(new SuperConductor());
+			foreach (City c in new[] { big, small })
+			{
+				c.SetProduction(new Settlers());
+				c.EnqueueProduction(new Settlers());
+			}
+			p.AddAdvance(new SuperConductor());
+
+			Assert.IsType<DomeSensorNet>(big.CurrentProduction);
+			Assert.IsType<Caravan>(small.CurrentProduction);
+		}
+
 		[Fact]
 		public void ACaravanInTheBuilderAddsItsShields()
 		{

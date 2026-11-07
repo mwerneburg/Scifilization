@@ -511,6 +511,13 @@ namespace CivOne
 				Game.Instance.AddReplayEvent(new ReplayData.TechDiscovered(Game.GameTurn, Game.PlayerNumber(this), (advance as ICivilopedia).Name));
 				DecisionLogger.LogAdvance(this, (advance as ICivilopedia).Name);
 				InvalidateCityCaches();
+				// A holder that has just learned its Dome part's advance replans now, as at the
+				// warning. Otherwise the part waits for the current build and the queue: 20 turns
+				// for the Chinese Power Core in a headless game.
+				if ((!IsHuman || Settings.Instance.Autopilot)
+				    && Game.Instance.GetDomeAssignments(this).Any(w => Game.DomeFiveComponents.First(c => (Wonder)c.Id == w) is Wonders.IWonder part
+				                                                   && part.RequiredTech?.Id == advance.Id && !Game.Instance.WonderBuilt(part)))
+					foreach (City c in Cities) AI?.CityProduction(c);
 			}
 			if (!setOrigin) return;
 			Game.Instance.SetAdvanceOrigin(advance, this);
