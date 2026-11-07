@@ -14,9 +14,9 @@ namespace CivOne.Tests
 	public class SleepingExplorerTests
 	{
 		// An islet of the given radius at (40,25), its city in the middle, charted out to `seen`.
-		private static (Player p, IUnit scout) AnIslet(int radius, int seen)
+		private static (Player p, IUnit scout) AnIslet(int radius, int seen, int difficulty = 0)
 		{
-			Sim.NewGame(width: 80, height: 50);
+			Sim.NewGame(width: 80, height: 50, difficulty: difficulty);
 			Game g = Game.Instance;
 			Player p = g.Players.First(x => x is not null && g.PlayerNumber(x) != 0 && x != g.HumanPlayer);
 			for (int y = 10; y <= 40; y++)
@@ -42,6 +42,24 @@ namespace CivOne.Tests
 			AI.Instance(p).ConsiderExplorers();
 
 			Assert.DoesNotContain(scout, Game.Instance.GetUnits());
+		}
+
+		// The fallback's random pick ignored the gate, so a charted civ kept minting explorers that
+		// slept at once and were stood down: on Epic Earth seed 4242 the Romans built 16 and
+		// disbanded all 16, and 51 of the world's 72 explorer losses were this loop.
+		[Fact]
+		public void TheFallbackBuildsNoExplorerForAChartedCiv()
+		{
+			(Player p, IUnit scout) = AnIslet(radius: 3, seen: 5, difficulty: 1);   // Chieftain asks for Militia
+			Game.Instance.DisbandUnit(scout);
+			City city = p.Cities[0];
+			// Garrisoned, so no rule asks for a defender: little left but the fallback.
+			for (int i = 0; i < 2; i++) Game.Instance.CreateUnit(UnitType.Musketeers, 40, 25, Game.Instance.PlayerNumber(p));
+			Assert.Contains(city.AvailableProduction, x => x is Explorer);
+
+			// The fallback picks at random, so once proves nothing.
+			for (int i = 0; i < 100; i++)
+				Assert.DoesNotContain(AI.Instance(p).ProductionPlan(city), x => x is Explorer);
 		}
 
 		// Control: with its home still in fog the build rule wants explorers, so it keeps one.

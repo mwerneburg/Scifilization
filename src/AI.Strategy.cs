@@ -6259,7 +6259,7 @@ namespace CivOne
 					p is Settlers || p is Longboat || p is HydroEngineer   // cost a citizen
 					|| p is ICaravan                                        // needs a destination
 					|| p is Diplomat                                        // needs a target
-					|| (p is Explorer && fallbackExplorers >= 2)            // already at the cap
+					|| (p is Explorer && (fallbackExplorers >= 2 || !ExplorersWanted))   // the build rule's cap and gate
 					// Only the last stand and the desperado build warheads. Rolled here, they
 					// were 123 in silos by 1996, none ever flown (the user, Nov 2026; c58808e6).
 					|| p is Nuclear;
