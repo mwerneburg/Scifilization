@@ -133,5 +133,20 @@ namespace CivOne.Tests
 
 			Assert.Empty(us.WarTurnsWith);
 		}
+
+		// Nor the blame: a civ that wiped out the slot's last holder still counted as having
+		// started a war with the newcomer, so the newcomer declaring war broke its trade streak.
+		[Fact]
+		public void ANewcomerInTheSlotInheritsNoWarStart()
+		{
+			(Player us, Player them, Player _) = ThreeCivs();
+			byte us_ = Game.Instance.PlayerNumber(us), them_ = Game.Instance.PlayerNumber(them);
+			us.DeclareWar(them);
+			Assert.True(Game.Instance.StartedWarWith(us_, them_), "fixture: the declaration was not recorded");
+
+			us.ForgetSlot(them_);
+
+			Assert.False(Game.Instance.StartedWarWith(us_, them_));
+		}
 	}
 }

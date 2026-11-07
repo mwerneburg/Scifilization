@@ -650,6 +650,7 @@ namespace CivOne
 			_defensePact.Remove(k);
 			_tributeTo.Remove(k);
 			_tributeFrom.Remove(k);
+			Progress.StartedWarsWith.Remove(k);
 		}
 
 		// ── tribute ─────────────────────────────────────────────────────────────────
