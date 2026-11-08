@@ -2733,6 +2733,40 @@ namespace CivOne
 				Log($"{Player.TribeName}: charts from {other.Player.TribeName} add {gained} colony sites");
 		}
 
+		// Sites read off our own map. Only a hull at sea filled the register, and once map trades
+		// take a civ past 60% of the world's land the hull rule opens only on a registered site:
+		// no ship, no site, so no ship. On seed 4242 every overseas city came from the odd Trireme
+		// the production fallback rolled. A coast we can see across the water is as good a reason
+		// for the first hull as one a ship reported. Every tenth turn, and only the best few, so
+		// the register stays small: every reader prunes all of it against every city.
+		private int _chartSurveyTurn = -100;
+		private const int ChartedSites = 8;
+
+		internal int ChartedColonySites()
+		{
+			if (Game.GameTurn - _chartSurveyTurn >= 10)
+			{
+				_chartSurveyTurn = Game.GameTurn;
+				var home = new HashSet<byte>(Player.Cities.Select(c => c.Tile.ContinentId).Where(Map.NamedContinent));
+				City[] cities = Game.GetCities().Where(c => c.Size > 0).ToArray();
+				var found = new List<(ITile Tile, int Score)>();
+				for (int y = 0; y < Map.HEIGHT; y++)
+				for (int x = 0; x < Map.WIDTH; x++)
+				{
+					if (!Player.Visible(x, y)) continue;
+					ITile tile = Map[x, y];
+					if (tile is null || tile.IsOcean || tile.City is not null || tile is Arctic || tile is Mountains) continue;
+					if (home.Contains(tile.ContinentId)) continue;   // we could walk there
+					if (!tile.GetBorderTiles().Any(b => b is not null && b.IsOcean)) continue;
+					if (cities.Any(c => Common.DistanceToTile(c.X, c.Y, x, y) < 4)) continue;
+					found.Add((tile, SiteSuitability(tile)));
+				}
+				foreach ((ITile tile, int score) in found.OrderByDescending(f => f.Score).Take(ChartedSites))
+					RecordColonySite(tile, score);
+			}
+			return KnownColonySites();
+		}
+
 		// Best unclaimed site this hull could sail to, from memory alone. `claim` false only
 		// asks, for the colonist call-up in AI.cs.
 		private ITile? RegisteredSite(IUnit boat, bool claim = true)
@@ -5998,7 +6032,7 @@ namespace CivOne
 			// since been taken does not keep the yard open.
 			if (Player.HasAdvance<MapMaking>()
 			    && Player.ExploredHomeContinentFraction > 0.90
-			    && (Player.ExploredLandFraction < 0.60 || KnownColonySites() > 0)
+			    && (Player.ExploredLandFraction < 0.60 || ChartedColonySites() > 0)
 			    && city.Tile is not null
 			    // Salt water, for the same reason as the Longboat rule above: a yard on an
 			    // enclosed lake launches a hull that can never leave it.
@@ -6260,6 +6294,9 @@ namespace CivOne
 					|| p is ICaravan                                        // needs a destination
 					|| p is Diplomat                                        // needs a target
 					|| (p is Explorer && (fallbackExplorers >= 2 || !ExplorersWanted))   // the build rule's cap and gate
+					// Needs a destination, which the hull rule now reads off the map. Rolled here,
+					// all three Greek Triremes on seed 4242 came two turns apart with none.
+					|| p is Trireme or Sail or Frigate or Transport
 					// Only the last stand and the desperado build warheads. Rolled here, they
 					// were 123 in silos by 1996, none ever flown (the user, Nov 2026; c58808e6).
 					|| p is Nuclear;
