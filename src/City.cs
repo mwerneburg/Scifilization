@@ -60,12 +60,23 @@ namespace CivOne
 				// Destruction is the case that really does end a route, and it says so itself:
 				// see Game.DestroyCity, which used to get this cleanup by way of Owner = 0.
 				bool changedHands = _owner != value && Game.Started;
+				byte previous = _owner;
 				if (changedHands)
 				{
 					Game.Instance.BumpCityRoster();
 					RehomeAwayCaravans();   // catch-all; the capture paths call it earlier
 				}
 				_owner = value;
+				// Its people know the land they work. Only units reveal the map, so a city that
+				// changed hands with nobody walking in — the schism's new civ, a defection, a gift,
+				// Skynet's seizures — left its owner blind to it, and CityRadius drops what the
+				// owner cannot see, the centre included: the Khmer's Ctesiphon deadlocked the citizen
+				// governor at turn 328 that way (Aug 2026). RevealTiles rather than Explore, so
+				// land that came with a city earns no first-explorer score. Not at founding, when the
+				// previous owner is 0: the constructor sets Owner before X and Y, and the settler
+				// standing there has seen it anyway. A city taken from the barbarians is walked into.
+				if (changedHands && previous != 0)
+					Game.Instance.GetPlayer(value)?.RevealTiles(Map[X - 2, Y - 2, 5, 5].Cast<ITile>().Where(t => t is not null));
 				ResetResourceTiles();
 				InvalidateCache();
 				if (changedHands) DropInheritedPalace();
