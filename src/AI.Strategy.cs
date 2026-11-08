@@ -5230,6 +5230,9 @@ namespace CivOne
 			return true;
 		}
 
+		// Position is priority: Consider keeps the first entry of each type and CityProduction
+		// builds plan[0], so the order of the calls below IS the order of preference. A rule in
+		// the right place reads as one line here; its reasons live with its helper below.
 		private List<IProduction> PlanProductionInto(List<IProduction> plan, City city, StrategyStance stance)
 		{
 			// The standing army's ceiling (ArmyCap). A city with an enemy within three tiles may
@@ -5261,158 +5264,9 @@ namespace CivOne
 
 			int defenders = city.Tile.Units.Count(u => u.Role == UnitRole.Defense);
 
-			// The Olvir have warned of the Crossing Fever (Game.ProcessOlvirPlague): a Hospital,
-			// then a Sewer, ahead of everything — past EarnsItsKeep, which refuses a Hospital
-			// to a content city.
-			if (Game.PlagueWarned && !Game.ImmuneToPlague(Player))
-			{
-				if (!city.HasBuilding<Hospital>() && Player.ProductionAvailable(new Hospital())) plan.Add(new Hospital());
-				if (!city.HasBuilding<SewerSystem>() && Player.ProductionAvailable(new SewerSystem())) plan.Add(new SewerSystem());
-			}
+			PlanEmergencies(plan, city, defenders);
 
-			// Our Dome parts, ahead of everything: the top production city starts each one and keeps
-			// it once started, and every other city with a garrison on that continent sends
-			// Caravans to it. In game 96367b22 the warning came at turn 432, with all three civs
-			// at war from turn 420, and no city chose a part until turn 479.
-			foreach (IWonder part in OpenDomeParts())
-			{
-				City? builder = DomeBuilder(part);
-				if (builder == city || (builder is null && IsTopProductionCity(city))) plan.Add(part);
-			}
-			if (DomeBuilder() is City dome && dome != city && defenders > 0
-			    && dome.Tile.ContinentId == city.Tile.ContinentId
-			    && Player.ProductionAvailable(new Caravan()) && !city.Units.Any(u => u is Caravan))
-			{
-				byte own = Game.PlayerNumber(Player);
-				int sent = Game.GetUnits().Count(u => u.Owner == own && u is Caravan);
-				if (sent * CaravanActions.WonderShields < dome.ProductionCost(dome.CurrentProduction) - dome.Shields)
-					plan.Add(new Caravan());
-			}
-
-			// The Others: an occupation, not a civilisation. Cephalopods incapable of sympathy
-			// or of recognising their captives as anything but stock — so they build nothing
-			// that serves a population. No temples, no aqueducts, no marketplaces, and above
-			// all no wonders: they did not come here to develop the place.
-			//
-			// They were running the ordinary planner, and it showed. Over 1255 production
-			// decisions between turns 370 and 749 of a 2200 AD game they built 97
-			// Observatories, 95 Cathedrals, 89 Colosseums, 66 Hospitals and 51 Marketplaces,
-			// against 131 military units — about a tenth of their output. The invasion landed
-			// and then spent five centuries on civic architecture while every human power
-			// grew around it. They held 51 cities and finished sixth on score.
-			//
-			// Two things only: armour that runs everything down, and agents to sabotage what
-			// is not worth occupying. The warheads are the ARRIVAL, not the occupation —
-			// ExecuteOwnersLanding nukes each civilisation's capital before the seizure, and
-			// that is the whole of it. Producing more would be stockpiling a weapon this AI
-			// has no doctrine for firing, which is the 84-Diplomat mistake in a costlier form.
-			//
-			// And no defenders, deliberately. They do not care enough about what they take to
-			// garrison it: this is a smash-and-grab for livestock, to be over before the
-			// humans work out how to upload a virus or some microbe gets in. The practical
-			// consequence is that occupied cities are cheap to retake, which is the arc doing
-			// what it should — the occupation has to be broken, not out-produced.
-			//
-			// ProductionAvailable is the gate rather than a hand-written tech list because
-			// HoverTank needs the occupier's own Fusion Core, which a HasAdvance check would
-			// miss. Armor is the guaranteed fallback: the landing grants every advance bar
-			// FutureTech (Game.ExecuteOwnersLanding), so it can never be unavailable to them.
-			if (Player.Civilization is TheOthers or Federation)
-			{
-				byte thId = Game.PlayerNumber(Player);
-				int agents = Game.GetUnits().Count(u => u.Owner == thId && u is Diplomat);
-
-				if (WarheadsShort()) Consider(new Nuclear());
-				if (Player.ProductionAvailable(new HoverTank())) Consider(new HoverTank());
-				if (BombersShort()) Consider(new Bomber());
-				// Sabotage is a tool, not a doctrine — one agent per two cities is plenty.
-				// They were building them regardless of use: 84 Diplomats produced by a
-				// faction that returns early from every diplomatic path (AI.Strategy:1072),
-				// which is 84 units that could never do anything at all.
-				if (agents < Math.Max(1, Player.Cities.Length / 2)
-				    && Player.ProductionAvailable(new Diplomat()))
-					Consider(new Diplomat());
-				if (plan.Count == 0) Consider(new Armor());
-				return plan;
-			}
-
-			// The Thing builds nothing civic. It had been falling through to the general path,
-			// which meant its top-production city chased the ordinary wonder list — an
-			// assimilating organism commissioning J.S. Bach's Cathedral, which is what a
-			// turn-750 save actually showed. It makes bodies, and in the third act, The Vessel.
-			if (Player.Civilization is TheThing)
-			{
-				// The Vessel is set directly on the shipyard city by Game.ProcessThingAscension,
-				// which picks it empire-wide; honour it here so the plan never overwrites it.
-				if (city.CurrentProduction is Wonders.TheVessel) { Consider(new Wonders.TheVessel()); return plan; }
-
-				if (Player.ProductionAvailable(new MechInf())) Consider(new MechInf());
-				if (Player.ProductionAvailable(new Armor()))   Consider(new Armor());
-				if (plan.Count == 0) Consider(new Militia());
-				return plan;
-			}
-
-			// Skynet researches — it is the one faction that ought to out-tech the world, and
-			// ChooseResearch deliberately leaves it alone. Its WONDERS are another matter: the
-			// general list had the network building cathedrals and suffrage movements. Only
-			// machine work, and only from the top production city as for anyone else.
-			if (Player.Civilization is Skynet)
-			{
-				// The Reprocessor first: it is the mission, everything else is materiel.
-				IWonder[] machineWork =
-				{
-					new Wonders.TheReprocessor(),
-					new NanobotFactory(), new ManhattanProject(), new FusionCore(),
-					// new InterstellarProbe(),   retired — see Player.ProductionAvailable
-					new HumanGenomeProject(),
-				};
-				if (IsTopProductionCity(city))
-					foreach (IWonder w in machineWork)
-						if (!Game.WonderBuilt(w) && Player.ProductionAvailable(w)) { Consider(w); break; }
-
-				if (Player.ProductionAvailable(new HoverTank())) Consider(new HoverTank());
-				if (BombersShort()) Consider(new Bomber());
-				if (Player.ProductionAvailable(new Armor()))     Consider(new Armor());
-				if (plan.Count == 0) Consider(new Militia());
-				return plan;
-			}
-
-			// Olvir production: refugee fleet prioritises rapid expansion and sea infrastructure
-			// over military and normal civic buildings. They don't build wonders or advanced
-			// civic buildings — just the minimum garrison, food storage, and settlers.
-			if (Player.Civilization is Olvir)
-			{
-				byte oid = Game.PlayerNumber(Player);
-				int olvCities = Player.Cities.Length;
-				int olvSettlers = Game.GetUnits().Count(u => u.Owner == oid && u is Settlers);
-				// One defender per city — they're pacifist, not helpless.
-				if (defenders < 1) Consider(BestDefender());
-				// Granary feeds growth (Pottery always known for Olvir — late-era arrival).
-				if (!city.HasBuilding<Granary>()) Consider(new Granary());
-				// Keep one settler per city when below the expansion cap (30 cities).
-				// Size 3 and food to spare: at size 2 the completed settler drops the
-				// city to 1 (see CanAffordSettler).
-				if (CanAffordSettler(city, 3) && olvSettlers < Math.Max(olvCities, 4)
-				    && !city.Units.Any(u => u is Settlers) && olvCities < 30)
-					Consider(new Settlers());
-				// HydroEngineer for ocean/floating-city founding.
-				if (Player.HasAdvance<AquaticColonization>()
-				    && Game.GetUnits().Count(u => u.Owner == oid && u is HydroEngineer) < olvCities / 3 + 1)
-					Consider(new HydroEngineer());
-				// The spawning rite: a shrine in every colony, and in the older ones a
-				// human cathedral plumbed into a cascade. This is the only culture the
-				// Olvir can earn — nothing else on their production list scores any.
-				if (!city.HasBuilding<BreedingShrine>()) Consider(new BreedingShrine());
-				if (city.HasBuilding<BreedingShrine>() && city.Size >= 6
-				    && !city.HasBuilding<CascadeCathedral>()) Consider(new CascadeCathedral());
-				// Post-contact buildings that are thematically Olvir.
-				if (Player.HasAdvance<Xenobiology>()        && !city.HasBuilding<Xenolab>())        Consider(new Xenolab());
-				if (Player.HasAdvance<AquaticColonization>() && Map[city.X, city.Y].GetBorderTiles().Any(t => t.IsOcean)
-				                                              && !city.HasBuilding<SeaPlatform>())   Consider(new SeaPlatform());
-				// Fallback to another defender so the city produces something.
-				if (plan.Count == 0 || (plan.Count == 1 && plan[0] is IUnit)) Consider(BestDefender());
-				return plan;
-			}
+			if (PlanForOutsiders(plan, city, defenders, Consider)) return plan;
 
 			// Per-city threat: one border war shouldn't militarize the whole empire.
 			// A city with no hostile unit or enemy city within 8 tiles builds like a
@@ -5458,84 +5312,9 @@ namespace CivOne
 			// The desperado's deterrent: a Fascist state builds a few warheads (ConsiderUltimatum).
 			if (DesperadoWarheadsShort()) Consider(new Nuclear());
 
-			// A hunter, when there is quarry here and nothing of ours on this continent able to
-			// kill it. Every other attacker entry waits on SenateRaisesArmies, and a Republic or
-			// Democracy is only "invaded" by the Federation, the Others or Skynet — never by a
-			// harvester or a raiding party. So the Haida, in Democracy with 83 advances, ended a
-			// game with 61 units at attack 3 or less while defence-6 harvesters drank their land:
-			// HuntQuarry had nobody to send. Like the hunt itself this is stance-independent
-			// and raises no war footing; it buys one hunter per beast, counting the ones on order.
-			IUnit hunter = (IUnit)BestAttacker();
-			List<IUnit> prey = Quarry().Where(u => u.Y != 255 && hunter.Attack >= u.Defense
-				&& Common.DistanceToTile(u.X, u.Y, city.X, city.Y) <= (u.Owner == 0 && IsMegafauna(u) ? HuntRadius : RaidRadius))
-				.ToList();
-			if (prey.Count > 0)
-			{
-				int weakest = prey.Min(u => u.Defense);
-				int hunters = Game.GetUnits().Count(u => u.Owner == threatOwnId && u.Class == UnitClass.Land
-					&& u.Attack >= weakest && u.Tile?.ContinentId == city.Tile.ContinentId && !IsSoleGarrison(u))
-					+ Player.Cities.Count(c => c.CurrentProduction is IUnit { Role: UnitRole.LandAttack });
-				if (hunters < prey.Count) Consider(hunter);
-			}
+			ConsiderHunter(city, threatOwnId, Consider);
 
-			// A hull, for a civ with nowhere left to walk — placed HIGH, which is the whole
-			// change. Both boat rules already existed near the bottom of this method and both
-			// were being reached: BoxedIn() was true on 35 of the Maori's 63 logged production
-			// decisions, so a Longboat went into the plan and stayed there. Consider() keeps
-			// the first entry per type and CityProduction builds plan[0], so position IS
-			// priority, and a city with any building left to make never got that far. Measured
-			// across three complete runs the Maori built not one boat of any kind, sat on the
-			// same 8 cities from turn 313 to 749, and finished with two idle settlers and an
-			// island with nothing left to improve.
-			//
-			// This is the same failure the spaceship had before the Diaspora path entry: a
-			// correct rule in a position nothing ever reaches.
-			//
-			// Narrow on purpose. Boxed in (no legal land site in reach), below the leader's
-			// own city target, coastal, and able to spare the population point — a civ with
-			// room to walk into does not need a navy, and the two-hull cap below keeps this
-			// from becoming one.
-			if (Player.HasAdvance<MapMaking>()
-			    && BoxedIn()
-			    && Player.Cities.Length < CityTarget()
-			    && city.Tile is not null
-			    // SALT water, not merely water. IsFreshwaterAt is true for every body that is
-			    // not the main ocean (Map.cs:80), which is exactly "an enclosed lake" — and the
-			    // Harbour rule has always asked this question. This one asked only `IsOcean`,
-			    // so a city on a pond qualified as a port.
-			    //
-			    // Not hypothetical: the Maori built two Longboats at (316,162), whose adjacent
-			    // water is a FOUR-TILE landlocked lake. Both boats sat in it at full movement
-			    // for the rest of the game. Zero of the 277 legal colony sites within the
-			    // search window touched that water. The crossing logic was never at fault —
-			    // the boats were in a puddle.
-			    && city.Tile.GetBorderTiles().Any(t => t is not null && t.IsOcean
-			                                       && !Map.Instance.IsFreshwaterAt(t.X, t.Y))
-			    && CanAffordSettler(city, 3))
-			{
-				byte boxedId = Game.PlayerNumber(Player);
-				// Longboats counted explicitly. The Longboat is NOT IBoardable — it carries no
-				// passenger, it IS the colonist, spending a population point and consuming
-				// itself ashore as a land Settlers would. Counting only IBoardable hulls, as
-				// the Trireme rule below does, left this cap counting everything except the
-				// boat it caps.
-				//
-				// Not a Trireme, though: it cannot leave the coast, so it crosses to nowhere a
-				// boxed-in civ could settle. Counting them, two idle Triremes in port stopped the
-				// Longboats for good, and the Maori built 3 to 7 Triremes in most games.
-				// Queued boats count, so several ports cannot launch past the cap at once.
-				int afloat = Game.GetUnits().Count(u => u.Owner == boxedId
-				                                     && (u is Longboat || (u is IBoardable && u is not Trireme)))
-				           + OnOrder(p => p is Longboat, except: city);
-				// Two crossings in flight, not one and not unbounded. The rule this replaces
-				// was uncapped, on the reasoning that "one at sea at a time" colonises a new
-				// world at one city per crossing — true, but it was written for a rule sitting
-				// at the bottom of the plan where it was never reached anyway. At the TOP,
-				// uncapped means a boxed-in civ builds boats every turn from every coastal
-				// city, at a population point each. A Longboat consumes itself founding, so
-				// the count falls as crossings land and the yard reopens on its own.
-				if (afloat < 2) Consider(new Longboat());
-			}
+			ConsiderLongboat(city, Consider);
 
 			// A city at its growth ceiling is STOPPED, and no ambition changes that.
 			//
@@ -5566,137 +5345,9 @@ namespace CivOne
 					Consider(new SewerSystem());
 			}
 
-			// The lifeline, and it does NOT belong to the Diaspora path.
-			//
-			// Consider(new MissionControl()) used to live inside the Diaspora branch below, so
-			// a civ that pivoted away after launching would never rebuild a captured one — and
-			// losing Mission Control resets the twenty-turn clock to zero. That is the win
-			// itself thrown away by a change of ambition. A civ with a ship in flight or a
-			// colony on the ground needs this building whatever it is otherwise doing, and it
-			// is urgent: every turn without it is a turn of the countdown not running.
-			{
-				byte mcMe = Game.PlayerNumber(Player);
-				bool needsLifeline = Game.Instance.Progress(mcMe).SpaceshipArrivalTurn > 0
-				                     || Game.Instance.Progress(mcMe).ColonyFounded;
-				if (needsLifeline && Player.ProductionAvailable(new MissionControl())
-				    && !Player.Cities.Any(x => x.HasBuilding<MissionControl>()))
-					Consider(new MissionControl());
-			}
+			ConsiderLifeline(Consider);
 
-			// What this civ is TRYING to do. See VictoryPath.
-			//
-			// Placed after the garrison and before everything else: a civ pursuing a plan
-			// still defends its cities first, but its plan outranks the generic
-			// infrastructure chain that would otherwise consume every shield it has.
-			//
-			// Only the Diaspora entry is unconditional-by-availability; the rest lean on
-			// items the ordinary chain already offers, so this changes WHEN they are built
-			// rather than introducing anything new. Consider() keeps the first entry per
-			// type, so position here is priority.
-			switch (Path)
-			{
-				case VictoryPath.Diaspora:
-					// The reason this exists. Nothing else in the AI ever asks for a ship
-					// part: before this, SS parts were reachable only through the last-resort
-					// fallback at the bottom of this method, which fires when a city has run
-					// out of everything else. Three civs launched in the 2200 AD run purely
-					// because their largest cities had exhausted the building list.
-					//
-					// ProductionAvailable carries the real gates — signal received, Apollo
-					// built, not already launched, per-part maximums (Player.cs:615) — so a
-					// civ that cannot build these simply adds nothing here.
-					//
-					// Built to a TARGET hull rather than to the per-part maximums — see
-					// SpaceshipTarget. The order is deliberate and unchanged: structural,
-					// then components, then modules. Modules last means the launch condition
-					// (2 components, 3 modules, structure to match) is completed by the final
-					// module, so the ship launches at its target size instead of at the bare
-					// minimum the moment it becomes airworthy.
-					(int targetComp, int targetModule) = SpaceshipTarget();
-					byte ssMe = Game.PlayerNumber(Player);
-					// Abandoned programme — see SpaceshipTarget. Skip the parts entirely and let
-					// Mission Control below stand: a civ that already has a ship in flight still
-					// needs the lifeline, and one that never launches loses nothing by holding it.
-					if (targetComp > 0 && targetModule > 0)
-					{
-						if (Game.Instance.Progress(ssMe).SpaceshipStructural < Game.SpaceshipStructuresNeeded(targetComp, targetModule)
-						    && Player.ProductionAvailable(new SSStructural()))
-							Consider(new SSStructural());
-						if (Game.Instance.Progress(ssMe).SpaceshipComponent < targetComp
-						    && Player.ProductionAvailable(new SSComponent()))
-							Consider(new SSComponent());
-						if (Game.Instance.Progress(ssMe).SpaceshipModule < targetModule
-						    && Player.ProductionAvailable(new SSModule()))
-							Consider(new SSModule());
-					}
-					break;
-
-				case VictoryPath.Conquest:
-					// A conqueror builds the army before the aqueduct. RepublicDemocratic
-					// civs cannot field attackers at all, so they get nothing here and fall
-					// through to the ordinary chain.
-					//
-					// Subject to the SAME unit ceiling the production fallback applies at the
-					// bottom of this method, and for the same reason: an ambition to conquer
-					// is not a licence to keep building spearmen a one-city civ cannot feed.
-					// Without this, the path entry ran ahead of the ceiling and re-created the
-					// exact pathology the glut guard was written for — measured as France's
-					// 236 Militia in 241 production decisions, and caught here by the test
-					// that guards it. A civ actually at war still arms without limit: the
-					// Militarize stance branch below is reached before the ceiling applies.
-					int conqUnits = Game.GetUnits().Count(u => u.Owner == Game.PlayerNumber(Player));
-					if (!Player.RepublicDemocratic && conqUnits <= Player.Cities.Length * 3)
-						Consider(BestAttacker());
-					break;
-
-				case VictoryPath.Commerce:
-					// Pax Mercatoria is measured in gross output and in rivals economically
-					// bound to you, and the Caravan is the only unit that does both — a trade
-					// route raises output at both ends and counts as a binding.
-					//
-					// Ceilinged, like the Conquest entry above and for a sharper reason: this
-					// was the ONE path entry with no bound at all. A delivered caravan is
-					// consumed, so the unit count never accumulates and no guard ever tripped —
-					// every city of a Commerce civ re-offered a Caravan every turn, forever,
-					// ahead of the entire infrastructure chain. That is what starved the
-					// aqueducts (see the growth-cap entry above).
-					//
-					// Deliberately the SAME ceiling the standard chain already applies further
-					// down — max(2, cities/6), counting in-flight units because a caravan is
-					// consumed on delivery. A commercial ambition should make a civ build
-					// caravans EARLIER, which is what this entry's position achieves; it should
-					// not let it build MORE than the rule everyone else follows. Two ceilings
-					// that disagree is just one of them being wrong.
-					int caravansAfoot = Game.GetUnits().Count(u => u.Owner == Game.PlayerNumber(Player)
-					                                            && u is Caravan);
-					if (Player.HasAdvance<Trade>() && caravansAfoot < Math.Max(2, Player.Cities.Length / 6))
-						Consider(new Caravan());
-					break;
-
-				case VictoryPath.Culture:
-					// Culture accrues from buildings and wonders (Player.Culture), so the
-					// cultural path is the ordinary builder's chain run harder. EarnsItsKeep
-					// still refuses the Temple and the Cathedral where there is no unhappiness
-					// to quell, which is correct: a Temple nobody needs generates upkeep, not
-					// admiration.
-					if (Player.HasAdvance<CeremonialBurial>() && !city.HasBuilding<Temple>()) Consider(new Temple());
-					if (Player.HasAdvance<Religion>() && !city.HasBuilding<Cathedral>())      Consider(new Cathedral());
-
-					// The post-contact culture buildings. These are worth 3, 2 and 2 a turn
-					// (City.CultureRate) — more than the Temple and Cathedral above them — and
-					// this case listed neither, so a culture civilization's identity stopped
-					// at the Cathedral and it picked these up on ordinary merit like everybody
-					// else. The Exchange Center in particular is the single largest source of
-					// culture outside a wonder and is no longer refused to a content city.
-					if (Player.HasAdvance<MemeticProtocols>() && !city.HasBuilding<ExchangeCenter>()) Consider(new ExchangeCenter());
-					if (Player.HasAdvance<Xenobiology>() && !city.HasBuilding<Xenolab>())             Consider(new Xenolab());
-					if (Player.HasAdvance<NeuralInterface>() && !city.HasBuilding<NeuralLab>())       Consider(new NeuralLab());
-					break;
-
-				case VictoryPath.Endurance:
-					// Outlast everyone. That is the existing chain, unmodified.
-					break;
-			}
+			ConsiderVictoryPath(city, Consider);
 
 			// Food first, for a city that has actually stopped.
 			//
@@ -5848,56 +5499,7 @@ namespace CivOne
 				if (Player.HasAdvance<Pottery>()          && !city.HasBuilding<Granary>())   Consider(new Granary());
 			}
 
-			// Militarize: garrison up to 2, barracks for veterans, then attackers.
-			// One worker even at war: AI wars rarely end (GetStance flips to Militarize
-			// whenever at war with anyone), so a civ that loses its last settler mid-war
-			// would otherwise never improve another tile — the "zero improvements" wasting
-			// disease. Roads serve troop movement anyway.
-			if (stance == StrategyStance.Militarize)
-			{
-				if (defenders < Math.Min(2, (int)city.Size)) Consider(BestDefender());
-				byte mzId = Game.PlayerNumber(Player);
-				// One per four cities, not one empire-wide. A single settler cannot be in
-				// two places, and on an archipelago it is stranded wherever it happens to
-				// stand: the autoplayed Japan held a mainland beachhead at Kagoshima with
-				// ~30 unclaimed prime sites 4-8 tiles out (grassland and plains, 21 land
-				// tiles in the working diamond) and took none of them for 751 turns,
-				// because its one permitted settler was 20 tiles south on the home island
-				// filling a swamp gap and no city was allowed to build a second. The
-				// empire-wide settlerBudget above (2 per 3 cities) is still the real
-				// ceiling; this only stops a war footing from meaning "never colonise".
-				// One per three cities, floor of two. The previous ownCities/4 with a floor of
-				// ONE was too tight at the small end, which is exactly where it matters: a
-				// 7-city Japan got a single settler for its whole territory, and one settler
-				// cannot road and drain an empire. Measured at turn 578, its two settlers stood
-				// on already-improved tiles with nothing in reach. The empire-wide settlerBudget
-				// (2 per 3 cities) is still the real ceiling.
-				int mzSettlers = Game.GetUnits().Count(u => u.Owner == mzId && u is Settlers);
-				if (settlerBudget && CanAffordSettler(city, 3) && !city.Units.Any(u => u is Settlers)
-				    && mzSettlers < Math.Max(2, ownCities / 3))
-					Consider(new Settlers());
-				if (!city.HasBuilding<Barracks>()) Consider(new Barracks());
-				if (SenateRaisesArmies) Consider(BestAttacker());
-
-				// Unmanned strike. BestAttacker returns land units only, so before this the
-				// AI never deliberately built ANY aircraft — every Fighter and Bomber in a
-				// finished game came from the built-out-city fallback. These two are the
-				// reason a republic can fight at all without paying war weariness for it
-				// (City.ComputeCitizens exempts both), which is exactly why the
-				// RepublicDemocratic guard above does not apply here.
-				//
-				// Capped at one per three cities between them: a missile is spent on use, so
-				// an uncapped rule is an empire that builds nothing else.
-				byte airId = Game.PlayerNumber(Player);
-				int unmanned = Game.GetUnits().Count(u => u.Owner == airId
-				                                       && (u is CruiseMissile || u is ReaperDrone));
-				if (unmanned < Math.Max(1, ownCities / 3))
-				{
-					if (Player.HasAdvance<Rocketry>()) Consider(new CruiseMissile());
-					if (Player.HasAdvance<Robotics>()) Consider(new ReaperDrone());
-				}
-				if (SenateRaisesArmies && BombersShort()) Consider(new Bomber());
-			}
+			ConsiderArming(city, stance, defenders, ownCities, settlerBudget, Consider);
 
 			// Expand: infrastructure before settlers, then settlers when city is large enough.
 			// Granary goes first so food investment lands before population is spent.
@@ -5928,195 +5530,11 @@ namespace CivOne
 			    && !Player.Cities.Any(c => c != city && (c.CurrentProduction is Settlers || c.ProductionQueue.Any(p => p is Settlers))))
 				Consider(new Settlers());
 
-			// Worker settlers: a built-out empire (Develop/Consolidate) keeps a few settlers
-			// terraforming — irrigating the tiles its cities work — so cities reach the food
-			// surplus to grow past size 3 instead of stalling. Capped at ~1 per 4 cities so it
-			// doesn't crowd out economy, and only from healthy cities with mass to spend.
-			// AI.Move routes these to BestImproveSite() rather than founding new towns.
-			// Size gate is 3, not 4: size 4 is exactly what the worker exists to reach,
-			// so an unirrigated city stuck at 3 must still be able to build its way out.
-			// It is not 2 — a size-2 city drops to 1 the moment the settler completes.
-			//
-			// The 1-per-4 ratio was tested against 1-per-2 and 1-per-6, three seeds each,
-			// 400 turns (2026-08-01), totalled across seeds:
-			//
-			//              improved land   advances   mean city size
-			//     1 per 6       126           443          5.0
-			//     1 per 4       126           444          5.1     <- unchanged
-			//     1 per 2       130           414          4.7
-			//
-			// Halving the ratio changes nothing and doubling it BUYS 3% more improved land
-			// for 7% fewer advances and smaller cities — each settler costs a population
-			// point, and past this point that outweighs the terraforming. The quota is not
-			// the binding constraint; improved land pins near 42% whichever way it moves,
-			// because settlers run out of work BestImproveSite will route them to, not out
-			// of settlers. Do not raise this without fixing that first.
-			//
-			// That last conclusion was drawn in the wrong regime and is false at scale. The
-			// harness's civs hold about five cities each, where the quota resolves to ONE
-			// settler and that settler costs a big share of a small civ's population — which
-			// is why 1-per-2 measured worse there. A turn-551 epic game is a different world:
-			// 257 cities, 80 settlers, and inside the city radii 2432 tiles of outstanding
-			// routable farm work against 2985 land tiles. 81% of all worked land unimproved,
-			// with the settlers nowhere near running out of things to do. A 47-city civ was
-			// allowed eleven workers for roughly 560 workable tiles.
-			//
-			// So the ratio is not wrong, its constancy is: a settler is a big cost to a
-			// 5-city civ and a rounding error to a 40-city one. Large empires get 1-per-2.
-			// Deliberately gated well above anything the harness reaches (its biggest civ
-			// runs 11-13 cities) so the measured small-empire behaviour is untouched —
-			// verified by the three seeds coming back byte-identical.
-			//
-			// The epic run measured that change and it did NOTHING: worked land went from 81%
-			// unimproved to 86%, settlers from 0.31 to 0.35 per city. The quota was never the
-			// constraint. The STANCE GATE was.
-			//
-			// Develop is the fallback at the bottom of GetStance — reached only when a civ is
-			// not consolidating, NOT AT WAR, not speculatively militarising, and out of
-			// expansion room. Across 8758 production decisions in that game: Militarize 1592,
-			// Expand 703, Consolidate 522, and Develop exactly ONE. 79% of all decisions were
-			// taken at war. On an epic map with room left, Develop is unreachable, so the
-			// terraforming branch behind it may as well not exist — which is the whole of the
-			// "threadbare countryside" symptom that started this.
-			//
-			// So the gate goes — but only for large empires, which is where the evidence is.
-			// Dropping it outright was A/B'd on seeds 101/202/303: one seed inert, one better
-			// (29->33 cities, improved land 42->45%), one materially worse (29->20 cities, 122
-			// ->99 advances). Aggregate 88->83. That is the regime problem again, and the
-			// harness civs are the small regime: for a five-city civ at war a worker settler
-			// really is worse than a defender, because it costs a population point and does
-			// not hold the line. The stance gate is right for them.
-			//
-			// It is wrong for a thirty-city civ that has been nominally at war for four
-			// centuries, where irrigation is what feeds the cities through the war and the
-			// population point is a rounding error. Above the threshold, war and expansion
-			// stop disqualifying terraforming; below it nothing changes at all — the harness
-			// tops out at 11-13 cities, so all three seeds return byte-identical.
-			//
-			// The remaining limits still bind in both regimes: the empire-wide settlerBudget
-			// (2 per 3 cities), the quota below, CanAffordSettler's size floor, and one settler
-			// in build per city at a time.
-			if (settlerBudget && CanAffordSettler(city, 3) && !city.Units.Any(x => x is Settlers))
-			{
-				byte wsId = Game.PlayerNumber(Player);
-				int workers = Game.GetUnits().Count(u => u.Owner == wsId && u is Settlers);
-				if (workers < WorkerQuota(stance))
-					Consider(new Settlers());
-			}
+			ConsiderWorkerSettler(city, stance, settlerBudget, Consider);
 
-			// The Longboat rule used to live HERE, at the bottom of the method, and that is
-			// exactly why no civ ever built one — see the entry near the top, beside the
-			// garrison. Stated once, up there, where a city can reach it.
+			ConsiderSeafaring(city, Consider);
 
-			// A hull, for a civ that has run out of world to walk to.
-			//
-			// The Longboat above is gated on BoxedIn(), which means "no legal land site
-			// anywhere in reach" — a bar so high that across a measured 750-turn game not a
-			// single Longboat was built by anybody, and every civ but one finished on the
-			// continent it started on. This is the softer condition that actually fires: the
-			// home continent is charted, most of the WORLD is not, and we have a coast. A
-			// transport is worth building then whether or not the last inland gap has been
-			// filled — it carries settlers out (AssignMission's colonisation run) and charts
-			// the sea lanes on the way.
-			//
-			// Two per civ. These are expensive hulls, not a navy, and the transport that
-			// exists is usually idle rather than full.
-			// `ExploredLandFraction < 0.60` was a window that CLOSED PERMANENTLY. It reads
-			// as "there is unknown world out there", but once a civ has charted 60% of the
-			// world's land it can never build another hull again — including at the exact
-			// moment its ships have finally found somewhere worth going. The proxy was for
-			// unknown world; the thing actually wanted is unclaimed coast.
-			//
-			// So: still exploring, OR we have surveyed a colony site and have not settled
-			// it yet. KnownColonySites prunes the register as it reads, so a site that has
-			// since been taken does not keep the yard open.
-			if (Player.HasAdvance<MapMaking>()
-			    && Player.ExploredHomeContinentFraction > 0.90
-			    && (Player.ExploredLandFraction < 0.60 || ChartedColonySites() > 0)
-			    && city.Tile is not null
-			    // Salt water, for the same reason as the Longboat rule above: a yard on an
-			    // enclosed lake launches a hull that can never leave it.
-			    && city.Tile.GetBorderTiles().Any(t => t is not null && t.IsOcean
-			                                       && !Map.Instance.IsFreshwaterAt(t.X, t.Y)))
-			{
-				byte hullId = Game.PlayerNumber(Player);
-				// Queued hulls count: reading only the ships afloat let several ports start one
-				// in the same few turns, and the Maori launched 3 to 7 Triremes in bursts.
-				int hulls = Game.GetUnits().Count(u => u.Owner == hullId && u is IBoardable)
-				          + OnOrder(p => p is IBoardable, except: city);
-				// The newest hull this port can launch. Only a Trireme was ever asked for, so at
-				// turn 576 of game a82cf446 every AI transport afloat was one; a Transport also
-				// wants a Shipyard, which the refit rule below provides.
-				if (hulls < 2) Consider(new IProduction[] { new Transport(), new Frigate(), new Sail(), new Trireme() }
-					.FirstOrDefault(h => city.AvailableProduction.Any(a => a.GetType() == h.GetType())) ?? new Trireme());
-			}
-
-			// A refit yard, when we have none and an outdated cargo hull of ours is afloat
-			// anywhere (or any outdated ship lies in this port): the Shipyard is where ships
-			// upgrade (BaseUnit.CanUpgrade), ConsiderUpgrades refits whatever is docked there,
-			// and AssignMission sends old transports to it. Waiting for a ship to dock at a
-			// port that could build one meant most civs never did (game b0247e2c). One yard
-			// at a time, and only a port that can build it: salt water, and Navigation.
-			byte yardId = Game.PlayerNumber(Player);
-			if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>() || (c != city && c.CurrentProduction is Shipyard))
-			    && Game.GetUnits().Any(u => u.Owner == yardId && u.Class == UnitClass.Water
-			                                && (u is IBoardable || (u.X == city.X && u.Y == city.Y))
-			                                && (u as BaseUnit)?.RefitTarget is not null)
-			    && city.AvailableProduction.Any(a => a is Shipyard))
-				Consider(new Shipyard());
-
-			// A small fleet for a war that can be fought at sea. Nothing asked for a warship: of
-			// 20,049 production picks in game 57b60740, four were, all rolled by the fallback in
-			// peacetime, so the orders in SeaPrey had almost nothing to give them to.
-			if (FleetWanted(city))
-			{
-				if (city.HasBuilding<Shipyard>())
-				{
-					IProduction? warship = new IProduction[] { new Battleship(), new Cruiser(), new Ironclad() }
-						.FirstOrDefault(w => city.AvailableProduction.Any(a => a.GetType() == w.GetType()));
-					if (warship is not null) Consider(warship);
-				}
-				else if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>() || (c != city && c.CurrentProduction is Shipyard))
-				         && city.AvailableProduction.Any(a => a is Shipyard))
-					Consider(new Shipyard());
-			}
-
-			// Pollution control. A city past the tolerated smog level (City.cs:1193 gives
-			// the first 20 units free) pays unhappiness for it and rolls for a new polluted
-			// tile every single turn, and enough polluted tiles trigger global warming for
-			// the whole world. The AI considered none of this, so its industrial cities
-			// smoked unchecked for the rest of the game. Ordered ahead of the general
-			// chain deliberately — this list is a priority order, and a city already over
-			// the line should fix that before it builds another Library.
-			// Start the cleanup BEFORE the city crosses the line, not after. SmokeStacks is
-			// post-tolerance, so waiting for it means the city has already been rolling for
-			// polluted tiles for as long as the Mass Transit takes to build — and polluted
-			// tiles are what drive global warming, which is irreversible and rewrites the
-			// map for everyone. Measured over one 750-turn game: FIVE warming events, ending
-			// with 24% of all land turned to swamp and rivers wiped out entirely, driven by a
-			// single industrial superpower that built its 28 Mass Transits and 29 Recycling
-			// Centers only after the damage was done.
-			//
-			// 15 of the 20 tolerated units is the trigger: close enough that the build
-			// finishes near the crossing, far enough that a merely large city is not
-			// retooled for nothing.
-			const int PollutionActionPoint = 15;
-			if (city.SmokeStacks > 0 || city.PollutionPressure >= PollutionActionPoint)
-			{
-				// Mass Transit zeroes population pollution outright; Recycling Center
-				// thirds the industrial side. Hydro Plant only halves it, so it comes
-				// last and only where no plant exists yet.
-				if (Player.HasAdvance<MassProduction>() && !city.HasBuilding<MassTransit>())
-					Consider(new MassTransit());
-				if (Player.HasAdvance<Recycling>()      && !city.HasBuilding<RecyclingCenter>())
-					Consider(new RecyclingCenter());
-				if (Player.HasAdvance<Recycling>()      && !city.HasBuilding<CarbonCapture>()
-				    && city.CityTiles.Any(t => t.Pollution))
-					Consider(new CarbonCapture());
-				if (Player.HasAdvance<Electronics>()     && !city.HasBuilding<HydroPlant>()
-				    && !city.HasBuilding<NuclearPlant>() && !city.HasBuilding<PowerPlant>())
-					Consider(new HydroPlant());
-			}
+			ConsiderPollutionControl(city, Consider);
 
 			// Standard infrastructure chain (all stances)
 			if (Player.HasAdvance<Pottery>()           && !city.HasBuilding<Granary>())      Consider(new Granary());
@@ -6197,6 +5615,673 @@ namespace CivOne
 				Consider(BestAttacker());
 			}
 
+			ConsiderDiplomat(Consider);
+
+			ConsiderCaravan(Consider);
+
+			if (PlanFallback(plan, city, stance, ownCities, maxCities, Consider)) return plan;
+
+			// The plan must never come back empty — CityProduction takes plan[0]. Every
+			// path above can now decline a candidate on upkeep grounds, so this backstop
+			// adds a defender DIRECTLY rather than through Consider, which could decline
+			// it too. A unit carries no maintenance, so it is always affordable.
+			// Over the army ceiling, a built-out city funds research rather than another defender.
+			if (plan.Count == 0 && OverArmyCap((IUnit)BestDefender()) && Player.ProductionAvailable(new ResearchGrant()))
+				plan.Add(new ResearchGrant());
+			if (plan.Count == 0) plan.Add(BestDefender());
+
+			return plan;
+		}
+
+		// The Crossing Fever and the Dome, ahead of everything and past every filter.
+		private void PlanEmergencies(List<IProduction> plan, City city, int defenders)
+		{
+			// The Olvir have warned of the Crossing Fever (Game.ProcessOlvirPlague): a Hospital,
+			// then a Sewer, ahead of everything — past EarnsItsKeep, which refuses a Hospital
+			// to a content city.
+			if (Game.PlagueWarned && !Game.ImmuneToPlague(Player))
+			{
+				if (!city.HasBuilding<Hospital>() && Player.ProductionAvailable(new Hospital())) plan.Add(new Hospital());
+				if (!city.HasBuilding<SewerSystem>() && Player.ProductionAvailable(new SewerSystem())) plan.Add(new SewerSystem());
+			}
+
+			// Our Dome parts, ahead of everything: the top production city starts each one and keeps
+			// it once started, and every other city with a garrison on that continent sends
+			// Caravans to it. In game 96367b22 the warning came at turn 432, with all three civs
+			// at war from turn 420, and no city chose a part until turn 479.
+			foreach (IWonder part in OpenDomeParts())
+			{
+				City? builder = DomeBuilder(part);
+				if (builder == city || (builder is null && IsTopProductionCity(city))) plan.Add(part);
+			}
+			if (DomeBuilder() is City dome && dome != city && defenders > 0
+			    && dome.Tile.ContinentId == city.Tile.ContinentId
+			    && Player.ProductionAvailable(new Caravan()) && !city.Units.Any(u => u is Caravan))
+			{
+				byte own = Game.PlayerNumber(Player);
+				int sent = Game.GetUnits().Count(u => u.Owner == own && u is Caravan);
+				if (sent * CaravanActions.WonderShields < dome.ProductionCost(dome.CurrentProduction) - dome.Shields)
+					plan.Add(new Caravan());
+			}
+		}
+
+		// The factions that are not civilisations, each with a plan of its own. True when one planned.
+		private bool PlanForOutsiders(List<IProduction> plan, City city, int defenders, Action<IProduction> consider)
+		{
+			// The Others: an occupation, not a civilisation. Cephalopods incapable of sympathy
+			// or of recognising their captives as anything but stock — so they build nothing
+			// that serves a population. No temples, no aqueducts, no marketplaces, and above
+			// all no wonders: they did not come here to develop the place.
+			//
+			// They were running the ordinary planner, and it showed. Over 1255 production
+			// decisions between turns 370 and 749 of a 2200 AD game they built 97
+			// Observatories, 95 Cathedrals, 89 Colosseums, 66 Hospitals and 51 Marketplaces,
+			// against 131 military units — about a tenth of their output. The invasion landed
+			// and then spent five centuries on civic architecture while every human power
+			// grew around it. They held 51 cities and finished sixth on score.
+			//
+			// Two things only: armour that runs everything down, and agents to sabotage what
+			// is not worth occupying. The warheads are the ARRIVAL, not the occupation —
+			// ExecuteOwnersLanding nukes each civilisation's capital before the seizure, and
+			// that is the whole of it. Producing more would be stockpiling a weapon this AI
+			// has no doctrine for firing, which is the 84-Diplomat mistake in a costlier form.
+			//
+			// And no defenders, deliberately. They do not care enough about what they take to
+			// garrison it: this is a smash-and-grab for livestock, to be over before the
+			// humans work out how to upload a virus or some microbe gets in. The practical
+			// consequence is that occupied cities are cheap to retake, which is the arc doing
+			// what it should — the occupation has to be broken, not out-produced.
+			//
+			// ProductionAvailable is the gate rather than a hand-written tech list because
+			// HoverTank needs the occupier's own Fusion Core, which a HasAdvance check would
+			// miss. Armor is the guaranteed fallback: the landing grants every advance bar
+			// FutureTech (Game.ExecuteOwnersLanding), so it can never be unavailable to them.
+			if (Player.Civilization is TheOthers or Federation)
+			{
+				byte thId = Game.PlayerNumber(Player);
+				int agents = Game.GetUnits().Count(u => u.Owner == thId && u is Diplomat);
+
+				if (WarheadsShort()) consider(new Nuclear());
+				if (Player.ProductionAvailable(new HoverTank())) consider(new HoverTank());
+				if (BombersShort()) consider(new Bomber());
+				// Sabotage is a tool, not a doctrine — one agent per two cities is plenty.
+				// They were building them regardless of use: 84 Diplomats produced by a
+				// faction that returns early from every diplomatic path (AI.Strategy:1072),
+				// which is 84 units that could never do anything at all.
+				if (agents < Math.Max(1, Player.Cities.Length / 2)
+				    && Player.ProductionAvailable(new Diplomat()))
+					consider(new Diplomat());
+				if (plan.Count == 0) consider(new Armor());
+				return true;
+			}
+
+			// The Thing builds nothing civic. It had been falling through to the general path,
+			// which meant its top-production city chased the ordinary wonder list — an
+			// assimilating organism commissioning J.S. Bach's Cathedral, which is what a
+			// turn-750 save actually showed. It makes bodies, and in the third act, The Vessel.
+			if (Player.Civilization is TheThing)
+			{
+				// The Vessel is set directly on the shipyard city by Game.ProcessThingAscension,
+				// which picks it empire-wide; honour it here so the plan never overwrites it.
+				if (city.CurrentProduction is Wonders.TheVessel) { consider(new Wonders.TheVessel()); return true; }
+
+				if (Player.ProductionAvailable(new MechInf())) consider(new MechInf());
+				if (Player.ProductionAvailable(new Armor()))   consider(new Armor());
+				if (plan.Count == 0) consider(new Militia());
+				return true;
+			}
+
+			// Skynet researches — it is the one faction that ought to out-tech the world, and
+			// ChooseResearch deliberately leaves it alone. Its WONDERS are another matter: the
+			// general list had the network building cathedrals and suffrage movements. Only
+			// machine work, and only from the top production city as for anyone else.
+			if (Player.Civilization is Skynet)
+			{
+				// The Reprocessor first: it is the mission, everything else is materiel.
+				IWonder[] machineWork =
+				{
+					new Wonders.TheReprocessor(),
+					new NanobotFactory(), new ManhattanProject(), new FusionCore(),
+					// new InterstellarProbe(),   retired — see Player.ProductionAvailable
+					new HumanGenomeProject(),
+				};
+				if (IsTopProductionCity(city))
+					foreach (IWonder w in machineWork)
+						if (!Game.WonderBuilt(w) && Player.ProductionAvailable(w)) { consider(w); break; }
+
+				if (Player.ProductionAvailable(new HoverTank())) consider(new HoverTank());
+				if (BombersShort()) consider(new Bomber());
+				if (Player.ProductionAvailable(new Armor()))     consider(new Armor());
+				if (plan.Count == 0) consider(new Militia());
+				return true;
+			}
+
+			// Olvir production: refugee fleet prioritises rapid expansion and sea infrastructure
+			// over military and normal civic buildings. They don't build wonders or advanced
+			// civic buildings — just the minimum garrison, food storage, and settlers.
+			if (Player.Civilization is Olvir)
+			{
+				byte oid = Game.PlayerNumber(Player);
+				int olvCities = Player.Cities.Length;
+				int olvSettlers = Game.GetUnits().Count(u => u.Owner == oid && u is Settlers);
+				// One defender per city — they're pacifist, not helpless.
+				if (defenders < 1) consider(BestDefender());
+				// Granary feeds growth (Pottery always known for Olvir — late-era arrival).
+				if (!city.HasBuilding<Granary>()) consider(new Granary());
+				// Keep one settler per city when below the expansion cap (30 cities).
+				// Size 3 and food to spare: at size 2 the completed settler drops the
+				// city to 1 (see CanAffordSettler).
+				if (CanAffordSettler(city, 3) && olvSettlers < Math.Max(olvCities, 4)
+				    && !city.Units.Any(u => u is Settlers) && olvCities < 30)
+					consider(new Settlers());
+				// HydroEngineer for ocean/floating-city founding.
+				if (Player.HasAdvance<AquaticColonization>()
+				    && Game.GetUnits().Count(u => u.Owner == oid && u is HydroEngineer) < olvCities / 3 + 1)
+					consider(new HydroEngineer());
+				// The spawning rite: a shrine in every colony, and in the older ones a
+				// human cathedral plumbed into a cascade. This is the only culture the
+				// Olvir can earn — nothing else on their production list scores any.
+				if (!city.HasBuilding<BreedingShrine>()) consider(new BreedingShrine());
+				if (city.HasBuilding<BreedingShrine>() && city.Size >= 6
+				    && !city.HasBuilding<CascadeCathedral>()) consider(new CascadeCathedral());
+				// Post-contact buildings that are thematically Olvir.
+				if (Player.HasAdvance<Xenobiology>()        && !city.HasBuilding<Xenolab>())        consider(new Xenolab());
+				if (Player.HasAdvance<AquaticColonization>() && Map[city.X, city.Y].GetBorderTiles().Any(t => t.IsOcean)
+				                                              && !city.HasBuilding<SeaPlatform>())   consider(new SeaPlatform());
+				// Fallback to another defender so the city produces something.
+				if (plan.Count == 0 || (plan.Count == 1 && plan[0] is IUnit)) consider(BestDefender());
+				return true;
+			}
+			return false;
+		}
+
+		// A hunter, for quarry nothing of ours can kill.
+		private void ConsiderHunter(City city, byte threatOwnId, Action<IProduction> consider)
+		{
+			// A hunter, when there is quarry here and nothing of ours on this continent able to
+			// kill it. Every other attacker entry waits on SenateRaisesArmies, and a Republic or
+			// Democracy is only "invaded" by the Federation, the Others or Skynet — never by a
+			// harvester or a raiding party. So the Haida, in Democracy with 83 advances, ended a
+			// game with 61 units at attack 3 or less while defence-6 harvesters drank their land:
+			// HuntQuarry had nobody to send. Like the hunt itself this is stance-independent
+			// and raises no war footing; it buys one hunter per beast, counting the ones on order.
+			IUnit hunter = (IUnit)BestAttacker();
+			List<IUnit> prey = Quarry().Where(u => u.Y != 255 && hunter.Attack >= u.Defense
+				&& Common.DistanceToTile(u.X, u.Y, city.X, city.Y) <= (u.Owner == 0 && IsMegafauna(u) ? HuntRadius : RaidRadius))
+				.ToList();
+			if (prey.Count > 0)
+			{
+				int weakest = prey.Min(u => u.Defense);
+				int hunters = Game.GetUnits().Count(u => u.Owner == threatOwnId && u.Class == UnitClass.Land
+					&& u.Attack >= weakest && u.Tile?.ContinentId == city.Tile.ContinentId && !IsSoleGarrison(u))
+					+ Player.Cities.Count(c => c.CurrentProduction is IUnit { Role: UnitRole.LandAttack });
+				if (hunters < prey.Count) consider(hunter);
+			}
+		}
+
+		// A Longboat, for a civ boxed in on its own land.
+		private void ConsiderLongboat(City city, Action<IProduction> consider)
+		{
+			// A hull, for a civ with nowhere left to walk — placed HIGH, which is the whole
+			// change. Both boat rules already existed near the bottom of this method and both
+			// were being reached: BoxedIn() was true on 35 of the Maori's 63 logged production
+			// decisions, so a Longboat went into the plan and stayed there. Consider() keeps
+			// the first entry per type and CityProduction builds plan[0], so position IS
+			// priority, and a city with any building left to make never got that far. Measured
+			// across three complete runs the Maori built not one boat of any kind, sat on the
+			// same 8 cities from turn 313 to 749, and finished with two idle settlers and an
+			// island with nothing left to improve.
+			//
+			// This is the same failure the spaceship had before the Diaspora path entry: a
+			// correct rule in a position nothing ever reaches.
+			//
+			// Narrow on purpose. Boxed in (no legal land site in reach), below the leader's
+			// own city target, coastal, and able to spare the population point — a civ with
+			// room to walk into does not need a navy, and the two-hull cap below keeps this
+			// from becoming one.
+			if (Player.HasAdvance<MapMaking>()
+			    && BoxedIn()
+			    && Player.Cities.Length < CityTarget()
+			    && city.Tile is not null
+			    // SALT water, not merely water. IsFreshwaterAt is true for every body that is
+			    // not the main ocean (Map.cs:80), which is exactly "an enclosed lake" — and the
+			    // Harbour rule has always asked this question. This one asked only `IsOcean`,
+			    // so a city on a pond qualified as a port.
+			    //
+			    // Not hypothetical: the Maori built two Longboats at (316,162), whose adjacent
+			    // water is a FOUR-TILE landlocked lake. Both boats sat in it at full movement
+			    // for the rest of the game. Zero of the 277 legal colony sites within the
+			    // search window touched that water. The crossing logic was never at fault —
+			    // the boats were in a puddle.
+			    && city.Tile.GetBorderTiles().Any(t => t is not null && t.IsOcean
+			                                       && !Map.Instance.IsFreshwaterAt(t.X, t.Y))
+			    && CanAffordSettler(city, 3))
+			{
+				byte boxedId = Game.PlayerNumber(Player);
+				// Longboats counted explicitly. The Longboat is NOT IBoardable — it carries no
+				// passenger, it IS the colonist, spending a population point and consuming
+				// itself ashore as a land Settlers would. Counting only IBoardable hulls, as
+				// the Trireme rule below does, left this cap counting everything except the
+				// boat it caps.
+				//
+				// Not a Trireme, though: it cannot leave the coast, so it crosses to nowhere a
+				// boxed-in civ could settle. Counting them, two idle Triremes in port stopped the
+				// Longboats for good, and the Maori built 3 to 7 Triremes in most games.
+				// Queued boats count, so several ports cannot launch past the cap at once.
+				int afloat = Game.GetUnits().Count(u => u.Owner == boxedId
+				                                     && (u is Longboat || (u is IBoardable && u is not Trireme)))
+				           + OnOrder(p => p is Longboat, except: city);
+				// Two crossings in flight, not one and not unbounded. The rule this replaces
+				// was uncapped, on the reasoning that "one at sea at a time" colonises a new
+				// world at one city per crossing — true, but it was written for a rule sitting
+				// at the bottom of the plan where it was never reached anyway. At the TOP,
+				// uncapped means a boxed-in civ builds boats every turn from every coastal
+				// city, at a population point each. A Longboat consumes itself founding, so
+				// the count falls as crossings land and the yard reopens on its own.
+				if (afloat < 2) consider(new Longboat());
+			}
+		}
+
+		// Mission Control, whatever the civ is otherwise doing, once a ship or colony depends on it.
+		private void ConsiderLifeline(Action<IProduction> consider)
+		{
+			// The lifeline, and it does NOT belong to the Diaspora path.
+			//
+			// Consider(new MissionControl()) used to live inside the Diaspora branch below, so
+			// a civ that pivoted away after launching would never rebuild a captured one — and
+			// losing Mission Control resets the twenty-turn clock to zero. That is the win
+			// itself thrown away by a change of ambition. A civ with a ship in flight or a
+			// colony on the ground needs this building whatever it is otherwise doing, and it
+			// is urgent: every turn without it is a turn of the countdown not running.
+			{
+				byte mcMe = Game.PlayerNumber(Player);
+				bool needsLifeline = Game.Instance.Progress(mcMe).SpaceshipArrivalTurn > 0
+				                     || Game.Instance.Progress(mcMe).ColonyFounded;
+				if (needsLifeline && Player.ProductionAvailable(new MissionControl())
+				    && !Player.Cities.Any(x => x.HasBuilding<MissionControl>()))
+					consider(new MissionControl());
+			}
+		}
+
+		// The victory path's own entries.
+		private void ConsiderVictoryPath(City city, Action<IProduction> consider)
+		{
+			// What this civ is TRYING to do. See VictoryPath.
+			//
+			// Placed after the garrison and before everything else: a civ pursuing a plan
+			// still defends its cities first, but its plan outranks the generic
+			// infrastructure chain that would otherwise consume every shield it has.
+			//
+			// Only the Diaspora entry is unconditional-by-availability; the rest lean on
+			// items the ordinary chain already offers, so this changes WHEN they are built
+			// rather than introducing anything new. Consider() keeps the first entry per
+			// type, so position here is priority.
+			switch (Path)
+			{
+				case VictoryPath.Diaspora:
+					// The reason this exists. Nothing else in the AI ever asks for a ship
+					// part: before this, SS parts were reachable only through the last-resort
+					// fallback at the bottom of this method, which fires when a city has run
+					// out of everything else. Three civs launched in the 2200 AD run purely
+					// because their largest cities had exhausted the building list.
+					//
+					// ProductionAvailable carries the real gates — signal received, Apollo
+					// built, not already launched, per-part maximums (Player.cs:615) — so a
+					// civ that cannot build these simply adds nothing here.
+					//
+					// Built to a TARGET hull rather than to the per-part maximums — see
+					// SpaceshipTarget. The order is deliberate and unchanged: structural,
+					// then components, then modules. Modules last means the launch condition
+					// (2 components, 3 modules, structure to match) is completed by the final
+					// module, so the ship launches at its target size instead of at the bare
+					// minimum the moment it becomes airworthy.
+					(int targetComp, int targetModule) = SpaceshipTarget();
+					byte ssMe = Game.PlayerNumber(Player);
+					// Abandoned programme — see SpaceshipTarget. Skip the parts entirely and let
+					// Mission Control below stand: a civ that already has a ship in flight still
+					// needs the lifeline, and one that never launches loses nothing by holding it.
+					if (targetComp > 0 && targetModule > 0)
+					{
+						if (Game.Instance.Progress(ssMe).SpaceshipStructural < Game.SpaceshipStructuresNeeded(targetComp, targetModule)
+						    && Player.ProductionAvailable(new SSStructural()))
+							consider(new SSStructural());
+						if (Game.Instance.Progress(ssMe).SpaceshipComponent < targetComp
+						    && Player.ProductionAvailable(new SSComponent()))
+							consider(new SSComponent());
+						if (Game.Instance.Progress(ssMe).SpaceshipModule < targetModule
+						    && Player.ProductionAvailable(new SSModule()))
+							consider(new SSModule());
+					}
+					break;
+
+				case VictoryPath.Conquest:
+					// A conqueror builds the army before the aqueduct. RepublicDemocratic
+					// civs cannot field attackers at all, so they get nothing here and fall
+					// through to the ordinary chain.
+					//
+					// Subject to the SAME unit ceiling the production fallback applies at the
+					// bottom of this method, and for the same reason: an ambition to conquer
+					// is not a licence to keep building spearmen a one-city civ cannot feed.
+					// Without this, the path entry ran ahead of the ceiling and re-created the
+					// exact pathology the glut guard was written for — measured as France's
+					// 236 Militia in 241 production decisions, and caught here by the test
+					// that guards it. A civ actually at war still arms without limit: the
+					// Militarize stance branch below is reached before the ceiling applies.
+					int conqUnits = Game.GetUnits().Count(u => u.Owner == Game.PlayerNumber(Player));
+					if (!Player.RepublicDemocratic && conqUnits <= Player.Cities.Length * 3)
+						consider(BestAttacker());
+					break;
+
+				case VictoryPath.Commerce:
+					// Pax Mercatoria is measured in gross output and in rivals economically
+					// bound to you, and the Caravan is the only unit that does both — a trade
+					// route raises output at both ends and counts as a binding.
+					//
+					// Ceilinged, like the Conquest entry above and for a sharper reason: this
+					// was the ONE path entry with no bound at all. A delivered caravan is
+					// consumed, so the unit count never accumulates and no guard ever tripped —
+					// every city of a Commerce civ re-offered a Caravan every turn, forever,
+					// ahead of the entire infrastructure chain. That is what starved the
+					// aqueducts (see the growth-cap entry above).
+					//
+					// Deliberately the SAME ceiling the standard chain already applies further
+					// down — max(2, cities/6), counting in-flight units because a caravan is
+					// consumed on delivery. A commercial ambition should make a civ build
+					// caravans EARLIER, which is what this entry's position achieves; it should
+					// not let it build MORE than the rule everyone else follows. Two ceilings
+					// that disagree is just one of them being wrong.
+					int caravansAfoot = Game.GetUnits().Count(u => u.Owner == Game.PlayerNumber(Player)
+					                                            && u is Caravan);
+					if (Player.HasAdvance<Trade>() && caravansAfoot < Math.Max(2, Player.Cities.Length / 6))
+						consider(new Caravan());
+					break;
+
+				case VictoryPath.Culture:
+					// Culture accrues from buildings and wonders (Player.Culture), so the
+					// cultural path is the ordinary builder's chain run harder. EarnsItsKeep
+					// still refuses the Temple and the Cathedral where there is no unhappiness
+					// to quell, which is correct: a Temple nobody needs generates upkeep, not
+					// admiration.
+					if (Player.HasAdvance<CeremonialBurial>() && !city.HasBuilding<Temple>()) consider(new Temple());
+					if (Player.HasAdvance<Religion>() && !city.HasBuilding<Cathedral>())      consider(new Cathedral());
+
+					// The post-contact culture buildings. These are worth 3, 2 and 2 a turn
+					// (City.CultureRate) — more than the Temple and Cathedral above them — and
+					// this case listed neither, so a culture civilization's identity stopped
+					// at the Cathedral and it picked these up on ordinary merit like everybody
+					// else. The Exchange Center in particular is the single largest source of
+					// culture outside a wonder and is no longer refused to a content city.
+					if (Player.HasAdvance<MemeticProtocols>() && !city.HasBuilding<ExchangeCenter>()) consider(new ExchangeCenter());
+					if (Player.HasAdvance<Xenobiology>() && !city.HasBuilding<Xenolab>())             consider(new Xenolab());
+					if (Player.HasAdvance<NeuralInterface>() && !city.HasBuilding<NeuralLab>())       consider(new NeuralLab());
+					break;
+
+				case VictoryPath.Endurance:
+					// Outlast everyone. That is the existing chain, unmodified.
+					break;
+			}
+		}
+
+		// The war footing: garrison, a worker, barracks, attackers and unmanned strike.
+		private void ConsiderArming(City city, StrategyStance stance, int defenders, int ownCities, bool settlerBudget, Action<IProduction> consider)
+		{
+			// Militarize: garrison up to 2, barracks for veterans, then attackers.
+			// One worker even at war: AI wars rarely end (GetStance flips to Militarize
+			// whenever at war with anyone), so a civ that loses its last settler mid-war
+			// would otherwise never improve another tile — the "zero improvements" wasting
+			// disease. Roads serve troop movement anyway.
+			if (stance == StrategyStance.Militarize)
+			{
+				if (defenders < Math.Min(2, (int)city.Size)) consider(BestDefender());
+				byte mzId = Game.PlayerNumber(Player);
+				// One per four cities, not one empire-wide. A single settler cannot be in
+				// two places, and on an archipelago it is stranded wherever it happens to
+				// stand: the autoplayed Japan held a mainland beachhead at Kagoshima with
+				// ~30 unclaimed prime sites 4-8 tiles out (grassland and plains, 21 land
+				// tiles in the working diamond) and took none of them for 751 turns,
+				// because its one permitted settler was 20 tiles south on the home island
+				// filling a swamp gap and no city was allowed to build a second. The
+				// empire-wide settlerBudget above (2 per 3 cities) is still the real
+				// ceiling; this only stops a war footing from meaning "never colonise".
+				// One per three cities, floor of two. The previous ownCities/4 with a floor of
+				// ONE was too tight at the small end, which is exactly where it matters: a
+				// 7-city Japan got a single settler for its whole territory, and one settler
+				// cannot road and drain an empire. Measured at turn 578, its two settlers stood
+				// on already-improved tiles with nothing in reach. The empire-wide settlerBudget
+				// (2 per 3 cities) is still the real ceiling.
+				int mzSettlers = Game.GetUnits().Count(u => u.Owner == mzId && u is Settlers);
+				if (settlerBudget && CanAffordSettler(city, 3) && !city.Units.Any(u => u is Settlers)
+				    && mzSettlers < Math.Max(2, ownCities / 3))
+					consider(new Settlers());
+				if (!city.HasBuilding<Barracks>()) consider(new Barracks());
+				if (SenateRaisesArmies) consider(BestAttacker());
+
+				// Unmanned strike. BestAttacker returns land units only, so before this the
+				// AI never deliberately built ANY aircraft — every Fighter and Bomber in a
+				// finished game came from the built-out-city fallback. These two are the
+				// reason a republic can fight at all without paying war weariness for it
+				// (City.ComputeCitizens exempts both), which is exactly why the
+				// RepublicDemocratic guard above does not apply here.
+				//
+				// Capped at one per three cities between them: a missile is spent on use, so
+				// an uncapped rule is an empire that builds nothing else.
+				byte airId = Game.PlayerNumber(Player);
+				int unmanned = Game.GetUnits().Count(u => u.Owner == airId
+				                                       && (u is CruiseMissile || u is ReaperDrone));
+				if (unmanned < Math.Max(1, ownCities / 3))
+				{
+					if (Player.HasAdvance<Rocketry>()) consider(new CruiseMissile());
+					if (Player.HasAdvance<Robotics>()) consider(new ReaperDrone());
+				}
+				if (SenateRaisesArmies && BombersShort()) consider(new Bomber());
+			}
+		}
+
+		// Worker settlers, to terraform the land the cities work.
+		private void ConsiderWorkerSettler(City city, StrategyStance stance, bool settlerBudget, Action<IProduction> consider)
+		{
+			// Worker settlers: a built-out empire (Develop/Consolidate) keeps a few settlers
+			// terraforming — irrigating the tiles its cities work — so cities reach the food
+			// surplus to grow past size 3 instead of stalling. Capped at ~1 per 4 cities so it
+			// doesn't crowd out economy, and only from healthy cities with mass to spend.
+			// AI.Move routes these to BestImproveSite() rather than founding new towns.
+			// Size gate is 3, not 4: size 4 is exactly what the worker exists to reach,
+			// so an unirrigated city stuck at 3 must still be able to build its way out.
+			// It is not 2 — a size-2 city drops to 1 the moment the settler completes.
+			//
+			// The 1-per-4 ratio was tested against 1-per-2 and 1-per-6, three seeds each,
+			// 400 turns (2026-08-01), totalled across seeds:
+			//
+			//              improved land   advances   mean city size
+			//     1 per 6       126           443          5.0
+			//     1 per 4       126           444          5.1     <- unchanged
+			//     1 per 2       130           414          4.7
+			//
+			// Halving the ratio changes nothing and doubling it BUYS 3% more improved land
+			// for 7% fewer advances and smaller cities — each settler costs a population
+			// point, and past this point that outweighs the terraforming. The quota is not
+			// the binding constraint; improved land pins near 42% whichever way it moves,
+			// because settlers run out of work BestImproveSite will route them to, not out
+			// of settlers. Do not raise this without fixing that first.
+			//
+			// That last conclusion was drawn in the wrong regime and is false at scale. The
+			// harness's civs hold about five cities each, where the quota resolves to ONE
+			// settler and that settler costs a big share of a small civ's population — which
+			// is why 1-per-2 measured worse there. A turn-551 epic game is a different world:
+			// 257 cities, 80 settlers, and inside the city radii 2432 tiles of outstanding
+			// routable farm work against 2985 land tiles. 81% of all worked land unimproved,
+			// with the settlers nowhere near running out of things to do. A 47-city civ was
+			// allowed eleven workers for roughly 560 workable tiles.
+			//
+			// So the ratio is not wrong, its constancy is: a settler is a big cost to a
+			// 5-city civ and a rounding error to a 40-city one. Large empires get 1-per-2.
+			// Deliberately gated well above anything the harness reaches (its biggest civ
+			// runs 11-13 cities) so the measured small-empire behaviour is untouched —
+			// verified by the three seeds coming back byte-identical.
+			//
+			// The epic run measured that change and it did NOTHING: worked land went from 81%
+			// unimproved to 86%, settlers from 0.31 to 0.35 per city. The quota was never the
+			// constraint. The STANCE GATE was.
+			//
+			// Develop is the fallback at the bottom of GetStance — reached only when a civ is
+			// not consolidating, NOT AT WAR, not speculatively militarising, and out of
+			// expansion room. Across 8758 production decisions in that game: Militarize 1592,
+			// Expand 703, Consolidate 522, and Develop exactly ONE. 79% of all decisions were
+			// taken at war. On an epic map with room left, Develop is unreachable, so the
+			// terraforming branch behind it may as well not exist — which is the whole of the
+			// "threadbare countryside" symptom that started this.
+			//
+			// So the gate goes — but only for large empires, which is where the evidence is.
+			// Dropping it outright was A/B'd on seeds 101/202/303: one seed inert, one better
+			// (29->33 cities, improved land 42->45%), one materially worse (29->20 cities, 122
+			// ->99 advances). Aggregate 88->83. That is the regime problem again, and the
+			// harness civs are the small regime: for a five-city civ at war a worker settler
+			// really is worse than a defender, because it costs a population point and does
+			// not hold the line. The stance gate is right for them.
+			//
+			// It is wrong for a thirty-city civ that has been nominally at war for four
+			// centuries, where irrigation is what feeds the cities through the war and the
+			// population point is a rounding error. Above the threshold, war and expansion
+			// stop disqualifying terraforming; below it nothing changes at all — the harness
+			// tops out at 11-13 cities, so all three seeds return byte-identical.
+			//
+			// The remaining limits still bind in both regimes: the empire-wide settlerBudget
+			// (2 per 3 cities), the quota below, CanAffordSettler's size floor, and one settler
+			// in build per city at a time.
+			if (settlerBudget && CanAffordSettler(city, 3) && !city.Units.Any(x => x is Settlers))
+			{
+				byte wsId = Game.PlayerNumber(Player);
+				int workers = Game.GetUnits().Count(u => u.Owner == wsId && u is Settlers);
+				if (workers < WorkerQuota(stance))
+					consider(new Settlers());
+			}
+		}
+
+		// Ships: a hull for a civ with sites overseas, a refit yard, and a fleet for a war at sea.
+		private void ConsiderSeafaring(City city, Action<IProduction> consider)
+		{
+			// The Longboat rule used to live HERE, at the bottom of the method, and that is
+			// exactly why no civ ever built one — see the entry near the top, beside the
+			// garrison. Stated once, up there, where a city can reach it.
+
+			// A hull, for a civ that has run out of world to walk to.
+			//
+			// The Longboat above is gated on BoxedIn(), which means "no legal land site
+			// anywhere in reach" — a bar so high that across a measured 750-turn game not a
+			// single Longboat was built by anybody, and every civ but one finished on the
+			// continent it started on. This is the softer condition that actually fires: the
+			// home continent is charted, most of the WORLD is not, and we have a coast. A
+			// transport is worth building then whether or not the last inland gap has been
+			// filled — it carries settlers out (AssignMission's colonisation run) and charts
+			// the sea lanes on the way.
+			//
+			// Two per civ. These are expensive hulls, not a navy, and the transport that
+			// exists is usually idle rather than full.
+			// `ExploredLandFraction < 0.60` was a window that CLOSED PERMANENTLY. It reads
+			// as "there is unknown world out there", but once a civ has charted 60% of the
+			// world's land it can never build another hull again — including at the exact
+			// moment its ships have finally found somewhere worth going. The proxy was for
+			// unknown world; the thing actually wanted is unclaimed coast.
+			//
+			// So: still exploring, OR we have surveyed a colony site and have not settled
+			// it yet. KnownColonySites prunes the register as it reads, so a site that has
+			// since been taken does not keep the yard open.
+			if (Player.HasAdvance<MapMaking>()
+			    && Player.ExploredHomeContinentFraction > 0.90
+			    && (Player.ExploredLandFraction < 0.60 || ChartedColonySites() > 0)
+			    && city.Tile is not null
+			    // Salt water, for the same reason as the Longboat rule above: a yard on an
+			    // enclosed lake launches a hull that can never leave it.
+			    && city.Tile.GetBorderTiles().Any(t => t is not null && t.IsOcean
+			                                       && !Map.Instance.IsFreshwaterAt(t.X, t.Y)))
+			{
+				byte hullId = Game.PlayerNumber(Player);
+				// Queued hulls count: reading only the ships afloat let several ports start one
+				// in the same few turns, and the Maori launched 3 to 7 Triremes in bursts.
+				int hulls = Game.GetUnits().Count(u => u.Owner == hullId && u is IBoardable)
+				          + OnOrder(p => p is IBoardable, except: city);
+				// The newest hull this port can launch. Only a Trireme was ever asked for, so at
+				// turn 576 of game a82cf446 every AI transport afloat was one; a Transport also
+				// wants a Shipyard, which the refit rule below provides.
+				if (hulls < 2) consider(new IProduction[] { new Transport(), new Frigate(), new Sail(), new Trireme() }
+					.FirstOrDefault(h => city.AvailableProduction.Any(a => a.GetType() == h.GetType())) ?? new Trireme());
+			}
+
+			// A refit yard, when we have none and an outdated cargo hull of ours is afloat
+			// anywhere (or any outdated ship lies in this port): the Shipyard is where ships
+			// upgrade (BaseUnit.CanUpgrade), ConsiderUpgrades refits whatever is docked there,
+			// and AssignMission sends old transports to it. Waiting for a ship to dock at a
+			// port that could build one meant most civs never did (game b0247e2c). One yard
+			// at a time, and only a port that can build it: salt water, and Navigation.
+			byte yardId = Game.PlayerNumber(Player);
+			if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>() || (c != city && c.CurrentProduction is Shipyard))
+			    && Game.GetUnits().Any(u => u.Owner == yardId && u.Class == UnitClass.Water
+			                                && (u is IBoardable || (u.X == city.X && u.Y == city.Y))
+			                                && (u as BaseUnit)?.RefitTarget is not null)
+			    && city.AvailableProduction.Any(a => a is Shipyard))
+				consider(new Shipyard());
+
+			// A small fleet for a war that can be fought at sea. Nothing asked for a warship: of
+			// 20,049 production picks in game 57b60740, four were, all rolled by the fallback in
+			// peacetime, so the orders in SeaPrey had almost nothing to give them to.
+			if (FleetWanted(city))
+			{
+				if (city.HasBuilding<Shipyard>())
+				{
+					IProduction? warship = new IProduction[] { new Battleship(), new Cruiser(), new Ironclad() }
+						.FirstOrDefault(w => city.AvailableProduction.Any(a => a.GetType() == w.GetType()));
+					if (warship is not null) consider(warship);
+				}
+				else if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>() || (c != city && c.CurrentProduction is Shipyard))
+				         && city.AvailableProduction.Any(a => a is Shipyard))
+					consider(new Shipyard());
+			}
+		}
+
+		// Pollution control, ahead of the general chain.
+		private void ConsiderPollutionControl(City city, Action<IProduction> consider)
+		{
+			// Pollution control. A city past the tolerated smog level (City.cs:1193 gives
+			// the first 20 units free) pays unhappiness for it and rolls for a new polluted
+			// tile every single turn, and enough polluted tiles trigger global warming for
+			// the whole world. The AI considered none of this, so its industrial cities
+			// smoked unchecked for the rest of the game. Ordered ahead of the general
+			// chain deliberately — this list is a priority order, and a city already over
+			// the line should fix that before it builds another Library.
+			// Start the cleanup BEFORE the city crosses the line, not after. SmokeStacks is
+			// post-tolerance, so waiting for it means the city has already been rolling for
+			// polluted tiles for as long as the Mass Transit takes to build — and polluted
+			// tiles are what drive global warming, which is irreversible and rewrites the
+			// map for everyone. Measured over one 750-turn game: FIVE warming events, ending
+			// with 24% of all land turned to swamp and rivers wiped out entirely, driven by a
+			// single industrial superpower that built its 28 Mass Transits and 29 Recycling
+			// Centers only after the damage was done.
+			//
+			// 15 of the 20 tolerated units is the trigger: close enough that the build
+			// finishes near the crossing, far enough that a merely large city is not
+			// retooled for nothing.
+			const int PollutionActionPoint = 15;
+			if (city.SmokeStacks > 0 || city.PollutionPressure >= PollutionActionPoint)
+			{
+				// Mass Transit zeroes population pollution outright; Recycling Center
+				// thirds the industrial side. Hydro Plant only halves it, so it comes
+				// last and only where no plant exists yet.
+				if (Player.HasAdvance<MassProduction>() && !city.HasBuilding<MassTransit>())
+					consider(new MassTransit());
+				if (Player.HasAdvance<Recycling>()      && !city.HasBuilding<RecyclingCenter>())
+					consider(new RecyclingCenter());
+				if (Player.HasAdvance<Recycling>()      && !city.HasBuilding<CarbonCapture>()
+				    && city.CityTiles.Any(t => t.Pollution))
+					consider(new CarbonCapture());
+				if (Player.HasAdvance<Electronics>()     && !city.HasBuilding<HydroPlant>()
+				    && !city.HasBuilding<NuclearPlant>() && !city.HasBuilding<PowerPlant>())
+					consider(new HydroPlant());
+			}
+		}
+
+		// Diplomats, a handful per civ.
+		private void ConsiderDiplomat(Action<IProduction> consider)
+		{
 			// Diplomats: useful under every stance (espionage, sabotage, incite revolt).
 			// Previously gated to non-Militarize, which is why no civ ever built one in heavy
 			// fighting eras. One per 2 cities, minimum 3 empire-wide — espionage (especially
@@ -6246,9 +6331,13 @@ namespace CivOne
 				int diplomatCap  = Math.Min(Player.Cities.Length,
 				                            Math.Max(1, Math.Min(3, Player.Cities.Length / 6)));
 				if (ownDiplomats < diplomatCap)
-					Consider(new Diplomat());
+					consider(new Diplomat());
 			}
+		}
 
+		// Caravans, capped empire-wide.
+		private void ConsiderCaravan(Action<IProduction> consider)
+		{
 			// Caravans: trade-route gold once Trade is researched. Capped empire-wide so
 			// the planner doesn't queue Caravan after Caravan once Trade lands. Caravans are
 			// one-shot (consumed on delivery at Caravan.cs:77), so the cap counts in-flight
@@ -6263,9 +6352,13 @@ namespace CivOne
 				int ownCaravans = Game.GetUnits().Count(u => u.Owner == ownId3 && u is Caravan);
 				int caravanCap  = Math.Max(2, Player.Cities.Length / 6);
 				if (ownCaravans < caravanCap)
-					Consider(new Caravan());
+					consider(new Caravan());
 			}
+		}
 
+		// The random fallback, for a city with nothing sensible left to build. True when it settled the plan.
+		private bool PlanFallback(List<IProduction> plan, City city, StrategyStance stance, int ownCities, int maxCities, Action<IProduction> consider)
+		{
 			// Fallback: nothing useful left to build, so pick a random available item — but
 			// NEVER the Palace when the civ already has a capital. Building a Palace just
 			// relocates the capital (City.cs:1412), so a random pick here had built-out AI civs
@@ -6366,8 +6459,8 @@ namespace CivOne
 						// empire-wide settlerBudget is deliberately bypassed here: its job is
 						// to stop a civ drowning in settlers, and a civ whose alternative is a
 						// two-hundredth Militia is not that civ.
-						Consider(new Settlers());
-						return plan;
+						consider(new Settlers());
+						return true;
 					}
 				}
 
@@ -6378,29 +6471,19 @@ namespace CivOne
 				if (!fighting && Player.HasAdvance<Writing>()
 				    && !items.Any(p => p is not IUnit && p is not ResearchGrant))
 				{
-					Consider(new ResearchGrant());
-					return plan;
+					consider(new ResearchGrant());
+					return true;
 				}
 				// Last resort: if filtering left nothing, fall back to a defender
 				// rather than to a random population-costing unit.
 				if (items.Length == 0)
 				{
-					Consider(BestDefender());
-					return plan;
+					consider(BestDefender());
+					return true;
 				}
-				Consider(items[Common.Random.Next(items.Length)]);
+				consider(items[Common.Random.Next(items.Length)]);
 			}
-
-			// The plan must never come back empty — CityProduction takes plan[0]. Every
-			// path above can now decline a candidate on upkeep grounds, so this backstop
-			// adds a defender DIRECTLY rather than through Consider, which could decline
-			// it too. A unit carries no maintenance, so it is always affordable.
-			// Over the army ceiling, a built-out city funds research rather than another defender.
-			if (plan.Count == 0 && OverArmyCap((IUnit)BestDefender()) && Player.ProductionAvailable(new ResearchGrant()))
-				plan.Add(new ResearchGrant());
-			if (plan.Count == 0) plan.Add(BestDefender());
-
-			return plan;
+			return false;
 		}
 
 		// ── exploration helpers ───────────────────────────────────────────────

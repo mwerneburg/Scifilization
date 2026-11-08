@@ -171,9 +171,9 @@ namespace CivOne.Tests
 			Assert.True(at > 0, "the Culture production case has moved or been rewritten");
 			string block = src.Substring(at, src.IndexOf("break;", at) - at);
 
-			Assert.Contains("Consider(new ExchangeCenter())", block);
-			Assert.Contains("Consider(new Xenolab())", block);
-			Assert.Contains("Consider(new NeuralLab())", block);
+			Assert.Contains("consider(new ExchangeCenter())", block);
+			Assert.Contains("consider(new Xenolab())", block);
+			Assert.Contains("consider(new NeuralLab())", block);
 		}
 
 		// ...and researches toward them. Without this the buildings are preferred but arrive
