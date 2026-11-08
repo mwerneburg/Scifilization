@@ -67,6 +67,10 @@ namespace CivOne.Tests
 		// their logs and fight over the same autosave. A run per directory keeps them
 		// independent, and the sweep script collects the logs afterwards. Unset, it is a
 		// throwaway temp directory as before.
+		// Set by a harness game run without CIVONE_HARNESS_STORAGE: it prints the temp folder's
+		// path for its decision log to be read afterwards, so that folder outlives the process.
+		public static bool KeepStorage;
+
 		public static void EnsureRuntime()
 		{
 			if (_runtimeRegistered) return;
@@ -77,9 +81,21 @@ namespace CivOne.Tests
 			{
 				string dir = Environment.GetEnvironmentVariable("CIVONE_HARNESS_STORAGE") ?? "";
 				if (string.IsNullOrEmpty(dir))
+				{
 					dir = System.IO.Path.Combine(
 						System.IO.Path.GetTempPath(),
 						"civone-tests-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+					// The throwaway goes with the process: nothing removed it, and 2,124 had piled up
+					// (899 MB, Nov 2026). A harness game keeps its own — see KeepStorage.
+					string made = dir;
+					AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+					{
+						if (KeepStorage) return;
+						try { System.IO.Directory.Delete(made, recursive: true); }
+						catch (System.IO.IOException) { }
+						catch (UnauthorizedAccessException) { }
+					};
+				}
 				System.IO.Directory.CreateDirectory(dir);
 				RuntimeHandler.Register(new TestRuntime(dir));
 			}

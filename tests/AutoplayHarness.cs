@@ -123,6 +123,7 @@ namespace CivOne.Tests
 			// here so the arc can still be exercised on purpose.
 			bool cursed = (Environment.GetEnvironmentVariable("CIVONE_HARNESS_CURSED") ?? "0") != "0";
 
+			Sim.KeepStorage = true;   // its log is read from the storage path it prints below
 			Sim.NewGame(width: w, height: h, competition: civs, difficulty: diff, seed: seed, map: map,
 			            varyHuman: true);
 			Settings.Instance.Autopilot = true;
