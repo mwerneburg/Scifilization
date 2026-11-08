@@ -384,10 +384,11 @@ namespace CivOne.Screens
 			_noiseMap = new byte[320, 200];
 			if (_noiseCounter > 0)
 			{
+				var rng = new Random();   // the screen's own dice; see ScreenDiceTests
 				for (int x = 0; x < 320; x++)
 				for (int y = 0; y < 200; y++)
 				{
-					_noiseMap[x, y] = (byte)Common.Random.Next(1, _noiseCounter);
+					_noiseMap[x, y] = (byte)rng.Next(1, _noiseCounter);
 				}
 			}
 			switch (Settings.GraphicsMode)

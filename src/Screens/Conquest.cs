@@ -168,10 +168,11 @@ namespace CivOne.Screens
 			this.AddLayer(_background);
 			
 			_noiseMap = new byte[320, 200];
+			var rng = new Random();   // the screen's own dice; see ScreenDiceTests
 			for (int x = 0; x < 320; x++)
 			for (int y = 0; y < 200; y++)
 			{
-				_noiseMap[x, y] = (byte)Common.Random.Next(1, NOISE_COUNT);
+				_noiseMap[x, y] = (byte)rng.Next(1, NOISE_COUNT);
 			}
 
 			_enemies = Game.GetReplayData<ReplayData.CivilizationDestroyed>().Where(x => x.DestroyedById == Game.HumanPlayer.Civilization.Id).Select(x =>

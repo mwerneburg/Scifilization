@@ -133,6 +133,13 @@ namespace CivOne.Tests
 			// then spends its iterations on another test's leftovers — which is exactly how
 			// the swamp-drain test passed alone and failed in the suite.
 			ClearTasks();
+
+			// ...and the screens those tasks opened, for the same reason. A Newspaper left up by a
+			// long autoplay (SeedReplayTests) failed NotificationSignalTests' "no screen was
+			// raised" whenever it ran first.
+			((System.Collections.IList)typeof(Common)
+				.GetField("_screens", BindingFlags.NonPublic | BindingFlags.Static)!
+				.GetValue(null)!).Clear();
 		}
 
 		private static void SetStaticField(Type type, string name, object value)

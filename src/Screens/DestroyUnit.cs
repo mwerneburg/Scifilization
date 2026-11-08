@@ -30,6 +30,7 @@ namespace CivOne.Screens
 		private const int NOISE_COUNT = 8;
 
 		private readonly DestroyAnimation _animation;
+		private readonly Random _rng = new Random();   // the screen's own dice; see ScreenDiceTests
 		private readonly IUnit _unit;
 		private readonly bool _stack;
 		private readonly Player? _credit;
@@ -104,7 +105,7 @@ namespace CivOne.Screens
 					Bytemap noise = new Bytemap(px, px);
 					for (int y = 0; y < px; y++)
 					for (int x = 0; x < px; x++)
-						noise[x, y] = (byte)Common.Random.Next(1, NOISE_COUNT);
+						noise[x, y] = (byte)_rng.Next(1, NOISE_COUNT);
 					this.AddLayer(noise, sx, sy);
 				}
 			}
