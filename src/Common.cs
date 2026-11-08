@@ -138,14 +138,14 @@ namespace CivOne
 
 		public static Palette GamePlayPalette => GamePlay.Palette.Copy();
 
-		internal static void SetRandomSeedFromName(string name)
+		internal static Random RandomFromName(string name)
 		{
 			short number = 0;
 			foreach (byte charByte in name)
 			{
 				number += charByte;
 			}
-			SetRandomSeed(number);
+			return new Random(number);
 		}
 		
 		internal static void SetRandomSeed(short seed) => Random = new Random(seed);

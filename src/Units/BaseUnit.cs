@@ -1562,6 +1562,13 @@ namespace CivOne.Units
 		}
 		public IEnumerable<UnitModification> Modifications => _modifications.ContainsKey(Type) ? _modifications[Type].ToArray() : new UnitModification[0];
 		
+		// Numbered in the order units are made, from 0 in each game, for anything that needs a
+		// per-unit key a seed must reproduce. The object identity hash it replaces in
+		// IdleRetryTurn is the runtime's to hand out and comes out differently every run.
+		internal readonly int Serial = _serials++;
+		private static int _serials;
+		internal static void RestartSerials() => _serials = 0;
+
 		protected BaseUnit(byte price = 1, byte attack = 1, byte defense = 1, byte move = 1)
 		{
 			Price = price;

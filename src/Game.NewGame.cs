@@ -461,6 +461,7 @@ namespace CivOne
 
 		private Game(int difficulty, int competition, ICivilization tribe, string? leaderName, string? tribeName, string? tribeNamePlural)
 		{
+			BaseUnit.RestartSerials();
 			// New-game setup sequence:
 			//   1. Apply game options (animations, sound, advice level, etc.).
 			//   2. Assign player slots: the human player goes into tribe.PreferredPlayerNumber;

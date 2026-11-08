@@ -47,6 +47,12 @@ namespace CivOne.Screens
 
 		private int _houseType = 0;
 
+		// The screen's own dice, for its picture and its fireworks. It used to re-seed the GAME's
+		// generator from the city's name and draw from that, so every city screen — including the
+		// one each finished building shows — reset the world's dice to a sequence fixed by the
+		// city, and every animation frame spent some. Opening a city before an attack decided it.
+		private Random _rng = new Random();
+
 		private readonly Picture _overlay;
 		private readonly Picture[] _invadersOrRevolters = null!;
 
@@ -525,8 +531,8 @@ namespace CivOne.Screens
 		{
 			get
 			{
-				Common.SetRandomSeedFromName(_city.Name);
-				_houseType = Common.Random.Next(2);
+				_rng = Common.RandomFromName(_city.Name);
+				_houseType = _rng.Next(2);
 
 				CityViewMap[,] cityMap = new CityViewMap[18, 11];
 				for (int yy = 0; yy < 11; yy++)
@@ -549,8 +555,8 @@ namespace CivOne.Screens
 				{
 					for (int t = 0; t < 16; t++)
 					{
-						int relX = Common.Random.Next(-1, 2);
-						int relY = Common.Random.Next(-1, 2);
+						int relX = _rng.Next(-1, 2);
+						int relY = _rng.Next(-1, 2);
 						if (relX == 0 && relY == 0) continue;
 						bx += relX;
 						by += relY;
@@ -558,7 +564,7 @@ namespace CivOne.Screens
 						while (bx >= ww + ((18 - ww) / 2)) bx--;
 						while (by < 0) by++;
 						while (by >= hh) by--;
-						int type = Common.Random.Next(8);
+						int type = _rng.Next(8);
 						if (cityMap[bx, by] != CityViewMap.Empty) continue;
 						if (type < 6)
 							cityMap[bx, by] = CityViewMap.House;
@@ -567,8 +573,8 @@ namespace CivOne.Screens
 					}
 					for (int i = 0; i < 1000; i++)
 					{
-						bx = Common.Random.Next(ww) + ((18 - ww) / 2);
-						by = Common.Random.Next(hh);
+						bx = _rng.Next(ww) + ((18 - ww) / 2);
+						by = _rng.Next(hh);
 						if (cityMap[bx, by] != CityViewMap.Empty) continue;
 						for (int ix = -1; ix < 2; ix++)
 						for (int iy = -1; iy < 2; iy++)
@@ -651,8 +657,8 @@ namespace CivOne.Screens
 
 						for (int i = 0; i < 1000; i++)
 						{
-							int xx = Common.Random.Next(15) + 1;
-							int yy = Common.Random.Next(10);
+							int xx = _rng.Next(15) + 1;
+							int yy = _rng.Next(10);
 							if (xx == 6 || xx == 11 || yy == 2 || yy == 6) continue;
 							if (xx == 5 || xx == 10 || yy == 1 || yy == 5) continue;
 							if (xx + sizeX > cityMap.GetLength(0) || yy + sizeY > cityMap.GetLength(1)) continue;
@@ -858,10 +864,10 @@ namespace CivOne.Screens
 			if (gameTick % 18 == 0)
 				_bursts.Add(new FireworkBurst
 				{
-					X   = Common.Random.Next(240) + 40,
-					Y   = Common.Random.Next(42) + 6,
+					X   = _rng.Next(240) + 40,
+					Y   = _rng.Next(42) + 6,
 					Age = 0,
-					Col = _fireworkCols[Common.Random.Next(_fireworkCols.Length)]
+					Col = _fireworkCols[_rng.Next(_fireworkCols.Length)]
 				});
 			for (int i = _bursts.Count - 1; i >= 0; i--)
 			{
@@ -882,7 +888,7 @@ namespace CivOne.Screens
 			for (int i = _smokeParticles.Count - 1; i >= 0; i--)
 			{
 				var p = _smokeParticles[i];
-				float nx = p.X + (Common.Random.Next(3) - 1) * 0.6f;
+				float nx = p.X + (_rng.Next(3) - 1) * 0.6f;
 				float ny = p.Y - 0.7f;
 				int   na = p.Age + 1;
 				byte  col = na < 8 ? CassetteTheme.INK_MID : CassetteTheme.INK_LOW;
@@ -1055,9 +1061,9 @@ namespace CivOne.Screens
 				_viewDisorder  = city.IsInDisorder;
 				_smokeSources  = new[]
 				{
-					(Common.Random.Next(60) + 70,  Common.Random.Next(12) + 68),
-					(Common.Random.Next(60) + 140, Common.Random.Next(12) + 72),
-					(Common.Random.Next(60) + 185, Common.Random.Next(12) + 66),
+					(_rng.Next(60) + 70,  _rng.Next(12) + 68),
+					(_rng.Next(60) + 140, _rng.Next(12) + 72),
+					(_rng.Next(60) + 185, _rng.Next(12) + 66),
 				};
 				return;
 			}
@@ -1145,7 +1151,7 @@ namespace CivOne.Screens
 				_noiseMap = new byte[320, 200];
 				for (int x = 0; x < 320; x++)
 				for (int y = 0; y < 200; y++)
-					_noiseMap[x, y] = (byte)Common.Random.Next(1, NOISE_COUNT);
+					_noiseMap[x, y] = (byte)_rng.Next(1, NOISE_COUNT);
 
 				string[] lines = { $"{_city.Name} builds", $"{(production as ICivilopedia)!.Name}." };
 				int width = lines.Max(l => Resources.GetTextSize(5, l).Width) + 12;

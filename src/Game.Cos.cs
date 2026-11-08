@@ -483,6 +483,7 @@ namespace CivOne
 
 		private Game(CosFile cos)
 		{
+			BaseUnit.RestartSerials();
 			var g = cos.Game;
 			_difficulty  = g.Difficulty;
 			_competition = g.Competition;

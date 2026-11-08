@@ -4090,10 +4090,14 @@ namespace CivOne
 			// holding thirty idle caravans re-probed all thirty on the same turn. Measured at
 			// turn 708 of the 2026-08-03 run — 14.3s of an 18.5s turn was pathfinding, and
 			// every spike landed on GameTurn & 7 == 4 while the other seven residues ran
-			// 0.4-0.6s. The identity hash is stable for the unit's lifetime and spreads
-			// evenly however the fleet is stacked. It does not survive save/load, which only
-			// means a unit re-draws its slot in the cycle — harmless either way.
-			return (System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(unit) & 7) != (Game.GameTurn & 7);
+			// 0.4-0.6s. The serial is stable for the unit's lifetime and spreads evenly
+			// however the fleet is stacked. It does not survive save/load, which only means a
+			// unit re-draws its slot in the cycle — harmless either way.
+			//
+			// It was the object identity hash, which is the runtime's to hand out and differs
+			// from run to run: seed 1789 split at turn 117 when a Diplomat drew another slot,
+			// in two runs of seven (Nov 2026).
+			return (((BaseUnit)unit).Serial & 7) != (Game.GameTurn & 7);
 		}
 
 		// ── colonisation ──────────────────────────────────────────────────────
