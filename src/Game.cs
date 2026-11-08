@@ -2238,12 +2238,15 @@ namespace CivOne
 
 			ApplyWarmingScorePenalty();
 
-			GameTask.Enqueue(Show.EventArt("globalwarming", "Global warming! Icecaps melt."));
+			// Past SeaRiseEvents the sea stays put and only the dry-out runs, so the notice
+			// stops promising melting icecaps and retreating coastlines.
+			GameTask.Enqueue(Show.EventArt("globalwarming",
+				seaRises ? "Global warming! Icecaps melt." : "Global warming! Deserts spread."));
 			// Advisor message belts-and-braces the art screen: if Autopilot dwell or a fast
 			// dismiss skips the art, the advisor box stays until acknowledged.
 			GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
 				"Global warming!",
-				"Icecaps melt, coastlines retreat,",
+				seaRises ? "Icecaps melt, coastlines retreat," : "The seas hold, but the rains fail,",
 				"and deserts spread across the land."));
 		}
 

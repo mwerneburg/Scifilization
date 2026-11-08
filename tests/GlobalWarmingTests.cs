@@ -268,5 +268,28 @@ namespace CivOne.Tests
 			Assert.Equal(Terrain.Plains, Map.Instance[44, 25].Type);      // control: it ran here
 			Assert.Equal(Terrain.SaltFlat, Map.Instance[36, 25].Type);    // and spared the flat
 		}
+
+		// Past the last rise the sea stays put, but the notice kept saying the icecaps melt.
+		// Advisor text renders straight to pictures, so the art caption is what is read here.
+		[Theory]
+		[InlineData(Game.SeaRiseEvents - 1, "Icecaps melt")]
+		[InlineData(Game.SeaRiseEvents, "Deserts spread")]
+		public void TheNoticeSaysWhatThisEventDid(int before, string expected)
+		{
+			Sim.NewGame(width: 80, height: 50);
+			Game g = Game.Instance;
+			g.GlobalWarmingCount = (ushort)before;
+			Pollute(4000);
+			Sim.ClearTasks();
+
+			g.HandleGlobalWarming();
+
+			var list = (System.Collections.IList)typeof(GameTask)
+				.GetField("_tasks", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.GetValue(null)!;
+			string caption = list.OfType<CivOne.Tasks.Show>().Select(s => s.Displayed)
+				.OfType<CivOne.Screens.EventArtScreen>().Single(e => e.ArtKey == "globalwarming").Caption;
+			Assert.Contains(expected, caption);
+			Sim.ClearTasks();
+		}
 	}
 }
