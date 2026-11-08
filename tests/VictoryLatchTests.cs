@@ -140,5 +140,24 @@ namespace CivOne.Tests
 
 			Assert.True((bool)latch.GetValue(Game.Instance)!, $"{field} was lost in the save");
 		}
+
+		// An ending is the round's last act: EndTurn returns before the autosave and every tick
+		// after it. Nothing guarded that return when the victory checks moved out of EndTurn
+		// into VictoryChecks; the nuclear-pariah countdown runs after them, so it shows whether
+		// the round went on.
+		[Fact]
+		public void AnEndingStopsTheRound()
+		{
+			Sim.NewGame(width: 80, height: 50);
+			Game g = Game.Instance;
+			g.GameTurn = Common.YearToTurn(2100);
+			byte pariah = g.PlayerNumber(g.Players.First(p => p is not null && p != g.HumanPlayer && g.PlayerNumber(p) != 0));
+			g.NuclearPariah[pariah] = 5;
+
+			PlayRounds(g, 1);
+
+			Assert.True(Sim.GameDecided(), "fixture: the 2100 score ending did not fire");
+			Assert.Equal(5, g.NuclearPariah[pariah]);
+		}
 	}
 }

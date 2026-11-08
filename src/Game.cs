@@ -2646,703 +2646,7 @@ namespace CivOne
 					}
 				}
 
-				// Check for dome victory (all five components built)
-				if (!_domeVictoryFired && DomeFiveComponents.All(w => WonderBuilt(w)))
-				{
-					_domeVictoryFired = true;
-					HumanPlayer.AwardMilestone(150);
-					string gameDate = GameYear;
-					RecordTransmission("DomeComplete", gameDate);
-					var doneScreen = new Screens.DomeCompleteTransmission(gameDate, VisitorType, VisitorsArrived, SETISignalReceived);
-					GameTask.Enqueue(Show.Screen(doneScreen));
-
-					if (!SETISignalReceived)
-					{
-						// Classic game (no alien arc): the Dome is the end.
-						DecisionLogger.EndGame(HumanPlayer.Score, "Dome", humanWon: true, turns: _gameTurn, HumanPlayer);
-						int domeFame = EndSequence.SaveAndGetIndex(HumanPlayer, "Dome Victory");
-						GameTask domeFt;
-						GameTask.Enqueue(domeFt = Show.Screen(new Screens.Reports.FinalScore("Dome Victory")));
-						domeFt.Done += (s, a) => EndSequence.ChainAfterFinal(domeFame, () => Runtime.Quit());
-					}
-					else
-					{
-						// SETI arc: the Dome is a milestone, not the end. The game continues
-						// until 2200 AD (Coexistence ending). The Olvir still approach; their
-						// arrival and the final score fire on schedule.
-						GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
-							"The Dome is operational.",
-							OlvirArrivalTurn > 0
-								? $"Olvir landfall est. {Common.YearString((ushort)OlvirArrivalTurn)}."
-								: "Await the visitors.",
-							"Continue to 2200 CE."));
-					}
-				}
-
-				// ── Economic dominance: Pax Mercatoria ───────────────────────────────
-				// The merchant's finish line: hold EconomicLeadMargin times the gross economic
-				// output of the next-largest economy for EconomicHoldTurns consecutive turns, with Banking known, at least
-				// 3 rivals still standing, no war of your own making, and half the surviving
-				// rivals economically bound to you (tribute, defense pact, or an active trade
-				// route). Defensive wars don't break the streak: dominance by commerce,
-				// not cannon.
-				//
-				// Evaluated for EVERY civilization. It tested HumanPlayer alone, which is why an
-				// AI could hold every condition for centuries and nothing happened: measured in a
-				// finished 2200 AD game, the Others held 47% of world output and 4.25x the culture
-				// of the best rival, and could win by neither.
-				// Story factions cannot CLAIM this, the same exclusion Cultural Ascendancy
-				// applies. The Registry empties cities rather than running them, and the
-				// nextEconomy comment below rests on exactly that: their economy counts toward
-				// the total you must out-earn precisely because an occupied world has no
-				// commercial hegemon. Letting the occupier be the hegemon contradicts it.
-				foreach (Player claimant in _players
-				         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0
-				                  && !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing
-				                                       or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir)).ToArray())
-				{
-					byte cnum = PlayerNumber(claimant);
-					bool isHuman = claimant == HumanPlayer;
-
-					Player[] econRivals = _players.Where(p => p is not null && p != claimant
-						&& !p.IsDestroyed() && PlayerNumber(p) != 0
-						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
-
-					if (!claimant.HasAdvance<Banking>() || econRivals.Length < 3)
-					{
-						Progress(cnum).EconStreak = 0;   // world shrank below the floor mid-streak
-						continue;
-					}
-
-					int claimOut = GrossOutput(claimant);
-					// Deliberate asymmetry with econRivals above: the story factions are NOT rivals
-					// you must bind by tribute or trade, but whatever economic value sits under the
-					// Registry IS an economy you must out-earn. An occupied world has no
-					// commercial hegemon. This is not an oversight — do not propagate the
-					// TheOthers/TheThing/Skynet exclusion down here.
-					//
-					// It resolves itself: the Owners empty cities rather than run them, so once
-					// humanity throws them off they hit Cities.Length == 0, count as destroyed, and
-					// drop out of this comparison. The streak resets on every break, so a liberated
-					// world can start a fresh EconomicHoldTurns turns and win properly.
-					//
-					// Measured against the next-largest economy, not the world's total, since Oct
-					// 2026. "More than half the world" outweighs a coalition of every rival at
-					// once, which gets harder with every civ in the game — the user lost a run at
-					// 49.7% while 3.7x the next economy, and is about to play with 12+ civs. It
-					// also rose under the leader as the whole world got richer; a lead does not.
-					Player? nextEconomy = _players.Where(p => p is not null && p != claimant && !p.IsDestroyed() && PlayerNumber(p) != 0)
-						.OrderByDescending(GrossOutput).FirstOrDefault();
-					int nextOut = nextEconomy is null ? 0 : GrossOutput(nextEconomy);
-					bool leads = claimOut > 0 && LeadsTheMarkets(claimOut, nextOut);
-
-					// Wars of this civ's own making break its streak — but not wars against the
-					// story factions. Skynet is at war with everyone the moment it wakes, the
-					// Registry arrives to repossess the planet, and the Thing does not negotiate:
-					// there is no version of those conflicts a merchant could have declined. Same
-					// exclusion econRivals uses; deliberately NOT the one nextEconomy uses.
-					bool aggressing = _players.Any(p => p is not null && !p.IsDestroyed()
-						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
-						&& claimant.IsAtWar(p) && StartedWarWith(cnum, PlayerNumber(p)));
-
-					bool Bound(Player r)
-					{
-						byte rnum = PlayerNumber(r);
-						return r.PaysTributeTo(claimant) || r.HasDefensePact(claimant)
-							|| _cities.Any(c => c.Size > 0 &&
-								((c.Owner == cnum && c.TradeRoutes.Any(t => t.Partner.Owner == rnum))
-								|| (c.Owner == rnum && c.TradeRoutes.Any(t => t.Partner.Owner == cnum))));
-					}
-					bool boundHalf = econRivals.Count(Bound) * 2 >= econRivals.Length;
-
-					if (leads && !aggressing && boundHalf)
-					{
-						Progress(cnum).EconSlip = 0;
-						Progress(cnum).EconStreak++;
-						// One warning when the lead thins to near the bar. A streak lost on turn 74
-						// of 75 by a hair, unannounced, was the user's find (Oct 2026). Re-armed once
-						// the lead is clear of the band again.
-						if (MarketsSlipping(claimOut, nextOut))
-						{
-							if (isHuman && !Progress(cnum).EconSlipWarned && Progress(cnum).EconStreak > 1)
-								GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
-									"Our markets are slipping:",
-									$"{claimOut / (double)nextOut:0.00}x the {nextEconomy!.TribeNamePlural}.",
-									$"We need {EconomicLeadMargin:0.0}x."));
-							Progress(cnum).EconSlipWarned = true;
-						}
-						else if (claimOut >= nextOut * (EconomicLeadMargin + 2 * SlippingBand))
-							Progress(cnum).EconSlipWarned = false;
-						// Only the human gets told; the rest is somebody else's newspaper.
-						if (isHuman && Progress(cnum).EconStreak == 1)
-							GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
-								"Our merchants dominate",
-								"world trade. Hold the markets",
-								$"for {EconomicHoldFor(claimant)} turns."));
-						else if (isHuman && Progress(cnum).EconStreak == EconomicHoldFor(claimant) / 2)
-							GameTask.Enqueue(Message.Newspaper(null!, "Half way to hegemony!",
-								"The world's markets", "answer to us."));
-
-						if (Progress(cnum).EconStreak >= EconomicHoldFor(claimant) && !_econVictoryFired)
-						{
-							_econVictoryFired = true;
-							if (!isHuman)
-							{
-								RivalVictory(claimant, "Economic Dominance", "Pax Mercatoria!",
-									"The world's economy runs", $"through the {claimant.TribeNamePlural}.");
-								return;
-							}
-							HumanPlayer.AwardMilestone(150);
-							DecisionLogger.EndGame(HumanPlayer.Score, "Economic Dominance", humanWon: true, turns: _gameTurn, HumanPlayer);
-							string? econArt = Screens.EventArtScreen.FindPath("PaxMercatoria");
-							if (econArt is not null)
-								GameTask.Enqueue(Show.Screen(new Screens.EventArtScreen(econArt,
-									"PAX MERCATORIA — THE WORLD BANKS WITH YOU")));
-							GameTask.Enqueue(Message.Newspaper(null!, "Pax Mercatoria!",
-								"The world's economy", "runs through you."));
-							EndOrEncore("Economic Dominance");
-							return;
-						}
-					}
-					else if (Progress(cnum).EconStreak > 0)
-					{
-						string why = !leads ? "Our lead in world trade slipped."
-							: aggressing ? "Wars of our making unsettle the markets."
-							: "Too few nations bank with us.";
-						// A dip pauses the streak rather than breaking it; a war of our making
-						// is a decision, not a dip, and breaks it at once.
-						if (!aggressing && ++Progress(cnum).EconSlip <= StreakGraceTurns)
-						{
-							if (isHuman && Progress(cnum).EconSlip == 1)
-								GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
-									"The markets waver.", why,
-									$"{StreakGraceTurns} turns to recover,", "or the streak is lost."));
-						}
-						else
-						{
-							Progress(cnum).EconStreak = 0;
-							Progress(cnum).EconSlip = 0;
-							Progress(cnum).EconSlipWarned = false;
-							if (isHuman)
-								GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
-									"The markets waver.", why, "The streak is broken."));
-						}
-					}
-				}
-
-				// ── Cultural ascendancy ──────────────────────────────────────────────
-				// The peaceful mirror of conquest: hold enough of the world living in your
-				// cultural shadow, by a margin nobody can mistake, for CultureHoldTurns turns.
-				// Cities come to you rather than being taken — the same pull that makes a
-				// small unhappy town change flags, measured as a standing condition instead
-				// of an 8%-a-turn accident.
-				//
-				// Per civilization, like Pax Mercatoria above. Story factions are excluded from
-				// being CLAIMANTS as well as from the rival list: the Registry does not court
-				// admiration, and it accumulated 4.25x the world's best culture in one measured
-				// game purely by owning two thirds of its cities.
-				foreach (Player claimant in _players
-				         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0
-				                  && !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing
-				                                       or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir)).ToArray())
-				{
-					byte cnum = PlayerNumber(claimant);
-					bool isHuman = claimant == HumanPlayer;
-
-					Player[] cultRivals = _players.Where(p => p is not null && p != claimant
-						&& !p.IsDestroyed() && PlayerNumber(p) != 0
-						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
-
-					if (!claimant.HasAdvance<Philosophy>() || cultRivals.Length < 3)
-					{
-						Progress(cnum).CultureStreak = 0;
-						continue;
-					}
-
-					// One pass for all three: the target is drawn from the reach and the lead is
-					// measured against the same neighbours, so asking for them separately would
-					// mean walking the world's cities three times.
-					(int inRange, int shadow, long bestNeighbour) = CulturalReachAndShadow(claimant);
-
-					// The lead is LOCAL — twice the best culture with a city in your range —
-					// where it used to be twice the best culture in the world.
-					//
-					// Mixing the two geographies made the clause incoherent, and a measured
-					// 13-civ game showed it exactly. The Mongols held shadow 7 of reach 7 for
-					// 35 turns: every single foreign city near them was under half their
-					// culture, which is cultural ascendancy over their world by any reading.
-					// The rule then compared them to the Malians, two thousand tiles away, and
-					// scored them at 0.78x. The two clauses selected for opposite positions —
-					// a shadow needs weak neighbours, which means a poor region, which caps
-					// your own culture; the global lead needs to beat the richest region's
-					// leader. Nobody can be both, and in four logged games nobody was.
-					//
-					// REPLACED the cultural shadow, 18 Aug 2026. The shadow asked you to dominate
-					// foreign cities within five tiles — which the MAP GENERATOR decides, not
-					// play. Measured across 21 games: the Maori reached 0 foreign cities, the
-					// Guarani 1, the Japanese 2-5. Those civilizations were excluded from the
-					// path before making a single decision, and no amount of culture fixed it.
-					// It fired exactly once in 21 games (Mongols, `88388c31`, reach 6 against a
-					// floor of 6 — the bare minimum).
-					//
-					// Now: hold the highest culture per HEAD of population. Every civ can
-					// compete on it, isolated or not, and it rewards a cultured society rather
-					// than a large one — a wide empire of Temples no longer beats a dense one
-					// of Cathedrals simply by being wide.
-					//
-					// Three clauses, and all three are needed. Measured in run `1ac32cee`:
-					//
-					//   RANK, not ratio. Culture per head converges as a game runs — everyone
-					//   builds the same things — so late leads run 1.02-1.21x and any ratio
-					//   bar is unclearable. Being FIRST is the achievable form.
-					//
-					//   POPULACE FLOOR, relative. Culture is a cumulative stock and population
-					//   is not, so a stunted civ's ratio climbs forever: the frozen one-city
-					//   Japanese of `733f10ec` led every density measure in the game. A share
-					//   of the largest civ's populace scales with the map; an absolute number
-					//   would not.
-					//
-					//   DATE GATE. Early leads are trivial — at turn 200 the leader held 31.9
-					//   against 14.3, a fine ratio over almost no culture, and would have won
-					//   around turn 310 on a hold alone. The gate says a golden age is a thing
-					//   you sustain into the modern era, not a lead you take in antiquity.
-					// TWO different head counts, deliberately, and the split is the whole of the
-					// anti-bleed rule.
-					//
-					// The RATIO divides by the largest populace this civ has ever held
-					// (Player.PeakPopulace). Culture is a cumulative stock and population is
-					// not, so against a live denominator a civilization could spawn settlers,
-					// disband them, and climb the table without building anything. Against the
-					// high-water mark, shrinking earns nothing: the numerator stops growing
-					// while the divisor stays where it was.
-					//
-					// The FLOOR still asks for people alive today. Its job is to keep relics
-					// out — see CultureFloorShare — and a civ that has collapsed to nothing is
-					// exactly the relic it was written for, however many citizens it once had.
-					// Judging that clause on the peak would let a dead empire rank forever.
-					Player[] densityRivals = cultRivals.Where(p => p.Cities.Any(c => c.Size > 0)).ToArray();
-					long worldAverage = CulturalWorldAverageNow();
-					double cultPerHead = CulturalDensity(claimant, worldAverage);
-
-					// First in the world by a MARGIN, among civs that clear the same floor.
-					//
-					// Rank alone was not enough, and a batch of 8 runs across 3-16 civs said so
-					// plainly: culture took 6 of them, five at turn 499-501 — the earliest turn
-					// the gate and hold allow. Lead changes ran 2-15 across a whole game but
-					// 0-3 after 1850, and zero in four of those five. The ordering freezes once
-					// culture per head converges, so the gate was certifying whoever happened
-					// to lead at 1850 rather than opening a contest.
-					//
-					// A margin makes the streak BREAKABLE, which is what puts the contest back:
-					// late leads run 1.02-1.21x, so a civ ahead by a nose loses its streak and
-					// starts again. Measured over the same 8 runs, the longest post-1850 hold
-					// at this margin reaches the required 100 turns in 3 of them — and the two
-					// clearest, e916088c and c907ab24, hold it at 1.20x and 1.15x respectively.
-					// Those are dominant cultures; the ones that fall away were winning on
-					// 1.02-1.09x.
-					bool foremost = claimant.Culture > 0 && densityRivals.All(p =>
-						cultPerHead >= CulturalDensity(p, worldAverage) * CultureLeadMargin);
-
-					bool modern = CultureGateOpen();
-
-					bool admired = foremost && modern;
-					// REACH: half the surviving rivals must actually know us — a trade route in
-					// either direction, an embassy either way, or a defence pact. The same shape
-					// as Pax Mercatoria's Bound, minus tribute: tribute binds an economy, it does
-					// not carry a culture anywhere. An admired civilization nobody has met is
-					// not ascendant, merely remote. Added 23 Sep 2026 after a won game where no
-					// foreign civ had ever sent an ambassador and the win still fired.
-					bool reach = KnownByHalfTheWorld(claimant);
-
-					// Same clause and the same story-faction exclusion as Pax Mercatoria: a war you
-					// started is incompatible with being admired, but the Machines and the Registry
-					// were never yours to decline.
-					// Kept as the player rather than a bool so the advisory below can NAME the
-					// war. "Wars of our making" told a player there was a problem without
-					// telling them which war to end.
-					Player? cultVictim = _players.FirstOrDefault(p => p is not null && !p.IsDestroyed()
-						&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
-						&& claimant.IsAtWar(p) && StartedWarWith(cnum, PlayerNumber(p)));
-					bool cultAggressing = cultVictim is not null;
-
-					if (admired && reach && !cultAggressing)
-					{
-						Progress(cnum).CultureSlip = 0;
-						Progress(cnum).CultureStreak++;
-						if (isHuman && Progress(cnum).CultureStreak == 1)
-							GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
-								"The world looks to us.",
-								"No people are more cultured.",
-								$"Hold the first rank {CultureHoldFor(claimant)} turns."));
-						else if (isHuman && Progress(cnum).CultureStreak == CultureHoldFor(claimant) / 2)
-							GameTask.Enqueue(Message.Newspaper(null!, "Half way to ascendancy!",
-								"Our arts and learning", "are the world's measure."));
-
-						if (Progress(cnum).CultureStreak >= CultureHoldFor(claimant) && !_cultVictoryFired)
-						{
-							_cultVictoryFired = true;
-							if (!isHuman)
-							{
-								RivalVictory(claimant, "Cultural Ascendancy", "Cultural Ascendancy!",
-									"The world does not obey", $"the {claimant.TribeNamePlural}. It imitates them.");
-								return;
-							}
-							HumanPlayer.AwardMilestone(150);
-							DecisionLogger.EndGame(HumanPlayer.Score, "Cultural Ascendancy", humanWon: true, turns: _gameTurn, HumanPlayer);
-							string? cultArt = Screens.EventArtScreen.FindPath("CulturalAscendancy");
-							if (cultArt is not null)
-								GameTask.Enqueue(Show.Screen(new Screens.EventArtScreen(cultArt,
-									"CULTURAL ASCENDANCY — THE WORLD KEEPS YOUR CALENDAR")));
-							GameTask.Enqueue(Message.Newspaper(null!, "Cultural Ascendancy!",
-								"The world does not obey us.", "It imitates us."));
-							EndOrEncore("Cultural Ascendancy");
-							return;
-						}
-					}
-					else if (Progress(cnum).CultureStreak > 0)
-					{
-						string why = !admired ? "Our arts no longer stand above the world's."
-							: !reach ? "Too few nations know us."
-							: "Wars of our making tarnish our name.";
-						// The same grace as Pax Mercatoria's.
-						if (!cultAggressing && ++Progress(cnum).CultureSlip <= StreakGraceTurns)
-						{
-							if (isHuman && Progress(cnum).CultureSlip == 1)
-								GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
-									"Our influence wanes.", why,
-									$"{StreakGraceTurns} turns to recover,", "or the streak is lost."));
-						}
-						else
-						{
-							Progress(cnum).CultureStreak = 0;
-							Progress(cnum).CultureSlip = 0;
-							if (isHuman)
-								GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
-									"Our influence wanes.", why, "The streak is broken."));
-						}
-					}
-
-					// Admired by every measure the rule takes, and stopped by the one clause a
-					// player cannot see.
-					//
-					// The broken-streak advisory above only speaks when there was a streak to
-					// lose. A civilization blocked from ever STARTING one hears nothing at all,
-					// which is how a player holds the first rank for a hundred straight turns —
-					// populous, foremost by 1.36x, decades past the gate — and never learns that
-					// an unresolved war they declared is zeroing the clock every single turn.
-					// Observed in game 3de868a5: qualified from turn 485 to the end at 587, hold
-					// required 75, streak never left zero.
-					//
-					// Latched so it says this once, and re-armed the moment the block clears, so
-					// making peace and then starting another war says it again.
-					//
-					// Reach is the other invisible block, so it shares the latch: war is named
-					// first because it is the one the player must undo rather than build.
-					if (isHuman && admired && (cultAggressing || !reach))
-					{
-						if (!_cultBlockedNotified)
-						{
-							_cultBlockedNotified = true;
-							GameTask.Enqueue(cultAggressing
-								? Message.Advisor(Advisor.Domestic, false,
-									"No people are more cultured.",
-									$"But we drew first blood on the {cultVictim!.TribeNamePlural}.",
-									"There is no ascendancy without peace.")
-								: Message.Advisor(Advisor.Domestic, false,
-									"No people are more cultured.",
-									"But half the world has never met us.",
-									"Send embassies, or caravans."));
-						}
-					}
-					else if (isHuman)
-					{
-						_cultBlockedNotified = false;
-					}
-				}
-
-				// Check for spaceship launches (AI players only — human launches manually via
-				// SpaceShips screen).
-				//
-				// ...except under Autopilot, where the AI drives the human and there is nobody
-				// to press the button. Every other "AI runs the human" path already carries this
-				// exception — City.cs in five places, Game.Update, Game.Cos — and this one did
-				// not, so an autoplayed human accumulated ship parts forever and never launched.
-				// Observed in the 2200 AD run: the Malians finished the game with a Mission
-				// Control city and no ship, while two AI civs launched and arrived.
-				for (int p = 1; p < _players.Count; p++)
-				{
-					if (_players[p].IsDestroyed()) continue;
-					if (_players[p] == HumanPlayer && !Settings.Instance.Autopilot) continue;
-					int structural = Progress(p).SpaceshipStructural;
-					int component  = Progress(p).SpaceshipComponent;
-					int module     = Progress(p).SpaceshipModule;
-					// Minimum: 1 engine (2 comps), 1 module set (3 mods), sufficient structure
-					int needed = SpaceshipStructuresNeeded(component, module);
-					if (component < 2 || module < 3 || structural < needed) continue;
-					if (Progress(p).SpaceshipLaunchTurn != 0) continue;
-					// Built, and held on the pad while the pickets are out there.
-					if (ColonyShipsIntercepted) continue;
-
-					Progress(p).SpaceshipLaunchTurn = _gameTurn;
-					Progress(p).SpaceshipArrivalTurn = _gameTurn
-						+ SpaceshipTravelTurns(structural, component, module, Progress(p).HasExoticFuel);
-					ClearSpaceShipProduction(p);
-					string eta = Common.YearString((ushort)Progress(p).SpaceshipArrivalTurn);
-					GameTask.Enqueue(Message.Advisor(Advisor.Foreign, false,
-						$"The {_players[p].TribeNamePlural}",
-						"have launched a spaceship!",
-						$"Arrival: {eta}"));
-				}
-
-				// Check for spaceship arrivals.
-				// If the Olvir/post-probe storyline is active the spaceship is a milestone,
-				// not a game-ender — show the event and continue.
-				int bestArrival = int.MaxValue;
-				for (int p = 1; p < _players.Count; p++)
-					if (Progress(p).SpaceshipArrivalTurn > 0 && Progress(p).SpaceshipArrivalTurn < bestArrival)
-						bestArrival = Progress(p).SpaceshipArrivalTurn;
-
-				if (bestArrival <= _gameTurn)
-				{
-					bool humanWins = Progress(PlayerNumber(HumanPlayer)).SpaceshipArrivalTurn == bestArrival;
-
-					// The Federation's pickets take colony ships too; the launch screen has always
-					// said so (SpaceShips.cs), and until now the arrival let them through.
-					if (ColonyShipsIntercepted)
-					{
-						// Owners timeline: nothing leaves. The recovery fleet's pickets take
-						// every colony ship — launched before or after the arrival at Earth,
-						// Dome or no Dome. Even the negotiated outcome leaves humanity a
-						// contained nuisance, not a spacefaring species.
-						for (int p = 1; p < _players.Count; p++)
-						{
-							if (Progress(p).SpaceshipArrivalTurn != bestArrival) continue;
-							ResetSpaceProgramme(p);
-							if (_players[p] == HumanPlayer)
-							{
-								GameTask.Enqueue(Show.EventArt("spaceshipintercepted",
-									"Contact lost. Final telemetry shows an object of impossible size."));
-								GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
-									"The colony ship is gone.",
-									"Something was waiting on the",
-									"road to Alpha Centauri."));
-							}
-							else
-							{
-								GameTask.Enqueue(Message.Newspaper(null!,
-									$"{_players[p].TribeNamePlural} spaceship", "lost in deep space!", "No survivors."));
-							}
-						}
-					}
-					else
-					{
-						// Arrival is a MILESTONE, never an ending — signal or no signal.
-						//
-						// It used to end the game when the SETI signal had not been received: first
-						// ship to Alpha Centauri won outright, and an AI getting there first was
-						// Game Over for the human. That was Civ 1's rule, and it contradicts this
-						// game's premise. In a dark forest, leaving the solar system is not a
-						// victory condition, it is an act of exposure — and it cannot be one on the
-						// strength of ignorance, which is all "pre-signal" means. A civ that
-						// launches before it knows anything has taken the same risk as one that
-						// launches after; it simply hasn't been told.
-						//
-						// What the colony is worth is settled later, by whether it survives:
-						// Mission Control standing and twenty consecutive turns. Here it only
-						// gets founded.
-						// EVERY civ that lands founds a colony, and every landing is numbered.
-						// This used to set ColonyFounded for the human alone and give an AI
-						// arrival a newspaper headline and nothing else — so in one measured
-						// game the Lakota landed 98 turns before the human and it counted for
-						// nothing at all. ColonyOrder is the arrival rank, for the first-mover
-						// premium: being first to another star is the achievement, and the
-						// fifth ship to make the same crossing is not the same feat.
-						for (int p = 1; p < _players.Count; p++)
-						{
-							if (Progress(p).SpaceshipArrivalTurn != bestArrival) continue;
-							if (_players[p] is null || _players[p].IsDestroyed()) continue;
-
-							Progress(p).SpaceshipArrivalTurn = 0;
-							if (Progress(p).ColonyFounded) continue;
-							Progress(p).ColonyFounded = true;
-							Progress(p).ColonyOrder = _players.Count(x => x is not null && x.Progress.ColonyOrder > 0) + 1;
-
-							if (_players[p] == HumanPlayer)
-							{
-								HumanPlayer.AwardMilestone(100);
-								string acCaption = VisitorType == VisitorArchetype.Refugees
-									? "Colony established — Alpha Centauri II. The Olvir know this star."
-									: "Colony established — Alpha Centauri II. Humanity is no longer bound to Earth.";
-								GameTask.Enqueue(Show.EventArt("spaceshiparrived", acCaption));
-								GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
-									"Alpha Centauri II: colonised.",
-									SETISignalReceived && DomeComplete
-										? "The Dome guards Earth."
-										: "The colony must now hold.",
-									"Continue to 2200 CE."));
-							}
-							else
-							{
-								GameTask.Enqueue(Message.Newspaper(null!, $"The {_players[p].TribeNamePlural}",
-									"have reached", "Alpha Centauri!"));
-							}
-						}
-					}
-				}
-
-				// ── Diaspora ─────────────────────────────────────────────────────────
-				// The colony survives, which is a different thing from having been founded.
-				// A settlement at Alpha Centauri II is not self-sufficient for a long time:
-				// it is being resupplied, and the resupply is run from one city on Earth.
-				// So hold Mission Control for 20 consecutive turns and humanity is a
-				// two-star species — permanently, whatever then happens to Earth.
-				//
-				// Unlike the other five paths this one has no rivals clause and no war
-				// clause. It does not measure standing against anybody; the only question
-				// is whether the lifeline held. Losing Mission Control — to an army, to a
-				// rebellion, to the organism — resets the clock to zero. The building can
-				// be rebuilt elsewhere, and the twenty turns start over.
-				foreach (Player colonist in _players
-				         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0).ToArray())
-				{
-					byte dnum = PlayerNumber(colonist);
-					if (!Progress(dnum).ColonyFounded) continue;
-					bool isHuman = colonist == HumanPlayer;
-					bool lifeline = _cities.Any(c => c is not null && c.Owner == dnum && c.Size > 0
-						&& c.HasBuilding<Buildings.MissionControl>());
-
-					if (lifeline)
-					{
-						Progress(dnum).DiasporaStreak++;
-						if (isHuman && Progress(dnum).DiasporaStreak == 1)
-							GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
-								"Mission Control has the colony.",
-								"Resupply is running. Hold this",
-								$"city for {DiasporaStreakTarget} turns."));
-						else if (isHuman && Progress(dnum).DiasporaStreak == DiasporaStreakTarget / 2)
-							GameTask.Enqueue(Message.Newspaper(null!, "Half way to independence!",
-								"Alpha Centauri II reports", "its first harvest."));
-
-						// Latched. The win enqueues a screen chain that ends in Runtime.Quit(),
-						// and the queue takes several rounds to drain — during which this block
-						// keeps seeing a streak of 20 and awarding the 200 again. Caught by a
-						// test that expected +200 and read +600.
-						if (Progress(dnum).DiasporaStreak >= DiasporaStreakTarget && !_diasporaFired)
-						{
-							_diasporaFired = true;
-							if (!isHuman)
-							{
-								RivalVictory(colonist, "Diaspora", "Diaspora!",
-									$"Alpha Centauri II answers", $"to the {colonist.TribeNamePlural}.");
-								return;
-							}
-							// The first crossing is the achievement; a later one is a repeat of
-							// somebody else's. ColonyOrder is the arrival rank.
-							HumanPlayer.AwardMilestone(DiasporaAward(Progress(dnum).ColonyOrder));
-							DecisionLogger.EndGame(HumanPlayer.Score, "Diaspora", humanWon: true, turns: _gameTurn, HumanPlayer);
-							int diasFame = EndSequence.SaveAndGetIndex(HumanPlayer, "Diaspora");
-							GameTask.Enqueue(Show.EventArt("spaceshiparrived",
-								"DIASPORA — HUMANITY IS NO LONGER A SINGLE TARGET"));
-							GameTask.Enqueue(Message.Newspaper(null!, "Diaspora!",
-								"Alpha Centauri II stands alone.", "Earth is no longer all of us."));
-							GameTask diasFt;
-							GameTask.Enqueue(diasFt = Show.Screen(new Screens.Reports.FinalScore("Diaspora")));
-							diasFt.Done += (s, a) => EndSequence.ChainAfterFinal(diasFame, () => Runtime.Quit());
-							return;
-						}
-					}
-					else if (Progress(dnum).DiasporaStreak > 0)
-					{
-						Progress(dnum).DiasporaStreak = 0;
-						if (isHuman)
-							GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
-								"We have lost Mission Control.",
-								"The colony is on its own.",
-								"Rebuild it, and begin again."));
-					}
-				}
-
-				// 2100 AD: game ends by score — waived if the SETI storyline is active,
-				// since the alien contact arc has its own endings (dome, probe result).
-				if (Common.TurnToYear(_gameTurn) >= 2100 && !SETISignalReceived && !_scoreVictoryFired)
-				{
-					_scoreVictoryFired = true;
-					Player winner = _players
-						.Where(p => !(p.Civilization is Barbarian) && !p.IsDestroyed())
-						.OrderByDescending(p => p.Score)
-						.ThenBy(p => p == HumanPlayer ? 0 : 1)
-						.FirstOrDefault();
-
-					if (winner == HumanPlayer)
-					{
-						DecisionLogger.EndGame(HumanPlayer.Score, "Score", humanWon: true, turns: _gameTurn, HumanPlayer);
-						int scoreFame = EndSequence.SaveAndGetIndex(HumanPlayer, "Score Victory");
-						GameTask.Enqueue(Message.Newspaper(null!, "The year is 2100!", $"Your score: {HumanPlayer.Score}", "You lead the world!"));
-						GameTask scoreFt;
-						GameTask.Enqueue(scoreFt = Show.Screen(new FinalScore("Score Victory")));
-						scoreFt.Done += (s, a) => EndSequence.ChainAfterFinal(scoreFame, () => Runtime.Quit());
-					}
-					else
-					{
-						DecisionLogger.EndGame(HumanPlayer.Score, "Score", humanWon: false, turns: _gameTurn, winner);
-						GameTask.Enqueue(Turn.GameOver(HumanPlayer));
-					}
-					return;
-				}
-
-				// 2200 AD: post-contact backstop ending. While the alien-contact arc is active
-				// (SETISignalReceived) the 2100 score ending above is waived, and the only built-in
-				// finish is the Dome victory — which may never come if the Olvir struggle or land
-				// somewhere the player can't reach. Without a backstop such a game runs forever.
-				// From 2200 AD, close it out with a "Coexistence" ending that scores the peaceful,
-				// multi-species Earth the player built and held together.
-				if (Common.TurnToYear(_gameTurn) >= 2200 && SETISignalReceived && !_coexistenceFired)
-				{
-					_coexistenceFired = true;
-					Player? olvir = _players.FirstOrDefault(p => p.Civilization is Civilizations.Olvir);
-
-					// Credit the world you SHARED, not everything the visitors did anywhere.
-					// Counting every Olvir city and improvement on the planet made this award
-					// a measure of Olvir industry rather than of the player's stewardship:
-					// 883 improvements at 5 points each came to 4,415, against 271 points
-					// that Japan had earned by its own efforts across the entire game. A
-					// ten-city civ with no wonders finished ahead of a Rome holding 79
-					// cities. Only what grew within reach of the player's own cities counts —
-					// the shared frontier, which is the thing the ending is about.
-					const int ShareRadius = 6;
-					bool NearUs(int x, int y) =>
-						HumanPlayer.Cities.Any(c => Common.DistanceToTile(c.X, c.Y, x, y) <= ShareRadius);
-
-					int sharedCities = olvir?.Cities.Count(c => NearUs(c.X, c.Y)) ?? 0;
-					int sharedWorks  = OlvirImprovements.Keys.Count(k => NearUs(k.x, k.y));
-
-					int coexistence = 100                                                    // reached a peaceful end at all
-					                + (VisitorType == VisitorArchetype.Refugees ? 100 : 0)   // they came in peace, and stayed that way
-					                + sharedCities * 25                                      // an Olvir home made among ours
-					                + sharedWorks * 5;                                        // and ground we reshaped together
-					HumanPlayer.AwardMilestone(coexistence);
-
-					// The backstop is gated on SETISignalReceived alone, so EVERY archetype that
-					// leaves the player alive at 2200 lands here — the Scavengers when they have
-					// drunk their fill and gone, and the Owners when the landing was survived but
-					// never thrown off. Only the Olvir ending is actually coexistence; the rest is
-					// having outlasted whatever came. Naming them all "Coexistence" congratulated
-					// the player on a friendship they never had.
-					string ending = VisitorType == VisitorArchetype.Refugees ? "Coexistence" : "Endurance";
-
-					Log($"{ending}: {sharedCities}/{olvir?.Cities.Length ?? 0} Olvir cities and "
-					  + $"{sharedWorks}/{OlvirImprovements.Count} improvements within {ShareRadius} tiles — award {coexistence}");
-
-					DecisionLogger.EndGame(HumanPlayer.Score, ending, humanWon: true, turns: _gameTurn, HumanPlayer);
-					int coexFame = EndSequence.SaveAndGetIndex(HumanPlayer, ending);
-					GameTask.Enqueue(Message.Newspaper(null!, "The year is 2200.",
-						(olvir?.Cities.Length ?? 0) > 0 ? "Two species share one Earth." : "Earth endures, alone.",
-						$"Your score: {HumanPlayer.Score}"));
-					GameTask coexFt;
-					GameTask.Enqueue(coexFt = Show.Screen(new FinalScore(ending)));
-					coexFt.Done += (s, a) => EndSequence.ChainAfterFinal(coexFame, () => Runtime.Quit());
-					return;
-				}
+				if (VictoryChecks()) return;
 
 				PerformAutoSave();
 
@@ -3567,6 +2871,748 @@ namespace CivOne
 				GameTask.Enqueue(Message.Help("--- Civilization Note ---", TextFile.Instance.GetGameText("HELP/HELP1")));
 			else if (Game.InstantAdvice && (Common.TurnToYear(Game.GameTurn) == -3200 || Common.TurnToYear(Game.GameTurn) == -2400))
 				GameTask.Enqueue(Message.Help("--- Civilization Note ---", TextFile.Instance.GetGameText("HELP/HELP2")));
+		}
+
+		// The victory paths, judged in this order each round. True when one has ended the game,
+		// and EndTurn returns at once, as it did when these sections were written inline.
+		private bool VictoryChecks()
+		{
+			CheckDomeComplete();
+			if (CheckPaxMercatoria()) return true;
+			if (CheckCulturalAscendancy()) return true;
+			LaunchSpaceships();
+			LandSpaceships();
+			if (CheckDiaspora()) return true;
+			if (CheckScoreEnding()) return true;
+			if (CheckCoexistenceEnding()) return true;
+			return false;
+		}
+
+		// Check for dome victory (all five components built)
+		private void CheckDomeComplete()
+		{
+			if (!_domeVictoryFired && DomeFiveComponents.All(w => WonderBuilt(w)))
+			{
+				_domeVictoryFired = true;
+				HumanPlayer.AwardMilestone(150);
+				string gameDate = GameYear;
+				RecordTransmission("DomeComplete", gameDate);
+				var doneScreen = new Screens.DomeCompleteTransmission(gameDate, VisitorType, VisitorsArrived, SETISignalReceived);
+				GameTask.Enqueue(Show.Screen(doneScreen));
+
+				if (!SETISignalReceived)
+				{
+					// Classic game (no alien arc): the Dome is the end.
+					DecisionLogger.EndGame(HumanPlayer.Score, "Dome", humanWon: true, turns: _gameTurn, HumanPlayer);
+					int domeFame = EndSequence.SaveAndGetIndex(HumanPlayer, "Dome Victory");
+					GameTask domeFt;
+					GameTask.Enqueue(domeFt = Show.Screen(new Screens.Reports.FinalScore("Dome Victory")));
+					domeFt.Done += (s, a) => EndSequence.ChainAfterFinal(domeFame, () => Runtime.Quit());
+				}
+				else
+				{
+					// SETI arc: the Dome is a milestone, not the end. The game continues
+					// until 2200 AD (Coexistence ending). The Olvir still approach; their
+					// arrival and the final score fire on schedule.
+					GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
+						"The Dome is operational.",
+						OlvirArrivalTurn > 0
+							? $"Olvir landfall est. {Common.YearString((ushort)OlvirArrivalTurn)}."
+							: "Await the visitors.",
+						"Continue to 2200 CE."));
+				}
+			}
+		}
+
+		// ── Economic dominance: Pax Mercatoria ───────────────────────────────
+		// The merchant's finish line: hold EconomicLeadMargin times the gross economic
+		// output of the next-largest economy for EconomicHoldTurns consecutive turns, with Banking known, at least
+		// 3 rivals still standing, no war of your own making, and half the surviving
+		// rivals economically bound to you (tribute, defense pact, or an active trade
+		// route). Defensive wars don't break the streak: dominance by commerce,
+		// not cannon.
+		//
+		// Evaluated for EVERY civilization. It tested HumanPlayer alone, which is why an
+		// AI could hold every condition for centuries and nothing happened: measured in a
+		// finished 2200 AD game, the Others held 47% of world output and 4.25x the culture
+		// of the best rival, and could win by neither.
+		// Story factions cannot CLAIM this, the same exclusion Cultural Ascendancy
+		// applies. The Registry empties cities rather than running them, and the
+		// nextEconomy comment below rests on exactly that: their economy counts toward
+		// the total you must out-earn precisely because an occupied world has no
+		// commercial hegemon. Letting the occupier be the hegemon contradicts it.
+		private bool CheckPaxMercatoria()
+		{
+			foreach (Player claimant in _players
+			         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0
+			                  && !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing
+			                                       or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir)).ToArray())
+			{
+				byte cnum = PlayerNumber(claimant);
+				bool isHuman = claimant == HumanPlayer;
+
+				Player[] econRivals = _players.Where(p => p is not null && p != claimant
+					&& !p.IsDestroyed() && PlayerNumber(p) != 0
+					&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
+
+				if (!claimant.HasAdvance<Banking>() || econRivals.Length < 3)
+				{
+					Progress(cnum).EconStreak = 0;   // world shrank below the floor mid-streak
+					continue;
+				}
+
+				int claimOut = GrossOutput(claimant);
+				// Deliberate asymmetry with econRivals above: the story factions are NOT rivals
+				// you must bind by tribute or trade, but whatever economic value sits under the
+				// Registry IS an economy you must out-earn. An occupied world has no
+				// commercial hegemon. This is not an oversight — do not propagate the
+				// TheOthers/TheThing/Skynet exclusion down here.
+				//
+				// It resolves itself: the Owners empty cities rather than run them, so once
+				// humanity throws them off they hit Cities.Length == 0, count as destroyed, and
+				// drop out of this comparison. The streak resets on every break, so a liberated
+				// world can start a fresh EconomicHoldTurns turns and win properly.
+				//
+				// Measured against the next-largest economy, not the world's total, since Oct
+				// 2026. "More than half the world" outweighs a coalition of every rival at
+				// once, which gets harder with every civ in the game — the user lost a run at
+				// 49.7% while 3.7x the next economy, and is about to play with 12+ civs. It
+				// also rose under the leader as the whole world got richer; a lead does not.
+				Player? nextEconomy = _players.Where(p => p is not null && p != claimant && !p.IsDestroyed() && PlayerNumber(p) != 0)
+					.OrderByDescending(GrossOutput).FirstOrDefault();
+				int nextOut = nextEconomy is null ? 0 : GrossOutput(nextEconomy);
+				bool leads = claimOut > 0 && LeadsTheMarkets(claimOut, nextOut);
+
+				// Wars of this civ's own making break its streak — but not wars against the
+				// story factions. Skynet is at war with everyone the moment it wakes, the
+				// Registry arrives to repossess the planet, and the Thing does not negotiate:
+				// there is no version of those conflicts a merchant could have declined. Same
+				// exclusion econRivals uses; deliberately NOT the one nextEconomy uses.
+				bool aggressing = _players.Any(p => p is not null && !p.IsDestroyed()
+					&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
+					&& claimant.IsAtWar(p) && StartedWarWith(cnum, PlayerNumber(p)));
+
+				bool Bound(Player r)
+				{
+					byte rnum = PlayerNumber(r);
+					return r.PaysTributeTo(claimant) || r.HasDefensePact(claimant)
+						|| _cities.Any(c => c.Size > 0 &&
+							((c.Owner == cnum && c.TradeRoutes.Any(t => t.Partner.Owner == rnum))
+							|| (c.Owner == rnum && c.TradeRoutes.Any(t => t.Partner.Owner == cnum))));
+				}
+				bool boundHalf = econRivals.Count(Bound) * 2 >= econRivals.Length;
+
+				if (leads && !aggressing && boundHalf)
+				{
+					Progress(cnum).EconSlip = 0;
+					Progress(cnum).EconStreak++;
+					// One warning when the lead thins to near the bar. A streak lost on turn 74
+					// of 75 by a hair, unannounced, was the user's find (Oct 2026). Re-armed once
+					// the lead is clear of the band again.
+					if (MarketsSlipping(claimOut, nextOut))
+					{
+						if (isHuman && !Progress(cnum).EconSlipWarned && Progress(cnum).EconStreak > 1)
+							GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
+								"Our markets are slipping:",
+								$"{claimOut / (double)nextOut:0.00}x the {nextEconomy!.TribeNamePlural}.",
+								$"We need {EconomicLeadMargin:0.0}x."));
+						Progress(cnum).EconSlipWarned = true;
+					}
+					else if (claimOut >= nextOut * (EconomicLeadMargin + 2 * SlippingBand))
+						Progress(cnum).EconSlipWarned = false;
+					// Only the human gets told; the rest is somebody else's newspaper.
+					if (isHuman && Progress(cnum).EconStreak == 1)
+						GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
+							"Our merchants dominate",
+							"world trade. Hold the markets",
+							$"for {EconomicHoldFor(claimant)} turns."));
+					else if (isHuman && Progress(cnum).EconStreak == EconomicHoldFor(claimant) / 2)
+						GameTask.Enqueue(Message.Newspaper(null!, "Half way to hegemony!",
+							"The world's markets", "answer to us."));
+
+					if (Progress(cnum).EconStreak >= EconomicHoldFor(claimant) && !_econVictoryFired)
+					{
+						_econVictoryFired = true;
+						if (!isHuman)
+						{
+							RivalVictory(claimant, "Economic Dominance", "Pax Mercatoria!",
+								"The world's economy runs", $"through the {claimant.TribeNamePlural}.");
+							return true;
+						}
+						HumanPlayer.AwardMilestone(150);
+						DecisionLogger.EndGame(HumanPlayer.Score, "Economic Dominance", humanWon: true, turns: _gameTurn, HumanPlayer);
+						string? econArt = Screens.EventArtScreen.FindPath("PaxMercatoria");
+						if (econArt is not null)
+							GameTask.Enqueue(Show.Screen(new Screens.EventArtScreen(econArt,
+								"PAX MERCATORIA — THE WORLD BANKS WITH YOU")));
+						GameTask.Enqueue(Message.Newspaper(null!, "Pax Mercatoria!",
+							"The world's economy", "runs through you."));
+						EndOrEncore("Economic Dominance");
+						return true;
+					}
+				}
+				else if (Progress(cnum).EconStreak > 0)
+				{
+					string why = !leads ? "Our lead in world trade slipped."
+						: aggressing ? "Wars of our making unsettle the markets."
+						: "Too few nations bank with us.";
+					// A dip pauses the streak rather than breaking it; a war of our making
+					// is a decision, not a dip, and breaks it at once.
+					if (!aggressing && ++Progress(cnum).EconSlip <= StreakGraceTurns)
+					{
+						if (isHuman && Progress(cnum).EconSlip == 1)
+							GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
+								"The markets waver.", why,
+								$"{StreakGraceTurns} turns to recover,", "or the streak is lost."));
+					}
+					else
+					{
+						Progress(cnum).EconStreak = 0;
+						Progress(cnum).EconSlip = 0;
+						Progress(cnum).EconSlipWarned = false;
+						if (isHuman)
+							GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
+								"The markets waver.", why, "The streak is broken."));
+					}
+				}
+			}
+			return false;
+		}
+
+		// ── Cultural ascendancy ──────────────────────────────────────────────
+		// The peaceful mirror of conquest: hold enough of the world living in your
+		// cultural shadow, by a margin nobody can mistake, for CultureHoldTurns turns.
+		// Cities come to you rather than being taken — the same pull that makes a
+		// small unhappy town change flags, measured as a standing condition instead
+		// of an 8%-a-turn accident.
+		//
+		// Per civilization, like Pax Mercatoria above. Story factions are excluded from
+		// being CLAIMANTS as well as from the rival list: the Registry does not court
+		// admiration, and it accumulated 4.25x the world's best culture in one measured
+		// game purely by owning two thirds of its cities.
+		private bool CheckCulturalAscendancy()
+		{
+			foreach (Player claimant in _players
+			         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0
+			                  && !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing
+			                                       or Civilizations.Skynet or Civilizations.Federation or Civilizations.Olvir)).ToArray())
+			{
+				byte cnum = PlayerNumber(claimant);
+				bool isHuman = claimant == HumanPlayer;
+
+				Player[] cultRivals = _players.Where(p => p is not null && p != claimant
+					&& !p.IsDestroyed() && PlayerNumber(p) != 0
+					&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
+
+				if (!claimant.HasAdvance<Philosophy>() || cultRivals.Length < 3)
+				{
+					Progress(cnum).CultureStreak = 0;
+					continue;
+				}
+
+				// One pass for all three: the target is drawn from the reach and the lead is
+				// measured against the same neighbours, so asking for them separately would
+				// mean walking the world's cities three times.
+				(int inRange, int shadow, long bestNeighbour) = CulturalReachAndShadow(claimant);
+
+				// The lead is LOCAL — twice the best culture with a city in your range —
+				// where it used to be twice the best culture in the world.
+				//
+				// Mixing the two geographies made the clause incoherent, and a measured
+				// 13-civ game showed it exactly. The Mongols held shadow 7 of reach 7 for
+				// 35 turns: every single foreign city near them was under half their
+				// culture, which is cultural ascendancy over their world by any reading.
+				// The rule then compared them to the Malians, two thousand tiles away, and
+				// scored them at 0.78x. The two clauses selected for opposite positions —
+				// a shadow needs weak neighbours, which means a poor region, which caps
+				// your own culture; the global lead needs to beat the richest region's
+				// leader. Nobody can be both, and in four logged games nobody was.
+				//
+				// REPLACED the cultural shadow, 18 Aug 2026. The shadow asked you to dominate
+				// foreign cities within five tiles — which the MAP GENERATOR decides, not
+				// play. Measured across 21 games: the Maori reached 0 foreign cities, the
+				// Guarani 1, the Japanese 2-5. Those civilizations were excluded from the
+				// path before making a single decision, and no amount of culture fixed it.
+				// It fired exactly once in 21 games (Mongols, `88388c31`, reach 6 against a
+				// floor of 6 — the bare minimum).
+				//
+				// Now: hold the highest culture per HEAD of population. Every civ can
+				// compete on it, isolated or not, and it rewards a cultured society rather
+				// than a large one — a wide empire of Temples no longer beats a dense one
+				// of Cathedrals simply by being wide.
+				//
+				// Three clauses, and all three are needed. Measured in run `1ac32cee`:
+				//
+				//   RANK, not ratio. Culture per head converges as a game runs — everyone
+				//   builds the same things — so late leads run 1.02-1.21x and any ratio
+				//   bar is unclearable. Being FIRST is the achievable form.
+				//
+				//   POPULACE FLOOR, relative. Culture is a cumulative stock and population
+				//   is not, so a stunted civ's ratio climbs forever: the frozen one-city
+				//   Japanese of `733f10ec` led every density measure in the game. A share
+				//   of the largest civ's populace scales with the map; an absolute number
+				//   would not.
+				//
+				//   DATE GATE. Early leads are trivial — at turn 200 the leader held 31.9
+				//   against 14.3, a fine ratio over almost no culture, and would have won
+				//   around turn 310 on a hold alone. The gate says a golden age is a thing
+				//   you sustain into the modern era, not a lead you take in antiquity.
+				// TWO different head counts, deliberately, and the split is the whole of the
+				// anti-bleed rule.
+				//
+				// The RATIO divides by the largest populace this civ has ever held
+				// (Player.PeakPopulace). Culture is a cumulative stock and population is
+				// not, so against a live denominator a civilization could spawn settlers,
+				// disband them, and climb the table without building anything. Against the
+				// high-water mark, shrinking earns nothing: the numerator stops growing
+				// while the divisor stays where it was.
+				//
+				// The FLOOR still asks for people alive today. Its job is to keep relics
+				// out — see CultureFloorShare — and a civ that has collapsed to nothing is
+				// exactly the relic it was written for, however many citizens it once had.
+				// Judging that clause on the peak would let a dead empire rank forever.
+				Player[] densityRivals = cultRivals.Where(p => p.Cities.Any(c => c.Size > 0)).ToArray();
+				long worldAverage = CulturalWorldAverageNow();
+				double cultPerHead = CulturalDensity(claimant, worldAverage);
+
+				// First in the world by a MARGIN, among civs that clear the same floor.
+				//
+				// Rank alone was not enough, and a batch of 8 runs across 3-16 civs said so
+				// plainly: culture took 6 of them, five at turn 499-501 — the earliest turn
+				// the gate and hold allow. Lead changes ran 2-15 across a whole game but
+				// 0-3 after 1850, and zero in four of those five. The ordering freezes once
+				// culture per head converges, so the gate was certifying whoever happened
+				// to lead at 1850 rather than opening a contest.
+				//
+				// A margin makes the streak BREAKABLE, which is what puts the contest back:
+				// late leads run 1.02-1.21x, so a civ ahead by a nose loses its streak and
+				// starts again. Measured over the same 8 runs, the longest post-1850 hold
+				// at this margin reaches the required 100 turns in 3 of them — and the two
+				// clearest, e916088c and c907ab24, hold it at 1.20x and 1.15x respectively.
+				// Those are dominant cultures; the ones that fall away were winning on
+				// 1.02-1.09x.
+				bool foremost = claimant.Culture > 0 && densityRivals.All(p =>
+					cultPerHead >= CulturalDensity(p, worldAverage) * CultureLeadMargin);
+
+				bool modern = CultureGateOpen();
+
+				bool admired = foremost && modern;
+				// REACH: half the surviving rivals must actually know us — a trade route in
+				// either direction, an embassy either way, or a defence pact. The same shape
+				// as Pax Mercatoria's Bound, minus tribute: tribute binds an economy, it does
+				// not carry a culture anywhere. An admired civilization nobody has met is
+				// not ascendant, merely remote. Added 23 Sep 2026 after a won game where no
+				// foreign civ had ever sent an ambassador and the win still fired.
+				bool reach = KnownByHalfTheWorld(claimant);
+
+				// Same clause and the same story-faction exclusion as Pax Mercatoria: a war you
+				// started is incompatible with being admired, but the Machines and the Registry
+				// were never yours to decline.
+				// Kept as the player rather than a bool so the advisory below can NAME the
+				// war. "Wars of our making" told a player there was a problem without
+				// telling them which war to end.
+				Player? cultVictim = _players.FirstOrDefault(p => p is not null && !p.IsDestroyed()
+					&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)
+					&& claimant.IsAtWar(p) && StartedWarWith(cnum, PlayerNumber(p)));
+				bool cultAggressing = cultVictim is not null;
+
+				if (admired && reach && !cultAggressing)
+				{
+					Progress(cnum).CultureSlip = 0;
+					Progress(cnum).CultureStreak++;
+					if (isHuman && Progress(cnum).CultureStreak == 1)
+						GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
+							"The world looks to us.",
+							"No people are more cultured.",
+							$"Hold the first rank {CultureHoldFor(claimant)} turns."));
+					else if (isHuman && Progress(cnum).CultureStreak == CultureHoldFor(claimant) / 2)
+						GameTask.Enqueue(Message.Newspaper(null!, "Half way to ascendancy!",
+							"Our arts and learning", "are the world's measure."));
+
+					if (Progress(cnum).CultureStreak >= CultureHoldFor(claimant) && !_cultVictoryFired)
+					{
+						_cultVictoryFired = true;
+						if (!isHuman)
+						{
+							RivalVictory(claimant, "Cultural Ascendancy", "Cultural Ascendancy!",
+								"The world does not obey", $"the {claimant.TribeNamePlural}. It imitates them.");
+							return true;
+						}
+						HumanPlayer.AwardMilestone(150);
+						DecisionLogger.EndGame(HumanPlayer.Score, "Cultural Ascendancy", humanWon: true, turns: _gameTurn, HumanPlayer);
+						string? cultArt = Screens.EventArtScreen.FindPath("CulturalAscendancy");
+						if (cultArt is not null)
+							GameTask.Enqueue(Show.Screen(new Screens.EventArtScreen(cultArt,
+								"CULTURAL ASCENDANCY — THE WORLD KEEPS YOUR CALENDAR")));
+						GameTask.Enqueue(Message.Newspaper(null!, "Cultural Ascendancy!",
+							"The world does not obey us.", "It imitates us."));
+						EndOrEncore("Cultural Ascendancy");
+						return true;
+					}
+				}
+				else if (Progress(cnum).CultureStreak > 0)
+				{
+					string why = !admired ? "Our arts no longer stand above the world's."
+						: !reach ? "Too few nations know us."
+						: "Wars of our making tarnish our name.";
+					// The same grace as Pax Mercatoria's.
+					if (!cultAggressing && ++Progress(cnum).CultureSlip <= StreakGraceTurns)
+					{
+						if (isHuman && Progress(cnum).CultureSlip == 1)
+							GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
+								"Our influence wanes.", why,
+								$"{StreakGraceTurns} turns to recover,", "or the streak is lost."));
+					}
+					else
+					{
+						Progress(cnum).CultureStreak = 0;
+						Progress(cnum).CultureSlip = 0;
+						if (isHuman)
+							GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
+								"Our influence wanes.", why, "The streak is broken."));
+					}
+				}
+
+				// Admired by every measure the rule takes, and stopped by the one clause a
+				// player cannot see.
+				//
+				// The broken-streak advisory above only speaks when there was a streak to
+				// lose. A civilization blocked from ever STARTING one hears nothing at all,
+				// which is how a player holds the first rank for a hundred straight turns —
+				// populous, foremost by 1.36x, decades past the gate — and never learns that
+				// an unresolved war they declared is zeroing the clock every single turn.
+				// Observed in game 3de868a5: qualified from turn 485 to the end at 587, hold
+				// required 75, streak never left zero.
+				//
+				// Latched so it says this once, and re-armed the moment the block clears, so
+				// making peace and then starting another war says it again.
+				//
+				// Reach is the other invisible block, so it shares the latch: war is named
+				// first because it is the one the player must undo rather than build.
+				if (isHuman && admired && (cultAggressing || !reach))
+				{
+					if (!_cultBlockedNotified)
+					{
+						_cultBlockedNotified = true;
+						GameTask.Enqueue(cultAggressing
+							? Message.Advisor(Advisor.Domestic, false,
+								"No people are more cultured.",
+								$"But we drew first blood on the {cultVictim!.TribeNamePlural}.",
+								"There is no ascendancy without peace.")
+							: Message.Advisor(Advisor.Domestic, false,
+								"No people are more cultured.",
+								"But half the world has never met us.",
+								"Send embassies, or caravans."));
+					}
+				}
+				else if (isHuman)
+				{
+					_cultBlockedNotified = false;
+				}
+			}
+			return false;
+		}
+
+		// Check for spaceship launches (AI players only — human launches manually via
+		// SpaceShips screen).
+		//
+		// ...except under Autopilot, where the AI drives the human and there is nobody
+		// to press the button. Every other "AI runs the human" path already carries this
+		// exception — City.cs in five places, Game.Update, Game.Cos — and this one did
+		// not, so an autoplayed human accumulated ship parts forever and never launched.
+		// Observed in the 2200 AD run: the Malians finished the game with a Mission
+		// Control city and no ship, while two AI civs launched and arrived.
+		private void LaunchSpaceships()
+		{
+			for (int p = 1; p < _players.Count; p++)
+			{
+				if (_players[p].IsDestroyed()) continue;
+				if (_players[p] == HumanPlayer && !Settings.Instance.Autopilot) continue;
+				int structural = Progress(p).SpaceshipStructural;
+				int component  = Progress(p).SpaceshipComponent;
+				int module     = Progress(p).SpaceshipModule;
+				// Minimum: 1 engine (2 comps), 1 module set (3 mods), sufficient structure
+				int needed = SpaceshipStructuresNeeded(component, module);
+				if (component < 2 || module < 3 || structural < needed) continue;
+				if (Progress(p).SpaceshipLaunchTurn != 0) continue;
+				// Built, and held on the pad while the pickets are out there.
+				if (ColonyShipsIntercepted) continue;
+
+				Progress(p).SpaceshipLaunchTurn = _gameTurn;
+				Progress(p).SpaceshipArrivalTurn = _gameTurn
+					+ SpaceshipTravelTurns(structural, component, module, Progress(p).HasExoticFuel);
+				ClearSpaceShipProduction(p);
+				string eta = Common.YearString((ushort)Progress(p).SpaceshipArrivalTurn);
+				GameTask.Enqueue(Message.Advisor(Advisor.Foreign, false,
+					$"The {_players[p].TribeNamePlural}",
+					"have launched a spaceship!",
+					$"Arrival: {eta}"));
+			}
+		}
+
+		// Check for spaceship arrivals.
+		// If the Olvir/post-probe storyline is active the spaceship is a milestone,
+		// not a game-ender — show the event and continue.
+		private void LandSpaceships()
+		{
+			int bestArrival = int.MaxValue;
+			for (int p = 1; p < _players.Count; p++)
+				if (Progress(p).SpaceshipArrivalTurn > 0 && Progress(p).SpaceshipArrivalTurn < bestArrival)
+					bestArrival = Progress(p).SpaceshipArrivalTurn;
+
+			if (bestArrival <= _gameTurn)
+			{
+				bool humanWins = Progress(PlayerNumber(HumanPlayer)).SpaceshipArrivalTurn == bestArrival;
+
+				// The Federation's pickets take colony ships too; the launch screen has always
+				// said so (SpaceShips.cs), and until now the arrival let them through.
+				if (ColonyShipsIntercepted)
+				{
+					// Owners timeline: nothing leaves. The recovery fleet's pickets take
+					// every colony ship — launched before or after the arrival at Earth,
+					// Dome or no Dome. Even the negotiated outcome leaves humanity a
+					// contained nuisance, not a spacefaring species.
+					for (int p = 1; p < _players.Count; p++)
+					{
+						if (Progress(p).SpaceshipArrivalTurn != bestArrival) continue;
+						ResetSpaceProgramme(p);
+						if (_players[p] == HumanPlayer)
+						{
+							GameTask.Enqueue(Show.EventArt("spaceshipintercepted",
+								"Contact lost. Final telemetry shows an object of impossible size."));
+							GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
+								"The colony ship is gone.",
+								"Something was waiting on the",
+								"road to Alpha Centauri."));
+						}
+						else
+						{
+							GameTask.Enqueue(Message.Newspaper(null!,
+								$"{_players[p].TribeNamePlural} spaceship", "lost in deep space!", "No survivors."));
+						}
+					}
+				}
+				else
+				{
+					// Arrival is a MILESTONE, never an ending — signal or no signal.
+					//
+					// It used to end the game when the SETI signal had not been received: first
+					// ship to Alpha Centauri won outright, and an AI getting there first was
+					// Game Over for the human. That was Civ 1's rule, and it contradicts this
+					// game's premise. In a dark forest, leaving the solar system is not a
+					// victory condition, it is an act of exposure — and it cannot be one on the
+					// strength of ignorance, which is all "pre-signal" means. A civ that
+					// launches before it knows anything has taken the same risk as one that
+					// launches after; it simply hasn't been told.
+					//
+					// What the colony is worth is settled later, by whether it survives:
+					// Mission Control standing and twenty consecutive turns. Here it only
+					// gets founded.
+					// EVERY civ that lands founds a colony, and every landing is numbered.
+					// This used to set ColonyFounded for the human alone and give an AI
+					// arrival a newspaper headline and nothing else — so in one measured
+					// game the Lakota landed 98 turns before the human and it counted for
+					// nothing at all. ColonyOrder is the arrival rank, for the first-mover
+					// premium: being first to another star is the achievement, and the
+					// fifth ship to make the same crossing is not the same feat.
+					for (int p = 1; p < _players.Count; p++)
+					{
+						if (Progress(p).SpaceshipArrivalTurn != bestArrival) continue;
+						if (_players[p] is null || _players[p].IsDestroyed()) continue;
+
+						Progress(p).SpaceshipArrivalTurn = 0;
+						if (Progress(p).ColonyFounded) continue;
+						Progress(p).ColonyFounded = true;
+						Progress(p).ColonyOrder = _players.Count(x => x is not null && x.Progress.ColonyOrder > 0) + 1;
+
+						if (_players[p] == HumanPlayer)
+						{
+							HumanPlayer.AwardMilestone(100);
+							string acCaption = VisitorType == VisitorArchetype.Refugees
+								? "Colony established — Alpha Centauri II. The Olvir know this star."
+								: "Colony established — Alpha Centauri II. Humanity is no longer bound to Earth.";
+							GameTask.Enqueue(Show.EventArt("spaceshiparrived", acCaption));
+							GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
+								"Alpha Centauri II: colonised.",
+								SETISignalReceived && DomeComplete
+									? "The Dome guards Earth."
+									: "The colony must now hold.",
+								"Continue to 2200 CE."));
+						}
+						else
+						{
+							GameTask.Enqueue(Message.Newspaper(null!, $"The {_players[p].TribeNamePlural}",
+								"have reached", "Alpha Centauri!"));
+						}
+					}
+				}
+			}
+		}
+
+		// ── Diaspora ─────────────────────────────────────────────────────────
+		// The colony survives, which is a different thing from having been founded.
+		// A settlement at Alpha Centauri II is not self-sufficient for a long time:
+		// it is being resupplied, and the resupply is run from one city on Earth.
+		// So hold Mission Control for 20 consecutive turns and humanity is a
+		// two-star species — permanently, whatever then happens to Earth.
+		//
+		// Unlike the other five paths this one has no rivals clause and no war
+		// clause. It does not measure standing against anybody; the only question
+		// is whether the lifeline held. Losing Mission Control — to an army, to a
+		// rebellion, to the organism — resets the clock to zero. The building can
+		// be rebuilt elsewhere, and the twenty turns start over.
+		private bool CheckDiaspora()
+		{
+			foreach (Player colonist in _players
+			         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0).ToArray())
+			{
+				byte dnum = PlayerNumber(colonist);
+				if (!Progress(dnum).ColonyFounded) continue;
+				bool isHuman = colonist == HumanPlayer;
+				bool lifeline = _cities.Any(c => c is not null && c.Owner == dnum && c.Size > 0
+					&& c.HasBuilding<Buildings.MissionControl>());
+
+				if (lifeline)
+				{
+					Progress(dnum).DiasporaStreak++;
+					if (isHuman && Progress(dnum).DiasporaStreak == 1)
+						GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
+							"Mission Control has the colony.",
+							"Resupply is running. Hold this",
+							$"city for {DiasporaStreakTarget} turns."));
+					else if (isHuman && Progress(dnum).DiasporaStreak == DiasporaStreakTarget / 2)
+						GameTask.Enqueue(Message.Newspaper(null!, "Half way to independence!",
+							"Alpha Centauri II reports", "its first harvest."));
+
+					// Latched. The win enqueues a screen chain that ends in Runtime.Quit(),
+					// and the queue takes several rounds to drain — during which this block
+					// keeps seeing a streak of 20 and awarding the 200 again. Caught by a
+					// test that expected +200 and read +600.
+					if (Progress(dnum).DiasporaStreak >= DiasporaStreakTarget && !_diasporaFired)
+					{
+						_diasporaFired = true;
+						if (!isHuman)
+						{
+							RivalVictory(colonist, "Diaspora", "Diaspora!",
+								$"Alpha Centauri II answers", $"to the {colonist.TribeNamePlural}.");
+							return true;
+						}
+						// The first crossing is the achievement; a later one is a repeat of
+						// somebody else's. ColonyOrder is the arrival rank.
+						HumanPlayer.AwardMilestone(DiasporaAward(Progress(dnum).ColonyOrder));
+						DecisionLogger.EndGame(HumanPlayer.Score, "Diaspora", humanWon: true, turns: _gameTurn, HumanPlayer);
+						int diasFame = EndSequence.SaveAndGetIndex(HumanPlayer, "Diaspora");
+						GameTask.Enqueue(Show.EventArt("spaceshiparrived",
+							"DIASPORA — HUMANITY IS NO LONGER A SINGLE TARGET"));
+						GameTask.Enqueue(Message.Newspaper(null!, "Diaspora!",
+							"Alpha Centauri II stands alone.", "Earth is no longer all of us."));
+						GameTask diasFt;
+						GameTask.Enqueue(diasFt = Show.Screen(new Screens.Reports.FinalScore("Diaspora")));
+						diasFt.Done += (s, a) => EndSequence.ChainAfterFinal(diasFame, () => Runtime.Quit());
+						return true;
+					}
+				}
+				else if (Progress(dnum).DiasporaStreak > 0)
+				{
+					Progress(dnum).DiasporaStreak = 0;
+					if (isHuman)
+						GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
+							"We have lost Mission Control.",
+							"The colony is on its own.",
+							"Rebuild it, and begin again."));
+				}
+			}
+			return false;
+		}
+
+		// 2100 AD: game ends by score — waived if the SETI storyline is active,
+		// since the alien contact arc has its own endings (dome, probe result).
+		private bool CheckScoreEnding()
+		{
+			if (Common.TurnToYear(_gameTurn) >= 2100 && !SETISignalReceived && !_scoreVictoryFired)
+			{
+				_scoreVictoryFired = true;
+				Player winner = _players
+					.Where(p => !(p.Civilization is Barbarian) && !p.IsDestroyed())
+					.OrderByDescending(p => p.Score)
+					.ThenBy(p => p == HumanPlayer ? 0 : 1)
+					.FirstOrDefault();
+
+				if (winner == HumanPlayer)
+				{
+					DecisionLogger.EndGame(HumanPlayer.Score, "Score", humanWon: true, turns: _gameTurn, HumanPlayer);
+					int scoreFame = EndSequence.SaveAndGetIndex(HumanPlayer, "Score Victory");
+					GameTask.Enqueue(Message.Newspaper(null!, "The year is 2100!", $"Your score: {HumanPlayer.Score}", "You lead the world!"));
+					GameTask scoreFt;
+					GameTask.Enqueue(scoreFt = Show.Screen(new FinalScore("Score Victory")));
+					scoreFt.Done += (s, a) => EndSequence.ChainAfterFinal(scoreFame, () => Runtime.Quit());
+				}
+				else
+				{
+					DecisionLogger.EndGame(HumanPlayer.Score, "Score", humanWon: false, turns: _gameTurn, winner);
+					GameTask.Enqueue(Turn.GameOver(HumanPlayer));
+				}
+				return true;
+			}
+			return false;
+		}
+
+		// 2200 AD: post-contact backstop ending. While the alien-contact arc is active
+		// (SETISignalReceived) the 2100 score ending above is waived, and the only built-in
+		// finish is the Dome victory — which may never come if the Olvir struggle or land
+		// somewhere the player can't reach. Without a backstop such a game runs forever.
+		// From 2200 AD, close it out with a "Coexistence" ending that scores the peaceful,
+		// multi-species Earth the player built and held together.
+		private bool CheckCoexistenceEnding()
+		{
+			if (Common.TurnToYear(_gameTurn) >= 2200 && SETISignalReceived && !_coexistenceFired)
+			{
+				_coexistenceFired = true;
+				Player? olvir = _players.FirstOrDefault(p => p.Civilization is Civilizations.Olvir);
+
+				// Credit the world you SHARED, not everything the visitors did anywhere.
+				// Counting every Olvir city and improvement on the planet made this award
+				// a measure of Olvir industry rather than of the player's stewardship:
+				// 883 improvements at 5 points each came to 4,415, against 271 points
+				// that Japan had earned by its own efforts across the entire game. A
+				// ten-city civ with no wonders finished ahead of a Rome holding 79
+				// cities. Only what grew within reach of the player's own cities counts —
+				// the shared frontier, which is the thing the ending is about.
+				const int ShareRadius = 6;
+				bool NearUs(int x, int y) =>
+					HumanPlayer.Cities.Any(c => Common.DistanceToTile(c.X, c.Y, x, y) <= ShareRadius);
+
+				int sharedCities = olvir?.Cities.Count(c => NearUs(c.X, c.Y)) ?? 0;
+				int sharedWorks  = OlvirImprovements.Keys.Count(k => NearUs(k.x, k.y));
+
+				int coexistence = 100                                                    // reached a peaceful end at all
+				                + (VisitorType == VisitorArchetype.Refugees ? 100 : 0)   // they came in peace, and stayed that way
+				                + sharedCities * 25                                      // an Olvir home made among ours
+				                + sharedWorks * 5;                                        // and ground we reshaped together
+				HumanPlayer.AwardMilestone(coexistence);
+
+				// The backstop is gated on SETISignalReceived alone, so EVERY archetype that
+				// leaves the player alive at 2200 lands here — the Scavengers when they have
+				// drunk their fill and gone, and the Owners when the landing was survived but
+				// never thrown off. Only the Olvir ending is actually coexistence; the rest is
+				// having outlasted whatever came. Naming them all "Coexistence" congratulated
+				// the player on a friendship they never had.
+				string ending = VisitorType == VisitorArchetype.Refugees ? "Coexistence" : "Endurance";
+
+				Log($"{ending}: {sharedCities}/{olvir?.Cities.Length ?? 0} Olvir cities and "
+				  + $"{sharedWorks}/{OlvirImprovements.Count} improvements within {ShareRadius} tiles — award {coexistence}");
+
+				DecisionLogger.EndGame(HumanPlayer.Score, ending, humanWon: true, turns: _gameTurn, HumanPlayer);
+				int coexFame = EndSequence.SaveAndGetIndex(HumanPlayer, ending);
+				GameTask.Enqueue(Message.Newspaper(null!, "The year is 2200.",
+					(olvir?.Cities.Length ?? 0) > 0 ? "Two species share one Earth." : "Earth endures, alone.",
+					$"Your score: {HumanPlayer.Score}"));
+				GameTask coexFt;
+				GameTask.Enqueue(coexFt = Show.Screen(new FinalScore(ending)));
+				coexFt.Done += (s, a) => EndSequence.ChainAfterFinal(coexFame, () => Runtime.Quit());
+				return true;
+			}
+			return false;
 		}
 		
 		public void Update()
