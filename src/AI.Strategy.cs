@@ -6216,9 +6216,11 @@ namespace CivOne
 			// upgrade (BaseUnit.CanUpgrade), ConsiderUpgrades refits whatever is docked there,
 			// and AssignMission sends old transports to it. Waiting for a ship to dock at a
 			// port that could build one meant most civs never did (game b0247e2c). One yard
-			// at a time, and only a port that can build it: salt water, and Navigation.
+			// at a time, and only a port that can build it: salt water, and Navigation. "At a
+			// time" counts every city's queue: checking only what was on the stocks let the
+			// Aztecs of game 7c41d897 queue a yard in port after port, and build nine.
 			byte yardId = Game.PlayerNumber(Player);
-			if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>() || (c != city && c.CurrentProduction is Shipyard))
+			if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>()) && OnOrder(p => p is Shipyard, except: city) == 0
 			    && Game.GetUnits().Any(u => u.Owner == yardId && u.Class == UnitClass.Water
 			                                && (u is IBoardable || (u.X == city.X && u.Y == city.Y))
 			                                && (u as BaseUnit)?.RefitTarget is not null)
@@ -6236,7 +6238,7 @@ namespace CivOne
 						.FirstOrDefault(w => city.AvailableProduction.Any(a => a.GetType() == w.GetType()));
 					if (warship is not null) consider(warship);
 				}
-				else if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>() || (c != city && c.CurrentProduction is Shipyard))
+				else if (!Player.Cities.Any(c => c.HasBuilding<Shipyard>()) && OnOrder(p => p is Shipyard, except: city) == 0
 				         && city.AvailableProduction.Any(a => a is Shipyard))
 					consider(new Shipyard());
 			}

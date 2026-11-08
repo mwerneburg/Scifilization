@@ -170,6 +170,21 @@ namespace CivOne.Tests
 			Assert.DoesNotContain(PlanFor(p, port), x => x is Shipyard);
 		}
 
+		// ...or holding it in its queue. The planner queues a whole plan, and a check of the
+		// stocks alone let each port queue its own: the Aztecs of game 7c41d897 built nine
+		// from turn 359, every one out of a queue.
+		[Fact]
+		public void AQueuedYardElsewhereIsEnough()
+		{
+			(Game g, Player p, City port) = AnAiPort();
+			City other = g.AddCity(p, 1, 38, 25)!;
+			other.SetProduction(new Militia());
+			other.EnqueueProduction(new Shipyard());
+			g.CreateUnit(UnitType.Trireme, 46, 25, g.PlayerNumber(p), false);
+
+			Assert.DoesNotContain(PlanFor(p, port), x => x is Shipyard);
+		}
+
 		// The Ottomans of game b0247e2c: Magnetism makes a Frigate the refit, but the yard
 		// needs Navigation, so it is not asked for.
 		[Fact]

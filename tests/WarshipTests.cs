@@ -445,6 +445,23 @@ namespace CivOne.Tests
 			Assert.DoesNotContain(Plan(us, second), x => x is CivOne.Buildings.Shipyard);
 		}
 
+		// A yard waiting in another port's queue counts as one on order (game 7c41d897: the
+		// Aztecs built nine, every one out of a queue).
+		[Fact]
+		public void AQueuedYardElsewhereMeansNoSecondYard()
+		{
+			(Game g, Player us, Player _, City first) = AWarAcrossTheSea();
+			first.RemoveBuilding<CivOne.Buildings.Shipyard>();
+			first.SetProduction(new Militia());
+			first.EnqueueProduction(new CivOne.Buildings.Shipyard());
+			Map.Instance.ChangeTileType(PortX, 21, Terrain.Grassland1);
+			City second = g.AddCity(us, 9, PortX, 21)!;
+			second.Size = 12;
+			Assert.True(AI.Instance(us).FleetWanted(second));
+
+			Assert.DoesNotContain(Plan(us, second), x => x is CivOne.Buildings.Shipyard);
+		}
+
 		// ── the record ───────────────────────────────────────────────────────
 
 		// Cruiser on Cavalry appears nowhere else in the tests, so no other test's queued line
