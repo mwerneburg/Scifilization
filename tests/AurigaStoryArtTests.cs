@@ -4,9 +4,8 @@
 // original game's intro (the user, Nov 2026). A picture whose file is missing is passed over,
 // so the story reads as text until the art is in.
 //
-// When the art lands, add a file-exists test for each AurigaIntroScreen.Scenes key against the
-// repository defaults (as CulturalAscendancyTests.TheEndingArtIsShipped does): a missing
-// picture degrades silently.
+// A missing picture degrades silently, so each one shipped is checked against the repository
+// defaults (as CulturalAscendancyTests.TheEndingArtIsShipped does).
 
 using System.IO;
 using System.Linq;
@@ -109,6 +108,19 @@ namespace CivOne.Tests
 				File.Delete(file);
 				foreach (EventArtScreen s in Common.Screens.OfType<EventArtScreen>()) s.KeyDown(null!);
 			}
+		}
+
+		[Theory]
+		[InlineData("AurigaAdrift")]
+		[InlineData("AurigaGasGiant")]
+		[InlineData("AurigaThirdPlanet")]
+		[InlineData("AurigaLifeboats")]
+		[InlineData("AurigaCaches", Skip = "art owed by the user (Nov 2026)")]
+		[InlineData("AurigaAwakening")]
+		public void TheSceneArtIsShipped(string key)
+		{
+			string path = Path.Combine(RepoRoot(), "runtime", "sdl", "Resources", "defaults", "data", "event_art", key + ".png");
+			Assert.True(File.Exists(path), $"story art is missing: {path}");
 		}
 
 		// Its control: with no art in, the log types straight through.
