@@ -108,8 +108,11 @@ namespace CivOne.Tests
 		[Fact]
 		public void ACityWithAnEnemyNear_MayStillArm()
 		{
-			var (g, p, ai, a, _) = Empire();
-			Garrison(g, p, a, UnitType.Phalanx, ai.ArmyCap(fresh: true));
+			var (g, p, ai, a, b) = Empire();
+			// The army at the ceiling, but held mostly in the other city: a city already past
+			// four foot defenders would disband any fifth (AI.cs), so it plans none either way.
+			Garrison(g, p, a, UnitType.Phalanx, 1);
+			Garrison(g, p, b, UnitType.Phalanx, ai.ArmyCap(fresh: true) - 1);
 			ai.ArmySize(fresh: true);
 			g.CreateUnit(UnitType.Legion, a.X - 2, a.Y, 0);   // barbarians: always hostile
 

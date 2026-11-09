@@ -74,6 +74,20 @@ namespace CivOne.Tests
 			Assert.DoesNotContain(PlanFor(p, c), x => x is Armor);
 		}
 
+		// One on order is enough too, in a build list as well as on the stocks: the count read
+		// only what each city was building, the gap the Aztecs' nine Shipyards went through.
+		[Fact]
+		public void AHunterInAnotherCitysBuildListIsEnough()
+		{
+			var (g, p, c) = ADemocracy();
+			g.CreateUnit(UnitType.Harvester, 45, 25, 0);
+			City other = g.AddCity(p, 0, 30, 25)!;
+			other.SetProduction(new Militia());
+			other.EnqueueProduction(new Armor());
+
+			Assert.DoesNotContain(PlanFor(p, c), x => x is Armor);
+		}
+
 		// Gozira (defence 24) is nobody's quarry; building Armor at it is feeding the wall.
 		[Fact]
 		public void NoHunterIsBuiltForWhatItCannotBeat()

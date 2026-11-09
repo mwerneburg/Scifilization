@@ -17,9 +17,9 @@ namespace CivOne.Tests
 {
 	public class FullGarrisonTests
 	{
-		private static IProduction[] PlanWithGarrison(int defenders, bool templeToo = false, int size = 1)
+		private static IProduction[] PlanWithGarrison(int defenders, bool templeToo = false, int size = 1, int difficulty = 2)
 		{
-			Sim.NewGame(width: 80, height: 50, difficulty: 2);   // Kyoto's; Chieftain has a Militia rule of its own
+			Sim.NewGame(width: 80, height: 50, difficulty: difficulty);   // Kyoto's was 2
 			Settings.Instance.Autopilot = true;
 			Game g = Game.Instance;
 			Player us = g.HumanPlayer;
@@ -79,6 +79,15 @@ namespace CivOne.Tests
 			IProduction[] plan = PlanWithGarrison(4, templeToo: true, size: 3);
 			Assert.DoesNotContain(plan, FootDefender);
 			Assert.Contains(plan, p => p is Settlers);
+		}
+
+		// Chieftain's own Militia rule counted them empire-wide, four to a city, so one city
+		// could fill past the trim while the others stood short.
+		[Fact]
+		public void ChieftainsMilitiaRuleStopsAtAFullGarrison()
+		{
+			for (int i = 0; i < 25; i++)
+				Assert.DoesNotContain(PlanWithGarrison(4, difficulty: 0), FootDefender);
 		}
 	}
 }

@@ -5297,7 +5297,8 @@ namespace CivOne
 				int  chCities   = Player.Cities.Length;
 				int  chMilitia  = Game.GetUnits().Count(u => u.Owner == chId && u is Militia);
 				int  chSettlers = Game.GetUnits().Count(u => u.Owner == chId && u is Settlers);
-				if (chMilitia < chCities * 4) Consider(new Militia());
+				// Four to a city, counted empire-wide, so one city could fill past the trim (AI.cs).
+				if (chMilitia < chCities * 4 && !GarrisonFull(city)) Consider(new Militia());
 				if (CanAffordSettler(city, 4) && chSettlers < Math.Max(1, chCities / 2)) Consider(new Settlers());
 				if (!city.HasBuilding<Temple>()) Consider(new Temple());
 			}
@@ -5837,7 +5838,7 @@ namespace CivOne
 				int weakest = prey.Min(u => u.Defense);
 				int hunters = Game.GetUnits().Count(u => u.Owner == threatOwnId && u.Class == UnitClass.Land
 					&& u.Attack >= weakest && u.Tile?.ContinentId == city.Tile.ContinentId && !IsSoleGarrison(u))
-					+ Player.Cities.Count(c => c.CurrentProduction is IUnit { Role: UnitRole.LandAttack });
+					+ OnOrder(p => p is IUnit { Role: UnitRole.LandAttack });
 				if (hunters < prey.Count) consider(hunter);
 			}
 		}
