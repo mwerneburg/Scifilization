@@ -2261,11 +2261,13 @@ namespace CivOne
 			// Phase B — global tick (runs once per full round, when _currentPlayer wraps
 			//   back to 0):
 			//   Global warming → Leonardo upgrade → story-arc events (Apollo intel,
-			//   SETI signal, Tau Ceti approach, probe reports, Olvir arrival) →
-			//   victory checks (dome, spaceship, 2100 AD score) → autosave →
-			//   disasters + barbarian spawns.
-			//   Victory checks in Phase B return early if the game ends, so conquest
-			//   (last-AI-destroyed) is checked after the wrap-around guard as well.
+			//   SETI signal, Tau Ceti approach, probe reports, visitor arrival) →
+			//   VictoryChecks() (Dome, Pax Mercatoria, Cultural Ascendancy, spaceship
+			//   launch and landing, Diaspora, 2100 AD score, coexistence) → autosave →
+			//   the per-round arcs and curses (plagues, the Thing, Skynet, the King in
+			//   Yellow...) → disasters, hurricanes, barbarian spawns.
+			//   Some visitor arrivals and any ending VictoryChecks finds return early, so
+			//   conquest (last-AI-destroyed) is checked after the wrap-around guard as well.
 			_waitingUnits.Clear();
 			_activeUnitExplicit = false;
 			foreach (Player player in _players.Where(x => !(x.Civilization is Barbarian)))
