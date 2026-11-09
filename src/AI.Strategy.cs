@@ -4873,7 +4873,7 @@ namespace CivOne
 			if (!Player.ProductionAvailable(new Bomber())) return false;
 			byte id = Game.PlayerNumber(Player);
 			int have = Game.GetUnits().Count(u => u.Owner == id && u is Bomber)
-				+ Player.Cities.Count(c => c.CurrentProduction is Bomber);
+				+ OnOrder(p => p is Bomber);
 			return have < Math.Max(1, Player.Cities.Length / 4);
 		}
 

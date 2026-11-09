@@ -59,6 +59,18 @@ namespace CivOne.Tests
 			Assert.DoesNotContain(AI.Instance(p).ProductionPlan(cities[3]), x => x is Bomber);
 		}
 
+		// ...including one waiting in a city's build list. The planner lists a whole plan, and
+		// a count of what was on the stocks let each city list its own, as the Aztecs of game
+		// 7c41d897 did with Shipyards.
+		[Fact]
+		public void TheCapCountsTheOnesInABuildList()
+		{
+			(Game _, Player p, City[] cities) = AnAirPowerAtWar();
+			cities[0].SetProduction(new Militia());
+			cities[0].EnqueueProduction(new Bomber());
+			Assert.DoesNotContain(AI.Instance(p).ProductionPlan(cities[3]), x => x is Bomber);
+		}
+
 		[Fact]
 		public void TheFederationPlansABomber()
 		{
