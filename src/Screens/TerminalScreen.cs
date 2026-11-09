@@ -44,6 +44,14 @@ namespace CivOne.Screens
 		// Override in derived classes that need to launch the next screen.
 		protected virtual void OnDismiss() { }
 
+		// A full-screen picture before a line, as the original game's intro had between its
+		// passages: the art key (event_art/<key>.png) and its caption, or null. A picture whose
+		// file is missing is passed over, so the log reads as before until the art is in.
+		protected virtual (string key, string caption)? ArtBefore(int lineIndex) => null;
+
+		private int  _artLine = -1;   // the last line whose picture was considered
+		private bool _artShowing;
+
 		// ── typewriter state ──────────────────────────────────────────────────
 
 		// Returns the line index and how many chars of that line have been printed.
@@ -69,6 +77,33 @@ namespace CivOne.Screens
 			}
 			lineIdx    = _lines.Length;
 			charInLine = 0;
+		}
+
+		// Stops at the start of the next line with a picture, and shows it; typing goes on
+		// when it is dismissed. The two-character step can carry past a line's start, so the
+		// log is wound back to it.
+		private bool ShowArtFromHere()
+		{
+			GetPosition(_printedChars, out int reach, out _);
+			for (int i = _artLine + 1; i <= reach && i < _lines.Length; i++)
+			{
+				_artLine = i;
+				if (ArtBefore(i) is not { } scene || EventArtScreen.FindPath(scene.key) is not string path) continue;
+				_printedChars = LineStart(i);
+				_artShowing = true;
+				var art = new EventArtScreen(path, scene.caption, scene.key);
+				art.Closed += (s, a) => _artShowing = false;
+				Common.AddScreen(art);
+				return true;
+			}
+			return false;
+		}
+
+		private int LineStart(int lineIndex)
+		{
+			int start = 0;
+			for (int i = 0; i < lineIndex; i++) start += _lines[i].Length + 1;
+			return start;
 		}
 
 		private void SkipToEnd()
@@ -175,6 +210,9 @@ namespace CivOne.Screens
 				Redraw();
 				return true;
 			}
+
+			if (_artShowing) return false;
+			if (ShowArtFromHere()) return false;
 
 			_printedChars = Math.Min(_totalChars, _printedChars + CHARS_PER_TICK);
 			if (_printedChars >= _totalChars)

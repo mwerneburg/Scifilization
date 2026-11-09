@@ -205,12 +205,18 @@ namespace CivOne.Screens
 			AddMenu(menu);
 		}
 
-		private void StartIntro()
+		private void StartIntro() => StartIntro(null);
+
+		private void StartIntro(IScreen? story)
 		{
 			foreach (IScreen menu in _menus)
 				this.AddLayer(menu);
 			CloseMenus();
-			if (!Runtime.Settings.ShowIntro || Resources.SplashRawImage is not null)
+			if (story is not null)
+			{
+				_nextScreen = story;
+			}
+			else if (!Runtime.Settings.ShowIntro || Resources.SplashRawImage is not null)
 			{
 				_nextScreen = new NewGame();
 			}
@@ -282,9 +288,31 @@ namespace CivOne.Screens
 					"design/build_earth_map.py script."));
 				return;
 			}
-			StartIntro();
+			AskForStory();
 		}
-		
+
+		// Epic Earth offers the Auriga's story, which otherwise only Customize World plays
+		// (the user, Nov 2026). In the main menu's own box, so the screen behind is unchanged.
+		private void AskForStory()
+		{
+			CloseMenus();
+			Menu menu = new Menu("StoryMenu", Palette)
+			{
+				Title = "Watch the story?",
+				X = ((Width - 120) / 2) + 3,
+				Y = Height - 55,
+				MenuWidth = 116,
+				TitleColour = 15,
+				ActiveColour = 11,
+				TextColour = 5,
+				DisabledColour = 8,
+				FontId = 0
+			};
+			menu.Items.Add("Yes").OnSelect((s, a) => StartIntro(new AurigaIntroScreen()));
+			menu.Items.Add("No").OnSelect((s, a) => StartIntro());
+			AddMenu(menu);
+		}
+
 		private void CustomizeWorld(object sender, EventArgs args)
 		{
 			Log("Main Menu: Customize World");

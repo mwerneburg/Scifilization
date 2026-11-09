@@ -113,6 +113,25 @@ namespace CivOne.Screens
 			return CassetteTheme.PHOS;
 		}
 
+		// Pictures between the log's passages, a nod to the original game's intro (the user,
+		// Nov 2026). Each shows only once its file is in event_art.
+		internal static readonly (string firstLine, string key, string caption)[] Scenes =
+		{
+			("CRT DISPLAY INITIATING…",                    "AurigaAdrift",      "The Auriga, adrift."),
+			(">> SHIP STATUS",                              "AurigaGasGiant",    "Seventy-two hours from the gas giant."),
+			(">> SOLAR SYSTEM SCAN",                        "AurigaThirdPlanet", "The third planet. Air we can breathe."),
+			(">> EMERGENCY PROTOCOL: LIFEBOAT DISPERSAL",   "AurigaLifeboats",   "The lifeboats scatter."),
+			(">> KNOWLEDGE PRESERVATION PROTOCOL",          "AurigaCaches",      "Knowledge, sown by chance."),
+			(">> MEMORIES LOST. SKILLS GONE.",              "AurigaAwakening",   "Civilization must begin again."),
+		};
+
+		protected override (string key, string caption)? ArtBefore(int lineIndex)
+		{
+			foreach (var scene in Scenes)
+				if (Lines[lineIndex] == scene.firstLine) return (scene.key, scene.caption);
+			return null;
+		}
+
 		protected override void OnDismiss()
 		{
 			Common.AddScreen(new NewGame());
