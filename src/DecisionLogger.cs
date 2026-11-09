@@ -189,6 +189,12 @@ namespace CivOne
 		private static readonly ConcurrentQueue<string> _queue = new ConcurrentQueue<string>();
 		private static readonly SemaphoreSlim _signal = new SemaphoreSlim(0);
 		private static Task _writerTask = null!;
+		// One writer loop for the session, and the writer swapped under this lock. Each new
+		// game or load used to start another loop that never stopped: every one held a pool
+		// thread while it waited, all wrote through one StreamWriter (not thread-safe), and
+		// about 2,000 games into a test run a line took over five seconds to reach the disk.
+		private static readonly object _writerLock = new object();
+		private static bool _looping;
 		private static volatile bool _active;
 
 		// True once this session has written a game_outcome. The sweep harness stops on it
@@ -232,9 +238,13 @@ namespace CivOne
 			{
 				string dir  = Settings.Instance.DataDirectory;
 				string path = Path.Combine(dir, "decisions.jsonl");
-				_writer = new StreamWriter(path, append: true, Encoding.UTF8) { AutoFlush = false };
-				_active = true;
-				_writerTask = Task.Run((Action)WriteLoop);
+				lock (_writerLock)
+				{
+					_writer?.Dispose();
+					_writer = new StreamWriter(path, append: true, Encoding.UTF8) { AutoFlush = false };
+					_active = true;
+					if (!_looping) { _looping = true; _writerTask = Task.Run((Action)WriteLoop); }
+				}
 			}
 			catch (Exception ex)
 			{
@@ -996,19 +1006,20 @@ namespace CivOne
 
 		private static void WriteLoop()
 		{
-			int idle = 0;
-			while (_active || !_queue.IsEmpty)
+			while (true)
 			{
 				_signal.Wait(500);
-				int flushed = 0;
-				while (_queue.TryDequeue(out string line))
+				lock (_writerLock)
 				{
-					_writer?.WriteLine(line);
-					flushed++;
+					int flushed = 0;
+					while (_queue.TryDequeue(out string line))
+					{
+						_writer?.WriteLine(line);
+						flushed++;
+					}
+					if (flushed > 0) _writer?.Flush();
+					if (!_active && _queue.IsEmpty) { _looping = false; return; }
 				}
-				if (flushed > 0) { _writer?.Flush(); idle = 0; }
-				else if (!_active) idle++;
-				if (idle > 4) break;
 			}
 		}
 
