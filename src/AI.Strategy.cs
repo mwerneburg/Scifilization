@@ -5175,6 +5175,11 @@ namespace CivOne
 		// Everything the city would consider this turn, in preference order. A test seam:
 		// asserting on CurrentProduction alone proves nothing about what a faction is WILLING
 		// to build, because a garrison outranks a wonder and hides it.
+		// The per-city trim in AI.cs keeps this many foot defenders and disbands the rest.
+		internal const int GarrisonLimit = 4;
+		internal static bool FootDefender(IUnit u) => u is Militia || u is Phalanx || u is Musketeers || u is Riflemen || u is MechInf;
+		private static bool GarrisonFull(City city) => city.Tile?.Units.Count(FootDefender) >= GarrisonLimit;
+
 		internal IProduction[] ProductionPlan(City city) => PlanProduction(city, GetStance()).ToArray();
 
 		// Does this building earn its upkeep in THIS city?
@@ -5632,6 +5637,20 @@ namespace CivOne
 			// Over the army ceiling, a built-out city funds research rather than another defender.
 			if (plan.Count == 0 && OverArmyCap((IUnit)BestDefender()) && Player.ProductionAvailable(new ResearchGrant()))
 				plan.Add(new ResearchGrant());
+			// A full garrison disbands the defender this would add, unrefunded while a unit is
+			// in production: Kyoto lost nine Militia that way, turns 70-91 of seeded Epic Earth
+			// 4242. The cheapest building, upkeep or not, is worth more; Barracks are not, for
+			// a city that cannot keep another unit, and a Palace moves the capital.
+			if (plan.Count == 0 && GarrisonFull(city)
+			    && city.AvailableProduction.OfType<IBuilding>()
+			           .Where(b => b is not Palace && b is not Barracks)
+			           .OrderBy(b => b.Price).FirstOrDefault() is IBuilding cheapest)
+				plan.Add(cheapest);
+			// Nothing left to build, a full garrison sends out a settler instead, on the unit-glut
+			// fallback's terms; Kyoto, its Temple up, went straight back to scrapping Militia.
+			if (plan.Count == 0 && GarrisonFull(city) && ownCities < maxCities && CanAffordSettler(city, 3)
+			    && Game.GetUnits().Count(u => u.Owner == Game.PlayerNumber(Player) && u is Settlers) < ownCities + 1)
+				plan.Add(new Settlers());
 			if (plan.Count == 0) plan.Add(BestDefender());
 
 			return plan;
@@ -6398,7 +6417,9 @@ namespace CivOne
 					|| p is Trireme or Sail or Frigate or Transport
 					// Only the last stand and the desperado build warheads. Rolled here, they
 					// were 123 in silos by 1996, none ever flown (the user, Nov 2026; c58808e6).
-					|| p is Nuclear;
+					|| p is Nuclear
+					// A fifth foot defender is disbanded unrefunded the turn it moves (AI.cs).
+					|| (p is IUnit fu && FootDefender(fu) && GarrisonFull(city));
 
 				// Unit glut guard. A built-out city reaching this fallback rolled uniformly
 				// over everything available, and for a technologically stalled civ most of
@@ -6484,6 +6505,7 @@ namespace CivOne
 				// rather than to a random population-costing unit.
 				if (items.Length == 0)
 				{
+					if (GarrisonFull(city)) return false;   // the backstop builds instead
 					consider(BestDefender());
 					return true;
 				}

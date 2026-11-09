@@ -776,8 +776,9 @@ namespace CivOne
 
 			if (unit is Militia || unit is Phalanx || unit is Musketeers || unit is Riflemen || unit is MechInf)
 			{
-				// Trim excess defenders in cities (per-city cap of 4)
-				while (unit.Tile.City is not null && unit.Tile.Units.Count(x => x is Militia || x is Phalanx || x is Musketeers || x is Riflemen || x is MechInf) > 4)
+				// Trim excess defenders in cities (per-city cap of 4). The planner reads the same
+				// limit (GarrisonFull) so as not to build what this would disband.
+				while (unit.Tile.City is not null && unit.Tile.Units.Count(FootDefender) > GarrisonLimit)
 				{
 					IUnit? disband = null;
 					if ((disband = unit.Tile.Units.FirstOrDefault(x => x != unit && x is Militia)) is not null) { Game.DecommissionUnit(disband); continue; }
