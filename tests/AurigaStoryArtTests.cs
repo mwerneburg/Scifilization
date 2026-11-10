@@ -115,7 +115,7 @@ namespace CivOne.Tests
 		[InlineData("AurigaGasGiant")]
 		[InlineData("AurigaThirdPlanet")]
 		[InlineData("AurigaLifeboats")]
-		[InlineData("AurigaCaches", Skip = "art owed by the user (Nov 2026)")]
+		[InlineData("AurigaCaches")]
 		[InlineData("AurigaAwakening")]
 		public void TheSceneArtIsShipped(string key)
 		{
