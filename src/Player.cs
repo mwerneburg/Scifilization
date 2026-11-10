@@ -563,6 +563,11 @@ namespace CivOne
 
 		public bool IsAtWar(Player player) => _warWith.Contains(Game.PlayerNumber(player));
 
+		// At war, or facing the Barbarians, who are hostile without a declaration (DeclareWar
+		// never records them). IsAtWar alone left a barbarian-held city's fields closed to our
+		// soldiers as if farmed by a neutral (the user, Nov 2026).
+		internal bool IsHostileTo(Player player) => Game.PlayerNumber(player) == 0 || IsAtWar(player);
+
 		internal void SetPeaceTreaty(Player other, int turns)  => _peaceTreaty[(byte)Game.PlayerNumber(other)]  = turns;
 		internal bool HasPeaceTreaty(Player other)             => _peaceTreaty.TryGetValue((byte)Game.PlayerNumber(other),  out int t) && t > 0;
 		internal void SetAttitudeBonus(Player other, int turns) => _attitudeBonus[(byte)Game.PlayerNumber(other)] = turns;

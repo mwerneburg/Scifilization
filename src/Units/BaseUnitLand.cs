@@ -283,7 +283,7 @@ namespace CivOne.Units
 			if (Owner != 0 && Game.Instance.IsWorkedByOther(tile.X, tile.Y, Owner))
 			{
 				bool civilian = this is Settlers || this is Caravan || this is Diplomat;
-				bool atWar = Player.IsAtWar(Game.Instance.GetWorkerOfTile(tile.X, tile.Y, Owner));
+				bool atWar = Player.IsHostileTo(Game.Instance.GetWorkerOfTile(tile.X, tile.Y, Owner));
 				if (!civilian && !atWar)
 					return false;
 			}

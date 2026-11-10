@@ -505,7 +505,7 @@ namespace CivOne
 		private static bool Trespass(IUnit unit, Player mover, int x, int y) =>
 			unit.Class == UnitClass.Land && unit.Owner != 0
 			&& !(unit is Settlers || unit is Caravan || unit is Diplomat)
-			&& Game.Instance.GetWorkerOfTile(x, y, unit.Owner) is Player worker && !mover.IsAtWar(worker);
+			&& Game.Instance.GetWorkerOfTile(x, y, unit.Owner) is Player worker && !mover.IsHostileTo(worker);
 
 		// The `blocked` predicate of GotoStepInner, for a single tile. Kept beside the two
 		// clauses it mirrors — if the blocking rule there changes, this must change with it.
@@ -716,7 +716,7 @@ namespace CivOne
 				trespass = new HashSet<int>();
 				foreach (City c in Game.Instance.GetCities())
 				{
-					if (c.Owner == unit.Owner || moverPlayer.IsAtWar(Game.Instance.GetPlayer(c.Owner))) continue;
+					if (c.Owner == unit.Owner || moverPlayer.IsHostileTo(Game.Instance.GetPlayer(c.Owner))) continue;
 					for (int ddy = -2; ddy <= 2; ddy++)
 					for (int ddx = -2; ddx <= 2; ddx++)
 					{
