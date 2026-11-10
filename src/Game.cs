@@ -4209,7 +4209,9 @@ namespace CivOne
 			// someone holds none. Round-robin handed them out blind: in a headless game the Emitter
 			// Array and Sensor Net went to the two civs furthest from Fusion Power, 52 and 71 turns
 			// away, and the human slot finished both after the landing.
-			bool Knows(int i, Enums.Wonder w) => eligible[i].HasAdvance(DomeFiveComponents.First(c => (Enums.Wonder)c.Id == w).RequiredTech);
+			// How far a civ's research is from a part: 0 when it can build it now.
+			int Short(int i, Enums.Wonder w) => eligible[i].AdvancesShortOf(DomeFiveComponents.First(c => (Enums.Wonder)c.Id == w).RequiredTech);
+			bool Knows(int i, Enums.Wonder w) => Short(i, w) == 0;
 			int Knowers(Enums.Wonder w) => Enumerable.Range(0, eligible.Length).Count(i => Knows(i, w));
 			int[] given = new int[eligible.Length];
 			void Give(int i, Enums.Wonder w)
@@ -4221,12 +4223,16 @@ namespace CivOne
 				given[i]++;
 				components.Remove(w);
 			}
-			// The human first, with a part it can build that most others could build too.
+			// The human first, with a part it can build that most others could build too. A human
+			// that can build none gets the one its research is nearest: the fallback was the first
+			// of the shuffle, and a player last in the tech race was handed a part three advances
+			// off with no word of why it would not appear (the user, Nov 2026).
 			if (eligible[0] == HumanPlayer)
-				Give(0, components.Where(w => Knows(0, w)).OrderByDescending(Knowers).DefaultIfEmpty(components[0]).First());
-			// Then the rarest first, so a part only one civ can build is not lost to one anyone could.
+				Give(0, components.OrderBy(w => Short(0, w)).ThenByDescending(Knowers).First());
+			// Then the rarest first, so a part only one civ can build is not lost to one anyone
+			// could; among the civs holding fewest, the one nearest it.
 			foreach (var w in components.OrderBy(Knowers).ToList())
-				Give(Enumerable.Range(0, eligible.Length).OrderBy(i => given[i]).ThenByDescending(i => Knows(i, w)).First(), w);
+				Give(Enumerable.Range(0, eligible.Length).OrderBy(i => given[i]).ThenBy(i => Short(i, w)).First(), w);
 
 			// Replan the holders' cities now, as the plague warning does. A city otherwise replans
 			// only when its build and queue run out, which left the first part 5-7 turns behind the
@@ -4300,15 +4306,24 @@ namespace CivOne
 
 		private void BriefDomeRole()
 		{
-			var humanDomeComponents = GetDomeAssignments(HumanPlayer).ToList();
-			if (humanDomeComponents.Count == 0) return;
-			string nameList = string.Join(" + ", humanDomeComponents
-				.Select(w => DomeFiveComponents.First(c => (Enums.Wonder)c.Id == w).Name.ToUpper()));
-			GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
-				"Science brief: our role",
-				"in the Dome project is",
-				$"to build: {nameList}.",
-				"Open World menu to track."));
+			if (DomeBriefLines() is string[] lines)
+				GameTask.Enqueue(Message.Advisor(Advisor.Science, false, lines));
+		}
+
+		// Names the advance a part still needs: a part is not on the build list until it is
+		// known, and without this the brief read as a part the game then refused.
+		internal string[]? DomeBriefLines()
+		{
+			var parts = GetDomeAssignments(HumanPlayer)
+				.Select(w => DomeFiveComponents.First(c => (Enums.Wonder)c.Id == w)).ToList();
+			if (parts.Count == 0) return null;
+			string nameList = string.Join(" + ", parts.Select(p => p.Name.ToUpper()));
+			string[] needed = parts.Where(p => !HumanPlayer.HasAdvance(p.RequiredTech))
+				.Select(p => p.RequiredTech!.Name.ToUpper()).Distinct().ToArray();   // HasAdvance(null) is true
+			var lines = new List<string> { "Science brief: our role", "in the Dome project is", $"to build: {nameList}." };
+			if (needed.Length > 0) lines.Add($"First we need {string.Join(" + ", needed)}.");
+			lines.Add("Open World menu to track.");
+			return lines.ToArray();
 		}
 
 		// Saves assigned before the human came first: hand the human one unbuilt piece, taken

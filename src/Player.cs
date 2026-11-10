@@ -549,6 +549,19 @@ namespace CivOne
 
 		public bool HasAdvance(IAdvance? advance) => (advance is null || _advances.Contains(advance.Id));
 
+		// Advances still to learn on the way to `target`, itself included: 0 when known or none.
+		internal int AdvancesShortOf(IAdvance? target)
+		{
+			var road = new HashSet<byte>();
+			void Walk(IAdvance a)
+			{
+				if (HasAdvance(a) || !road.Add(a.Id)) return;
+				foreach (IAdvance before in a.RequiredTechs) Walk(before);
+			}
+			if (target is not null) Walk(target);
+			return road.Count;
+		}
+
 		public Player[] Embassies => _embassies.Select(e => Game.Players.FirstOrDefault(p => e == Game.PlayerNumber(p))).Where(p => p is not null).ToArray();
 
 		public bool HasEmbassy(Player player) => _embassies.Any(e => e == Game.PlayerNumber(player));
