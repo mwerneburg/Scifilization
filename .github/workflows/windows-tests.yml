@@ -1,0 +1,20 @@
+# The test suite on Windows: the game is built and tested on a Mac, and this is where Windows
+# differences in the core show up. Free for a public repo.
+name: Windows tests
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      # Keep the repo's LF line endings, as in the files the game ships.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build CivOne.csproj -v q
+      - run: dotnet build runtime/sdl/CivOne.SDL.csproj -c DebugWindows -v q
+      - run: dotnet test tests/CivOne.Tests.csproj --filter "FullyQualifiedName!~Autoplay"

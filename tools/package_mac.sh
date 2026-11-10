@@ -25,6 +25,7 @@ dotnet publish runtime/sdl/CivOne.SDL.csproj -c ReleaseMacOS -r osx-arm64 --self
 
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$OUT/publish/CivOne.SDL" "$APP/Contents/MacOS/Scifilization"
+tools/check_shipped_data.sh "$APP/Contents/MacOS/Scifilization"
 cp -L "$SDL" "$APP/Contents/MacOS/libSDL2.dylib"
 # Homebrew builds .NET from source and links the apphost against its own brotli, which a
 # player's Mac doesn't have: bundle it and point the executable at the copies.

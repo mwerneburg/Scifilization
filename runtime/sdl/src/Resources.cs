@@ -43,7 +43,7 @@ namespace CivOne
 			}
 		}
 
-		public static string BinPath => Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+		public static string BinPath => AppContext.BaseDirectory;   // Assembly.Location is empty in a single-file build
 		
 		public static IBitmap GetWindowIcon()
 		{

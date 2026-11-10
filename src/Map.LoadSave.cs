@@ -330,8 +330,8 @@ namespace CivOne
 
 		// Resolved path for the procedural-Earth binary. Search order:
 		//   1. User data directory (~/Library/Application Support/CivOne/data/ on macOS)
-		//      — where design/build_earth_map.py writes by default, so users tinkering
-		//      with sea level / rivers automatically override the bundled copy.
+		//      — where the runtime installs the shipped copy (CivOne.SDL.csproj), and where
+		//      design/build_earth_map.py writes by default.
 		//   2. <executable_dir>/resources/earth_epic.bin — for installed builds that
 		//      ship the resource alongside the binary.
 		//   3. <executable_dir>/../../../../../resources/earth_epic.bin — for source

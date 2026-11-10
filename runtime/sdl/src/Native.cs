@@ -70,11 +70,11 @@ namespace CivOne
 					string path = "dotnet";
 					arguments = new [] { $@"""{Path.Combine(Resources.BinPath, "CivOne.SDL.dll")}""" }.Union(arguments).ToArray();
 #else
-					if (!File.Exists(Path.Combine(Resources.BinPath, "CivOne.SDL.exe"))) return false;
-					string path = Path.Combine(Resources.BinPath, "CivOne.SDL.exe");
+					// The running exe, whatever the package named it; its icon is embedded (ApplicationIcon).
+					string path = Environment.ProcessPath;
 #endif
 
-					return Win32CreateShortcut(name, description, path, arguments, Environment.CurrentDirectory, Path.Combine(Resources.BinPath, "CivOne.ico"));
+					return Win32CreateShortcut(name, description, path, arguments, Environment.CurrentDirectory, Environment.ProcessPath);
 				default:
 					return false;
 			}
