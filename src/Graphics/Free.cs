@@ -539,30 +539,23 @@ namespace CivOne.Graphics
 		}
 
 		// ── Tile file loader ─────────────────────────────────────────────────────
-		// Reads named 16×16 tile sections from free_tiles.txt in the working directory.
+		// Reads named 16×16 tile sections from free_tiles.txt (where: Common.ArtFile).
 		// Format:  [section_name]  followed by 16 rows of 16 space/comma-separated palette indices.
 		// Lines starting with # are comments.  Missing sections fall back to hardcoded values.
 
-		private static readonly string TilesFilePath =
-			Path.Combine(Environment.CurrentDirectory, "free_tiles.txt");
+		private static string TilesFilePath => Common.ArtFile("free_tiles.txt");
 
-		private static readonly string ShoresFilePath =
-			Path.Combine(Environment.CurrentDirectory, "shore_tiles.txt");
+		private static string ShoresFilePath => Common.ArtFile("shore_tiles.txt");
 
-		private static readonly string LakeShoresFilePath =
-			Path.Combine(Environment.CurrentDirectory, "lake_shores.txt");
+		private static string LakeShoresFilePath => Common.ArtFile("lake_shores.txt");
 
-		private static readonly string RiverOverlaysFilePath =
-			Path.Combine(Environment.CurrentDirectory, "river_overlays.txt");
+		private static string RiverOverlaysFilePath => Common.ArtFile("river_overlays.txt");
 
-		private static readonly string ImprovementsFilePath =
-			Path.Combine(Environment.CurrentDirectory, "improvement_tiles.txt");
+		private static string ImprovementsFilePath => Common.ArtFile("improvement_tiles.txt");
 
-		private static readonly string DifficultiesFilePath =
-			Path.Combine(Environment.CurrentDirectory, "difficulty_tiles.txt");
+		private static string DifficultiesFilePath => Common.ArtFile("difficulty_tiles.txt");
 
-		private static readonly string AdvisorBadgesFilePath =
-			Path.Combine(Environment.CurrentDirectory, "advisor_badges.txt");
+		private static string AdvisorBadgesFilePath => Common.ArtFile("advisor_badges.txt");
 
 		// Ministry badges shown beside advisor messages, and by Icons.Spy.
 		public const int BadgeSize = 28;

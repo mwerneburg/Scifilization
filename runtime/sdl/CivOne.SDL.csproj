@@ -57,5 +57,10 @@
 	</ItemGroup>
 	<ItemGroup>
 		<EmbeddedResource Include="Resources/**" />
+		<!-- The hand-made tiles and palette live at the repo root, where build.sh runs the game.
+		     Embedded so the runtime installs them into data/ for a packaged build (Common.ArtFile). -->
+		<EmbeddedResource Include="../../free_tiles.txt;../../shore_tiles.txt;../../lake_shores.txt;../../river_overlays.txt;../../improvement_tiles.txt;../../difficulty_tiles.txt;../../advisor_badges.txt;../../palette.txt">
+			<LogicalName>CivOne.Resources.defaults.data.%(Filename)%(Extension)</LogicalName>
+		</EmbeddedResource>
 	</ItemGroup>
 </Project>

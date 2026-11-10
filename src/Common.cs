@@ -992,8 +992,18 @@ namespace CivOne
 			}
 		}
 
-		private static readonly string PaletteFilePath =
-			Path.Combine(Environment.CurrentDirectory, "palette.txt");
+		private static string PaletteFilePath => ArtFile("palette.txt");
+
+		// The hand-made tile files and palette.txt. A copy in the launch folder wins: the repo,
+		// under build.sh, so an edit shows on Debug > Reload free tiles. Otherwise the copy the
+		// runtime installs into the data folder. Reading only the launch folder left every
+		// packaged build, Mac and Windows, on the fallback tiles and palette (Nov 2026).
+		internal static string ArtFile(string name)
+		{
+			string local = Path.Combine(Environment.CurrentDirectory, name);
+			if (File.Exists(local) || RuntimeHandler.Runtime is null) return local;
+			return Path.Combine(Settings.Instance.DataDirectory, name);
+		}
 
 		private static Palette? LoadPaletteFile()
 		{
