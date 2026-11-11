@@ -4,11 +4,13 @@
 #  1. Checks you are on master, everything is committed, and the version is new.
 #  2. Writes the version into shared/Properties/AssemblyInfo.cs (the one place it lives).
 #  3. Builds both projects and runs the version test.
-#  4. Builds the DMG with tools/package_mac.sh and checks its version and signature.
+#  4. Builds the DMG with tools/package_mac.sh and checks its version and signature, then the
+#     Windows zip with tools/package_windows.sh.
 #  5. Drafts release notes from the commit messages since the last release and opens them in
 #     $EDITOR (nano if unset). Save and close to continue.
 #  6. Asks before anything leaves this Mac. On yes: commits "Version X.Y.Z.", pushes, tags,
-#     publishes the GitHub release with the DMG attached, and checks the upload's checksum.
+#     publishes the GitHub release with the DMG and the zip attached, and checks each upload's
+#     checksum.
 #
 # Answer no, or let any step fail, and the version change is undone; nothing is pushed.
 # The full test suite (~30 min) is not run here: run it before you commit the last fix.
@@ -48,13 +50,16 @@ APP=bin/package/Scifilization.app
 codesign --verify --deep --strict $APP
 SHA=$(shasum -a 256 "$DMG" | cut -d' ' -f1)
 echo "DMG ok: $DMG  sha256 $SHA"
+tools/package_windows.sh
+ZIP=bin/Scifilization-$V-windows-x64.zip
+[ -f "$ZIP" ] || { echo "no $ZIP"; exit 1; }
 
 NOTES=bin/release-notes-$V.md
 [ -f "$NOTES" ] || { printf "## What's new in %s\n\n" "$V"; git log --reverse --format='- %s' "$LAST"..HEAD | grep -v '^- Version '; } > "$NOTES"
 ${EDITOR:-nano} "$NOTES"
 echo; cat "$NOTES"; echo
 
-read -r -p "Publish v$V? This commits the version, pushes, tags and uploads the DMG to GitHub. [y/N] " ok
+read -r -p "Publish v$V? This commits the version, pushes, tags and uploads the DMG and the zip to GitHub. [y/N] " ok
 [ "$ok" = y ] || [ "$ok" = Y ] || exit 1
 
 git commit -q -m "Version $V." -- $INFO
@@ -62,7 +67,11 @@ trap - EXIT
 git push -q origin master
 git tag "v$V"
 git push -q origin "v$V"
-gh release create "v$V" "$DMG" --title "Scifilization ${V%.0}" --notes-file "$NOTES"
-[ "$(gh release view "v$V" --json assets --jq '.assets[0].digest')" = "sha256:$SHA" ] \
-	&& echo "Released v$V; the uploaded DMG matches." \
-	|| echo "WARNING: the uploaded DMG's checksum does not match $SHA; check the release page."
+gh release create "v$V" "$DMG" "$ZIP" --title "Scifilization ${V%.0}" --notes-file "$NOTES"
+echo "Released v$V."
+for f in "$DMG" "$ZIP"; do
+	[ "$(gh release view "v$V" --json assets --jq ".assets[] | select(.name == \"${f##*/}\") | .digest")" \
+		= "sha256:$(shasum -a 256 "$f" | cut -d' ' -f1)" ] \
+		&& echo "The uploaded ${f##*/} matches." \
+		|| echo "WARNING: the uploaded ${f##*/} does not match this Mac's copy; check the release page."
+done

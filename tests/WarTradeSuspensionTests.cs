@@ -157,10 +157,19 @@ namespace CivOne.Tests
 		// wars of their own. Reading "the last war record in the file" passed in isolation and
 		// failed in the full run, which is the classic shape of this mistake — so each test
 		// marks where the file ended before it acts and reads only what it wrote.
-		private static int LogMark() => File.Exists(LogPath) ? File.ReadLines(LogPath).Count() : 0;
+		private static int LogMark() => File.Exists(LogPath) ? LogLines().Count : 0;
+
+		// The logger holds the file open for writing, which Windows refuses File.ReadLines.
+		private static List<string> LogLines()
+		{
+			using var reader = new StreamReader(new FileStream(LogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+			var lines = new List<string>();
+			for (string? l; (l = reader.ReadLine()) is not null; ) lines.Add(l);
+			return lines;
+		}
 
 		private static JsonElement[] WarsSince(int mark) =>
-			File.ReadLines(LogPath).Skip(mark)
+			LogLines().Skip(mark)
 				.Where(l => l.Contains("\"type\":\"war\""))
 				.Select(l => JsonDocument.Parse(l).RootElement).ToArray();
 
