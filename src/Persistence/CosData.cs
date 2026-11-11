@@ -134,14 +134,6 @@ namespace CivOne.Persistence
 		public int DoorY { get; set; }
 		// Oracle: the Other Voice speaks until Religion silences it.
 		public bool OracleVoiceActive { get; set; }
-		// Deacon: 0 = watching, 1 = DEFCON clock running, 2 = stood down, 3 = launched.
-		public int DeaconState { get; set; }
-		public int DeaconX { get; set; }
-		public int DeaconY { get; set; }
-		public int DeaconBuilder { get; set; }
-		public int DeaconTarget { get; set; }
-		public int DeaconDefcon { get; set; }
-		public int DeaconAngerUntil { get; set; }
 		// Global warming: how many events have fired. Drives the next event's threshold
 		// (8 + count*2) and its severity (count*20% polar / count*10% wet), so losing it
 		// on load reset the whole escalation to "first ever warming" every time a game was

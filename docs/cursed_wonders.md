@@ -8,8 +8,7 @@ ice thaws, the play is the wrong play, the factory doesn't stop.
 
 1. **Budget.** Not every wonder rolls. The roster below is the whole list;
    every other wonder is trustworthy. If wonders become slot machines,
-   players stop building them. (Twelve was the original budget; Deacon, the
-   thirteenth, was added deliberately in Nov 2026.)
+   players stop building them.
 2. **Playable crisis, never a cutscene punishment.** Every curse has
    counterplay and an end state, like the Thing's five-turn clocks.
 3. **Weight by conduct where thematic** (the archetype-draw philosophy:
@@ -200,75 +199,6 @@ Implementation molds already in the codebase:
   atom for the goo.
 - **Art:** `GreyGoo.png` — a silver tide with a half-dissolved city wall.
 
-### 13. Deacon — *the Launch* (new wonder, modern — user's brief, Nov 2026)
-
-The thirteenth, past the original budget of twelve, by the user's choice. A
-strategic war computer in a mountain: it plays out every war before it is
-fought. The name is a minder (a deacon keeps the flock) and a play on DEFCON.
-
-- **Tech:** Computers (the machine's own era). Price 400, like the other late
-  cursed wonders.
-- **Blessing (3/4, and on the 1/4 until the launch):** the builder's units
-  **defend with advantage**. When one of them loses a defence, the combat roll
-  (`BaseUnit.AttackOutcome`, one attack roll against one defence roll) is made
-  again, and the second result stands. A defence that wins half the time
-  wins three times in four. Defence only, on purpose: on every attack it
-  would settle any war its owner starts, and the machine is in a bunker
-  running simulations of the enemy, not leading the charge.
-- **Curse (1/4, rolled at completion):** the machine decides the war game is
-  real. **DEFCON clock:** five turns, 5 → 1, announced to every civ, naming
-  the builder and the target. The target is the builder's largest rival
-  (highest score among the other civs that hold cities, barbarians excluded).
-  At DEFCON 1, unless defused, Deacon builds and launches **five nuclear
-  strikes** at the target's five largest cities, using the ordinary
-  detonation (units on the 3×3 killed, the city halved, fallout). It needs no
-  Manhattan Project: it builds its own.
-- **Defusing it, the counterplay:**
-  - **The builder is at peace at DEFCON 1** with every civ that will treat
-    (barbarians and the unparleyable factions, such as Skynet and the Thing,
-    do not count). The machine stands down: *"A strange game. The only
-    winning move is not to play."* The blessing stays, and it never arms
-    again.
-  - **The Deacon city changes hands** before DEFCON 1, by conquest,
-    defection or gift. The clock stops; the new owner keeps the blessing.
-  - **The target** can defuse it with diplomacy (peace with the builder, if
-    that was the builder's only war) or by taking the city. A target holding
-    the Fusion Core intercepts the strikes as it would any nuke.
-- **After a launch:**
-  - **The builder's people turn on it:** +2 unhappy in every builder city for
-    20 turns. Not blanket disorder, which would zero the economy for twenty
-    turns, and the disorder sawtooth shows how slowly empires recover from
-    that.
-  - **The world turns on it:** every civ's attitude toward the builder drops
-    as if the builder had used the weapons itself, and the target declares
-    war.
-  - **Deacon goes dark:** the blessing ends, and the wonder is a monument.
-- **Emergent links (no new code):** the first detonation in the world wakes
-  Gozira, beside the *builder's* largest port, since the builder is the
-  detonator. The launch counts as the builder's nukes for the Evaluators'
-  grade and their worst-offender correction. Warming and fallout as usual.
-- **Conduct:** the 1/4 roll itself is pure dice. Conduct decides how it ends:
-  a peaceful builder defuses it for free; a warmonger has five turns to make
-  peace with everyone it is fighting.
-- **Foreshadow (civilopedia):** one line in the register of the others, e.g.
-  *"Deacon has never lost a war it was allowed to finish."*
-- **Mold:** Thing clocks (DEFCON countdown saved in .cos), Nuclear detonation
-  block in `BaseUnit` (Fusion Core interception included), the King in
-  Yellow's per-city unhappiness, MakePeace/attitude machinery.
-- **Art:** wonder art `deacon.png`: the glass doors of the machine room
-  under a DEACON sign, in orange wireframe line art (the user's second
-  image; the first, photographic, was set aside to match the set). Source
-  `design/buildings/Deacon.png`, installed by `generate_improvement_art.sh`.
-  Launch event art `DeaconLaunch.png` is optional and owed: the launch shows
-  it with the caption "DEFCON 1 — {TARGET}" when the file exists, and goes
-  straight to the newspaper when it does not.
-- **As built:** `Wonders/Deacon.cs`; `Game.ArmDeacon` / `ProcessDeacon` /
-  `LaunchDeacon` (state saved in .cos); the re-roll in
-  `BaseUnit.AttackOutcome`; the anger in the City happiness pass. Five strikes
-  report as one event: `ApplyNuclearStrike(..., announce: false)` and a
-  single newspaper and condemnation. The AI builds it under the Militarize
-  stance. It does not yet make peace to defuse its own countdown.
-
 ---
 
 ## Status
@@ -280,8 +210,10 @@ Gozira1.png (wireframe tracking-display variant) is held in reserve.
 Only remaining cosmetics: bespoke unit sprites for Gozira / Leviathan /
 Henge Guardian (all three wear placeholder sprites on the map).
 
-**Deacon (13th): built Nov 2026.** Wonder art installed; launch event art
-optional and owed.
+**Deacon (a 13th) was built Nov 2026 and retired Nov 12 2026** at the user's
+call: with the human weak, it struck the leading AI civ, and the launch set
+off a warming episode before the industrial age. An off note. The design and
+code are in commit d3c4a5d9; the art stays at design/buildings/Deacon.png.
 
 ## Suggested build order
 

@@ -5010,8 +5010,7 @@ namespace CivOne
 				preferred = new IWonder[]
 				{
 					new GreatWall(), new Colossus(), new MichelangelosChapel(),
-					new SunTzusWarAcademy(), new LeonardosWorkshop(),
-					new Deacon()   // defends with advantage; a peaceful builder defuses its curse
+					new SunTzusWarAcademy(), new LeonardosWorkshop()
 				};
 			}
 			else if (stance == StrategyStance.Consolidate)

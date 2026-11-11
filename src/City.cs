@@ -1715,10 +1715,6 @@ namespace CivOne
 			// keeper's whole empire while the voice speaks.
 			if (Game.Instance.OracleVoiceActive && Player.HasWonder<Oracle>() && !Game.WonderObsolete<Oracle>())
 				unhappyCount++;
-			// Deacon launched in their name: twenty turns of two more angry citizens in every
-			// city of the builder's (docs/cursed_wonders.md #13).
-			if (Game.Instance.DeaconAngerUntil > Game.GameTurn && Owner == Game.Instance.DeaconBuilder)
-				unhappyCount += 2;
 			// The King in Yellow: an afflicted stage loses the Theatre's charm entirely.
 			bool maskUponUs = Game.Instance.YellowCities.Contains((X, Y));
 			// The network, the Registry and the organism have nobody to displease. Their seized
@@ -2924,14 +2920,6 @@ namespace CivOne
 									"The priests will not repeat",
 									"what it said first."));
 							};
-						}
-						if (wonder is Wonders.Deacon && Settings.Instance.CursedWonders && Common.Random.Next(4) == 0)
-						{
-							// 1/4: the war game is real (docs/cursed_wonders.md #13). DEFCON 5 now,
-							// a step a turn, and a launch at the largest rival unless the builder is
-							// at peace when it runs out (Game.ProcessDeacon).
-							if (Game.Instance.ArmDeacon(this))
-								impTask.Done += (s, a) => Game.Instance.AnnounceDeaconArmed();
 						}
 						if (wonder is Wonders.Stonehenge && Settings.Instance.CursedWonders && Common.Random.Next(4) == 0)
 						{

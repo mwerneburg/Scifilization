@@ -1188,8 +1188,7 @@ namespace CivOne
 		// A nuclear weapon used on people. Every civilization that keeps embassies cuts the
 		// detonator off: trade routes severed, treaties torn up, pacts ended, goodwill spent.
 		// Being already at war is no excuse and no exemption — nukes is nukes.
-		// `announce` false: the caller reports it (Deacon's five strikes are one event, not five).
-		internal void CondemnNuclearStrike(Player detonator, Player? victim, bool announce = true)
+		internal void CondemnNuclearStrike(Player detonator, Player? victim)
 		{
 			if (detonator is null || !IsPeople(victim)) return;
 			// Nobody is cut off for a strike on their own ground. Before the Detonate order
@@ -1233,13 +1232,10 @@ namespace CivOne
 
 			Log($"Nuclear condemnation: {detonator.TribeName} shunned for "
 			  + $"{NuclearPariah[dnum]} turns (UN {un}) after striking {victim!.TribeName}");
-			if (announce) AnnounceCondemnation(detonator);
-		}
-
-		private void AnnounceCondemnation(Player detonator) =>
 			GameTask.Enqueue(Message.Newspaper(null!,
-				WonderBuilt<Wonders.UnitedNations>() ? "The Assembly condemns" : "The world turns away",
+				un ? "The Assembly condemns" : "The world turns away",
 				$"the {detonator.TribeNamePlural}.", "Every door is shut."));
+		}
 
 		// ── the Gandhi overflow ──────────────────────────────────────────────
 		//
@@ -1309,16 +1305,6 @@ namespace CivOne
 		// one extra unhappy citizen per city — the dread of prophecy. Silenced
 		// only when Religion obsoletes the Oracle.
 		internal bool OracleVoiceActive;
-
-		// Deacon (docs/cursed_wonders.md #13): 0 = only watching, 1 = the DEFCON clock runs,
-		// 2 = stood down for good, 3 = launched and gone dark (the blessing ends). DeaconX/Y is
-		// the wonder city, Builder and Target are player numbers, Defcon counts 5 down to 1.
-		internal byte DeaconState;
-		internal int DeaconX, DeaconY;
-		internal byte DeaconBuilder, DeaconTarget, DeaconDefcon;
-		// After a launch the builder's people turn on it: two more unhappy in each of its
-		// cities until this turn.
-		internal int DeaconAngerUntil;
 
 		// Strategic resource camps: resource tile → owner. Camps claim Iron/Coal/
 		// Oil deposits outside any city's working radius; walking a unit onto a
@@ -2743,9 +2729,6 @@ namespace CivOne
 
 				// The stone door: the tithe while the Guardian stands; shut when it falls.
 				Tick("StoneDoor", ProcessStoneDoor);
-
-				// Deacon: the DEFCON clock, and what happens when it runs out.
-				Tick("Deacon", ProcessDeacon);
 
 				// The Other Voice: true prophecies for the Oracle's keeper.
 				Tick("OracleVoice", ProcessOracleVoice);
@@ -5839,7 +5822,7 @@ namespace CivOne
 			finally { TurnMetrics.AddBucket("tick:" + name, t); }
 		}
 
-		internal void ApplyNuclearStrike(int cx, int cy, Player detonator, bool announce = true)
+		internal void ApplyNuclearStrike(int cx, int cy, Player detonator)
 		{
 			Player? victimOnTile = null;
 			foreach (ITile tile in Map.QueryMapPart(cx - 1, cy - 1, 3, 3))
@@ -5879,7 +5862,7 @@ namespace CivOne
 			// Who struck whom. The detonation art says only "Nuclear bomb detonated!", and the
 			// condemnation notice that follows names the detonator but never the target — so a
 			// strike anywhere but on your own city was unattributable.
-			if (announce) GameTask.Enqueue(Message.Newspaper(null!,
+			GameTask.Enqueue(Message.Newspaper(null!,
 				$"The {detonator.TribeNamePlural} have fired",
 				"a nuclear weapon at",
 				struck is not null ? $"{struck.Name}."
@@ -5888,7 +5871,7 @@ namespace CivOne
 
 			DecisionLogger.LogNuclearStrike(detonator, hit, struck, "detonated");
 			NuclearStrikes.Add(new[] { (int)_gameTurn, PlayerNumber(detonator) });
-			CondemnNuclearStrike(detonator, hit, announce);
+			CondemnNuclearStrike(detonator, hit);
 
 			// A strike touching grey goo sterilizes the whole connected region.
 			SterilizeGoo(cx, cy);
@@ -6332,154 +6315,6 @@ namespace CivOne
 			string[] told = prophecies[Common.Random.Next(prophecies.Count)];
 			GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
 				"The Oracle speaks:", told[0], told[1]));
-		}
-
-		// ── Deacon: the Launch (docs/cursed_wonders.md #13) ──────────────────
-		// One time in four the war computer decides the war game is real. DEFCON 5 is
-		// announced to the world at completion, naming the builder and its largest rival; the
-		// clock falls one step a turn, and the turn after DEFCON 1 it decides. At peace with
-		// every civ that will treat, the builder is spared: the machine stands down for good
-		// and keeps watching. Otherwise five strikes fall on the rival's five largest cities.
-		// The clock stops if the wonder city changes hands. The user's brief, Nov 2026.
-		internal const int DeaconStrikes = 5;
-		internal const int DeaconAngerTurns = 20;
-
-		// Its owner's units defend with advantage, until a launch puts the machine out.
-		internal bool DeaconBlesses(Player? p) => p is not null && DeaconState != 3 && p.HasWonder<Wonders.Deacon>();
-
-		// The rival worth a war game: the highest score among the other civs holding cities.
-		private Player? DeaconRival(Player builder) => _players
-			.Where(p => p is not null && p != builder && PlayerNumber(p) != 0 && !p.IsDestroyed() && p.Cities.Length > 0)
-			.OrderByDescending(p => p.Score)
-			.FirstOrDefault();
-
-		// A war that counts against the builder at DEFCON 1: one with somebody it could have
-		// made peace with. The barbarians, the outsiders and a leader who has renounced the
-		// builder will not treat, so being at war with them is no fault of the builder's.
-		private bool DeaconWillTreat(Player p, Player builder)
-			=> PlayerNumber(p) != 0 && !IsOutsider(p) && p.Civilization is not Civilizations.Barbarian
-			&& !p.IsDestroyed() && !p.IsImplacableToward(builder);
-
-		internal bool ArmDeacon(City deacon)
-		{
-			if (DeaconState != 0) return false;
-			Player builder = deacon.Player;
-			if (DeaconRival(builder) is not Player target) return false;   // nobody to play: it only watches
-
-			DeaconState = 1;
-			DeaconX = deacon.X;
-			DeaconY = deacon.Y;
-			DeaconBuilder = PlayerNumber(builder);
-			DeaconTarget = PlayerNumber(target);
-			DeaconDefcon = 5;
-			Log($"Deacon arms at {deacon.Name}: {builder.TribeName} against {target.TribeName}");
-			return true;
-		}
-
-		internal void AnnounceDeaconArmed()
-		{
-			if (DeaconState != 1) return;
-			Player builder = GetPlayer(DeaconBuilder), target = GetPlayer(DeaconTarget);
-			GameTask.Enqueue(Message.Newspaper(null!, "DEFCON 5!",
-				$"Deacon is playing the {builder.TribeNamePlural}",
-				$"against the {target.TribeNamePlural}."));
-			if (builder == HumanPlayer)
-				GameTask.Enqueue(Message.Advisor(Advisor.Defense, true,
-					"Deacon thinks the war is real.",
-					"In five turns it launches,",
-					"unless we are at peace with all."));
-			else if (target == HumanPlayer)
-				GameTask.Enqueue(Message.Advisor(Advisor.Defense, true,
-					"Deacon is aimed at us.",
-					$"Make peace with the {builder.TribeNamePlural}",
-					$"or take {GetCity(DeaconX, DeaconY)?.Name} in time."));
-		}
-
-		internal void ProcessDeacon()
-		{
-			if (DeaconState != 1) return;
-			Player builder = GetPlayer(DeaconBuilder);
-			Player target = GetPlayer(DeaconTarget);
-
-			if (GetCity(DeaconX, DeaconY) is not City deacon || deacon.Owner != DeaconBuilder)
-			{
-				DeaconState = 2;
-				GameTask.Enqueue(Message.Newspaper(null!, "Deacon stands down!",
-					"The machine has new keepers.", "The countdown has stopped."));
-				return;
-			}
-			if (target is null || target.IsDestroyed() || target.Cities.Length == 0)
-			{
-				DeaconState = 2;
-				GameTask.Enqueue(Message.Newspaper(null!, "Deacon stands down!",
-					$"The {target?.TribeNamePlural ?? "enemy"} are no more.", "There is nothing left to win."));
-				return;
-			}
-
-			if (--DeaconDefcon > 0)
-			{
-				GameTask.Enqueue(Message.Newspaper(null!, $"DEFCON {DeaconDefcon}!",
-					DeaconDefcon == 1 ? "Deacon launches next turn"
-					                  : "Deacon's game against the",
-					DeaconDefcon == 1 ? $"unless the {builder.TribeNamePlural} make peace."
-					                  : $"{target.TribeNamePlural} goes on."));
-				return;
-			}
-
-			if (!_players.Any(p => p is not null && p != builder && builder.IsAtWar(p) && DeaconWillTreat(p, builder)))
-			{
-				DeaconState = 2;
-				Log($"Deacon stands down: {builder.TribeName} at peace");
-				GameTask.Enqueue(Message.Newspaper(null!, "A strange game.",
-					"The only winning move", "is not to play."));
-				return;
-			}
-
-			LaunchDeacon(builder, target);
-		}
-
-		internal void LaunchDeacon(Player builder, Player target)
-		{
-			DeaconState = 3;
-			City[] struck = target.Cities.OrderByDescending(c => c.Size).Take(DeaconStrikes).ToArray();
-			Log($"Deacon launches: {builder.TribeName} at {target.TribeName}, {struck.Length} cities");
-
-			string? launchArt = EventArtScreen.FindPath("DeaconLaunch");
-			if (launchArt is not null)
-				GameTask.Enqueue(Show.Screen(new EventArtScreen(launchArt, $"DEFCON 1 — {target.TribeNamePlural.ToUpper()}")));
-
-			if (target.HasWonder<Wonders.FusionCore>())
-			{
-				// Shot down, every one; the world judges the launch all the same.
-				CondemnNuclearStrike(builder, target, announce: false);
-				GameTask.Enqueue(Message.Newspaper(null!, "Deacon has launched!",
-					$"The {target.TribeName} Fusion Core",
-					"shot down every missile."));
-			}
-			else
-			{
-				foreach (City c in struck)
-					ApplyNuclearStrike(c.X, c.Y, builder, announce: false);
-				GameTask.Enqueue(Message.Newspaper(null!, "Deacon has launched!",
-					$"{struck.Length} {target.TribeName} cities are struck,",
-					$"{struck[0].Name} among them."));
-			}
-			if (IsPeople(target)) AnnounceCondemnation(builder);
-
-			// The target answers. The condemnation has already torn up any treaty; an
-			// intercepted launch condemns too, so nothing stands in the way. The builder is
-			// the aggressor: it fired.
-			builder.SetPeaceTreaty(target, 0);
-			target.SetPeaceTreaty(builder, 0);
-			builder.DeclareWar(target);
-
-			DeaconAngerUntil = (int)_gameTurn + DeaconAngerTurns;
-			foreach (City c in builder.Cities) c.InvalidateCache();
-			if (builder == HumanPlayer)
-				GameTask.Enqueue(Message.Advisor(Advisor.Domestic, true,
-					"Our people are in the streets.",
-					"They did not choose this war,",
-					"and they will not forget it."));
 		}
 
 		// ── Stonehenge curse: the Door ───────────────────────────────────────
