@@ -1,6 +1,6 @@
 #!/bin/bash
-# Checks a packaged game carries the files it reads from data/ that live outside
-# runtime/sdl/Resources (CivOne.SDL.csproj embeds them):  tools/check_shipped_data.sh <binary>
+# Checks a packaged game carries the hand-made tiles and palette (runtime/sdl/Resources/defaults/data)
+# and the Earth maps (resources/), which it reads from data/:  tools/check_shipped_data.sh <binary>
 # A build without one still runs, just plainly: 1.8.1 and earlier drew the fallback tiles
 # and could not start EARTH (EPIC). Used by package_mac.sh and package_windows.sh.
 set -euo pipefail

@@ -54,7 +54,7 @@ namespace CivOne.Tests
 				dir = dir.Parent;
 			if (dir is null) return;   // not running from the source tree; nothing to check
 
-			string path = System.IO.Path.Combine(dir.FullName, "free_tiles.txt");
+			string path = System.IO.Path.Combine(dir.FullName, Common.RepoArtDir, "free_tiles.txt");
 			Assert.True(System.IO.File.Exists(path), $"missing: {path}");
 			Assert.Contains("[salt_flat]", System.IO.File.ReadAllText(path));
 		}

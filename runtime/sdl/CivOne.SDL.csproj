@@ -62,11 +62,10 @@
 	</ItemGroup>
 	<ItemGroup>
 		<EmbeddedResource Include="Resources/**" />
-		<!-- Files the game reads from data/ that live outside Resources/: the hand-made tiles and
-		     palette (repo root, Common.ArtFile) and the Earth maps (resources/, Map.ResolveEarthBin).
-		     Embedded so the runtime installs them for a packaged build; tools/check_shipped_data.sh
-		     refuses a package without them. -->
-		<EmbeddedResource Include="../../free_tiles.txt;../../shore_tiles.txt;../../lake_shores.txt;../../river_overlays.txt;../../improvement_tiles.txt;../../difficulty_tiles.txt;../../advisor_badges.txt;../../palette.txt;../../resources/earth_epic.bin;../../resources/earth_standard.bin">
+		<!-- The Earth maps live outside Resources/ (resources/, Map.ResolveEarthBin), so they are
+		     embedded by hand. Embedded so the runtime installs them for a packaged build;
+		     tools/check_shipped_data.sh refuses a package without them, or without the tiles. -->
+		<EmbeddedResource Include="../../resources/earth_epic.bin;../../resources/earth_standard.bin">
 			<LogicalName>CivOne.Resources.defaults.data.%(Filename)%(Extension)</LogicalName>
 		</EmbeddedResource>
 	</ItemGroup>

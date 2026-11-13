@@ -37,6 +37,21 @@ namespace CivOne.Tests
 			}
 		}
 
+		// The files live under runtime/sdl/Resources/defaults/data. Launched from the repo, as
+		// build.sh does, the game reads them there, not the installed copy, so an edit shows.
+		[Fact]
+		public void LaunchedFromTheRepoTheRepoCopyIsRead()
+		{
+			Sim.EnsureRuntime();
+			string was = Environment.CurrentDirectory;
+			try
+			{
+				Environment.CurrentDirectory = Sim.RepoRoot();
+				Assert.Equal(Path.Combine(Sim.RepoRoot(), Common.RepoArtDir, "free_tiles.txt"), Common.ArtFile("free_tiles.txt"));
+			}
+			finally { Environment.CurrentDirectory = was; }
+		}
+
 		// The launch folder's copy still wins, so editing the repo's file and choosing
 		// Debug > Reload free tiles shows the edit.
 		[Fact]

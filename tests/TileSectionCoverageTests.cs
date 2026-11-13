@@ -27,7 +27,7 @@ namespace CivOne.Tests
 		[Fact]
 		public void EverySectionTheCodeNamesIsShipped()
 		{
-			var sections = Files.SelectMany(f => File.ReadLines(Path.Combine(Sim.RepoRoot(), f)))
+			var sections = Files.SelectMany(f => File.ReadLines(Path.Combine(Sim.RepoRoot(), Common.RepoArtDir, f)))
 				.Select(l => Regex.Match(l, @"^\[([^\]]+)\]")).Where(m => m.Success)
 				.Select(m => m.Groups[1].Value).ToHashSet();
 

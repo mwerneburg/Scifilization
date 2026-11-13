@@ -240,7 +240,7 @@ namespace CivOne.Tests
 			Assert.NotNull(dir);
 
 			string file = System.IO.File.ReadAllText(
-				System.IO.Path.Combine(dir!.FullName, "improvement_tiles.txt"));
+				System.IO.Path.Combine(dir!.FullName, Common.RepoArtDir, "improvement_tiles.txt"));
 
 			Assert.Contains(section, file);
 		}

@@ -147,7 +147,7 @@ namespace CivOne.Tests
 		[InlineData("special_salt")]
 		public void TheArtIsShipped(string section)
 		{
-			string tiles = File.ReadAllText(Path.Combine(Sim.RepoRoot(), "free_tiles.txt"));
+			string tiles = File.ReadAllText(Path.Combine(Sim.RepoRoot(), Common.RepoArtDir, "free_tiles.txt"));
 			Assert.Contains($"[{section}]", tiles);
 		}
 	}

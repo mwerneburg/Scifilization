@@ -27,7 +27,16 @@ namespace CivOne.Screens.Reports
 			public int X, Y, W, H;
 		}
 
+		// One prerequisite line as a run of horizontal and vertical segments.
+		private struct Wire
+		{
+			public byte From, To;
+			public (int x, int y)[] Pts;
+		}
+
 		private TechNode[]              _nodes = null!;
+		private Wire[]                  _wires = null!;
+		private HashSet<(int x, int y)> _dots  = null!;   // where wires join: a dot, as on a circuit diagram
 		private Dictionary<byte, int>   _nodeIdx = null!;   // advance ID → index into _nodes
 		private int _treeW, _treeTop, _scrollX;
 		private int _nodesTop;   // below the scroll hint: the tree never draws over it
@@ -37,7 +46,7 @@ namespace CivOne.Screens.Reports
 
 		// layout constants (computed from font)
 		private int _fontH, _nodeH, _rowH, _colW, _nodeW;
-		private const int PAD_X = 4, PAD_Y = 2, CONNECTOR = 18, ROW_GAP = 10;
+		private const int PAD_X = 4, PAD_Y = 2, CONNECTOR = 18, ROW_GAP = 14, LANE_MARGIN = 6, LANE_STEP = 4;
 
 		// ── state helpers ─────────────────────────────────────────────────────────
 
@@ -97,33 +106,109 @@ namespace CivOne.Screens.Reports
 			              .ToArray();
 
 			int maxRows = cols.Max(g => g.Length);
-			int treeH   = maxRows * _rowH;
+
+			// Rows sit on one grid across all columns, so the strip between two rows is empty
+			// the whole width of the tree: long wires run along those strips, never behind a box.
+			var row = new Dictionary<byte, int>(all.Length);
+			var colOf = new Dictionary<byte, int>(all.Length);
+			for (int c = 0; c < cols.Length; c++)
+				for (int r = 0; r < cols[c].Length; r++)
+				{
+					row[cols[c][r].Id] = (maxRows - cols[c].Length) / 2 + r;
+					colOf[cols[c][r].Id] = c;
+				}
+
+			var edges = all.SelectMany(a => a.RequiredTechs.Where(q => depth.ContainsKey(q.Id)).Select(q => (from: q.Id, to: a.Id))).ToList();
+
+			// Each gap holds a lane per source leaving it on a long wire, then a lane per target
+			// entering the next column, so wires to different targets never share a vertical.
+			var lane = new Dictionary<(int gap, byte id), int>();
+			int[] gapW = new int[cols.Length];
+			for (int c = 1; c < cols.Length; c++)
+			{
+				int i = 0;
+				foreach (byte id in edges.Where(e => colOf[e.from] == c - 1 && colOf[e.to] > c).Select(e => e.from).Distinct().OrderBy(id => row[id]))
+					lane[(c, id)] = i++;
+				foreach (byte id in edges.Where(e => colOf[e.to] == c).Select(e => e.to).Distinct().OrderBy(id => row[id]))
+					lane[(c, id)] = i++;
+				gapW[c] = Math.Max(CONNECTOR, LANE_MARGIN * 2 + LANE_STEP * (i - 1));
+			}
+			int[] colX = new int[cols.Length];
+			for (int c = 1; c < cols.Length; c++) colX[c] = colX[c - 1] + _nodeW + gapW[c];
+			int LaneX(int gap, byte id) => colX[gap - 1] + _nodeW + LANE_MARGIN + LANE_STEP * lane[(gap, id)];
+			int NodeY(byte id) => ROW_GAP + row[id] * _rowH;
+			// A box's wires leave a little low and arrive a little high, so a wire out of one box
+			// never runs on into the box beside it in the next column.
+			int OutY(byte id) => NodeY(id) + _nodeH / 2 + 1;
+			int InY(byte id)  => NodeY(id) + _nodeH / 2 - 2;
 
 			var nodes   = new List<TechNode>(all.Length);
 			_nodeIdx    = new Dictionary<byte, int>(all.Length);
-
-			foreach (var col in cols)
+			foreach (var a in all.OrderBy(a => colOf[a.Id]).ThenBy(a => row[a.Id]))
 			{
-				int d      = depth[col[0].Id];
-				int colTop = (treeH - col.Length * _rowH) / 2;
-
-				for (int r = 0; r < col.Length; r++)
-				{
-					_nodeIdx[col[r].Id] = nodes.Count;
-					nodes.Add(new TechNode
-					{
-						Advance = col[r],
-						X = d * _colW,
-						Y = colTop + r * _rowH,
-						W = _nodeW,
-						H = _nodeH
-					});
-				}
+				_nodeIdx[a.Id] = nodes.Count;
+				nodes.Add(new TechNode { Advance = a, X = colX[colOf[a.Id]], Y = NodeY(a.Id), W = _nodeW, H = _nodeH });
 			}
-
 			_nodes = nodes.ToArray();
-			int maxDepth = cols.Length - 1;
-			_treeW = maxDepth * _colW + _nodeW;
+			_treeW = colX[cols.Length - 1] + _nodeW;
+
+			// Long wires: out to the source's lane, along the strip between two rows, into the
+			// target's lane. Strip k lies above row k; each has three tracks, given out first-come
+			// so two wires never overlap along one.
+			var taken = new Dictionary<(int strip, int track), List<(int x0, int x1)>>();
+			int[] trackDy = { 0, -4, 4 };
+			var wires = new List<Wire>(edges.Count);
+			foreach (var e in edges.OrderBy(e => colOf[e.from]).ThenBy(e => row[e.from]).ThenBy(e => row[e.to]))
+			{
+				int a = colOf[e.from], b = colOf[e.to];
+				int x0 = colX[a] + _nodeW, inX = LaneX(b, e.to);
+				(int x, int y)[] pts;
+				if (b == a + 1)
+					pts = new[] { (x0, OutY(e.from)), (inX, OutY(e.from)), (inX, InY(e.to)), (colX[b], InY(e.to)) };
+				else
+				{
+					int outX = LaneX(a + 1, e.from);
+					double ra = row[e.from] + 0.5, rb = row[e.to] + 0.5;
+					int stripY = 0;
+					bool placed = false;
+					foreach (int k in Enumerable.Range(0, maxRows + 1).OrderBy(k => Math.Abs(k - ra) + Math.Abs(k - rb)).ThenBy(k => Math.Abs(k - rb)))
+					{
+						foreach (int t in Enumerable.Range(0, trackDy.Length))
+						{
+							var used = taken.TryGetValue((k, t), out var u) ? u : taken[(k, t)] = new List<(int, int)>();
+							if (used.Any(iv => iv.x0 <= inX + LANE_STEP && outX <= iv.x1 + LANE_STEP)) continue;
+							used.Add((outX, inX));
+							stripY = ROW_GAP + k * _rowH - ROW_GAP / 2 + trackDy[t];
+							placed = true;
+							break;
+						}
+						if (placed) break;
+					}
+					// ponytail: every track full, share the nearest strip's middle; none was in the shipped tree.
+					if (!placed) stripY = ROW_GAP + (int)Math.Round(rb) * _rowH - ROW_GAP / 2;
+					pts = new[] { (x0, OutY(e.from)), (outX, OutY(e.from)), (outX, stripY), (inX, stripY), (inX, InY(e.to)), (colX[b], InY(e.to)) };
+				}
+				wires.Add(new Wire { From = e.from, To = e.to, Pts = pts });
+			}
+			_wires = wires.ToArray();
+
+			// Where three or more wire ends meet, the wires join, and a dot says so; two wires
+			// that only cross get none.
+			var segs = _wires.SelectMany(w => w.Pts.Zip(w.Pts.Skip(1), (p, q) => (p, q))).Distinct().ToArray();
+			_dots = new HashSet<(int x, int y)>();
+			foreach (var pt in _wires.SelectMany(w => w.Pts).Distinct())
+			{
+				var ways = new HashSet<(int, int)>();
+				foreach (var (p, q) in segs)
+				{
+					bool onH = p.y == q.y && pt.y == p.y && pt.x >= Math.Min(p.x, q.x) && pt.x <= Math.Max(p.x, q.x);
+					bool onV = p.x == q.x && pt.x == p.x && pt.y >= Math.Min(p.y, q.y) && pt.y <= Math.Max(p.y, q.y);
+					if (!onH && !onV) continue;
+					foreach (var end in new[] { p, q })
+						if (end != pt) ways.Add((Math.Sign(end.x - pt.x), Math.Sign(end.y - pt.y)));
+				}
+				if (ways.Count >= 3) _dots.Add(pt);
+			}
 		}
 
 		// ── line helpers (clipped to tree area) ───────────────────────────────────
@@ -148,32 +233,36 @@ namespace CivOne.Screens.Reports
 
 		// ── edge drawing ──────────────────────────────────────────────────────────
 
-		private void DrawEdge(TechNode from, TechNode to)
+		private byte WireColour(Wire w)
 		{
-			int x0 = from.X + from.W - _scrollX;
-			int xm = to.X - CONNECTOR / 2 - _scrollX;
-			int x1 = to.X - _scrollX;
-			int y0 = from.Y + from.H / 2 + _nodesTop;
-			int y1 = to.Y   + to.H   / 2 + _nodesTop;
-
-			if (x1 < 0 || x0 > Width) return;
-
-			byte col;
 			if (_pathIds != null)
+				return _pathIds.Contains(w.From) && _pathIds.Contains(w.To) ? CassetteTheme.PHOS_GLOW : CassetteTheme.BG2;
+			bool from = Human.Advances.Any(h => h.Id == w.From), to = Human.Advances.Any(h => h.Id == w.To);
+			return from && to ? CassetteTheme.PHOS_DIM : from ? CassetteTheme.INK_MID : CassetteTheme.BG3;
+		}
+
+		// Verticals, then horizontals, then the junction dots; a highlighted
+		// path is drawn after the rest so nothing dims it.
+		private void DrawWires()
+		{
+			var order = _wires.OrderBy(w => _pathIds != null && _pathIds.Contains(w.From) && _pathIds.Contains(w.To)).ToArray();
+			foreach (bool vertical in new[] { true, false })
 			{
-				bool fromOnPath = _pathIds.Contains(from.Advance.Id);
-				bool toOnPath   = _pathIds.Contains(to.Advance.Id);
-				col = (fromOnPath && toOnPath) ? CassetteTheme.PHOS_GLOW : CassetteTheme.BG2;
+				foreach (Wire w in order)
+				{
+					byte col = WireColour(w);
+					for (int i = 1; i < w.Pts.Length; i++)
+					{
+						var (p, q) = (w.Pts[i - 1], w.Pts[i]);
+						if (vertical && p.x == q.x) VLine(p.x - _scrollX, p.y + _nodesTop, q.y + _nodesTop, col);
+						if (!vertical && p.y == q.y) HLine(p.x - _scrollX, p.y + _nodesTop, q.x - _scrollX, col);
+					}
+				}
 			}
-			else
-			{
-				col = PlayerHas(from.Advance) && PlayerHas(to.Advance) ? CassetteTheme.PHOS_DIM :
-				      PlayerHas(from.Advance)                           ? CassetteTheme.INK_MID  :
-				                                                          CassetteTheme.BG3;
-			}
-			HLine(x0, y0, xm, col);
-			VLine(xm, y0, y1, col);
-			HLine(xm, y1, x1, col);
+			foreach (Wire w in order)
+				foreach (var pt in w.Pts.Where(_dots.Contains))
+					for (int d = -1; d <= 1; d++)
+						HLine(pt.x - _scrollX - 1, pt.y + _nodesTop + d, pt.x - _scrollX + 1, WireColour(w));
 		}
 
 		// ── node drawing ──────────────────────────────────────────────────────────
@@ -274,11 +363,8 @@ namespace CivOne.Screens.Reports
 			this.DrawText("available",      0, CassetteTheme.INK_MID,  lx, ly, TextAlign.Right); ly -= _fontH + 1;
 			this.DrawText("locked",         0, CassetteTheme.INK_LOW,  lx, ly, TextAlign.Right);
 
-			// Edges behind nodes
-			foreach (var node in _nodes)
-				foreach (var req in node.Advance.RequiredTechs)
-					if (_nodeIdx.TryGetValue(req.Id, out int ri))
-						DrawEdge(_nodes[ri], node);
+			// Wires behind nodes
+			DrawWires();
 
 			// Nodes on top
 			foreach (var node in _nodes)
