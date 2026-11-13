@@ -51,8 +51,9 @@ namespace CivOne.IO
 
 		internal void Fill(int left, int top, int width, int height, byte colour)
 		{
-			if (left < 0) { width -= left; left = 0; }
-			if (top < 0) { height -= top; top = 0; }
+			// Clip what lies off the left/top edge: the fill gets narrower, not wider.
+			if (left < 0) { width += left; left = 0; }
+			if (top < 0) { height += top; top = 0; }
 			if (left + width > Width) width = Width - left;
 			if (top + height > Height) height = Height - top;
 			if (width <= 0 || height <= 0) return;

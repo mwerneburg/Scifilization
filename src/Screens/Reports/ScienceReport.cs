@@ -30,6 +30,7 @@ namespace CivOne.Screens.Reports
 		private TechNode[]              _nodes = null!;
 		private Dictionary<byte, int>   _nodeIdx = null!;   // advance ID → index into _nodes
 		private int _treeW, _treeTop, _scrollX;
+		private int _nodesTop;   // below the scroll hint: the tree never draws over it
 		private bool _dirty;
 		private IAdvance? _selected;      // node clicked for path highlight
 		private HashSet<byte>? _pathIds; // ancestor IDs of _selected (including itself)
@@ -132,14 +133,14 @@ namespace CivOne.Screens.Reports
 			if (x1 > x2) { int t = x1; x1 = x2; x2 = t; }
 			x1 = Math.Max(0, x1);
 			x2 = Math.Min(Width - 1, x2);
-			if (y < _treeTop || y >= Height || x1 > x2) return;
+			if (y < _nodesTop || y >= Height || x1 > x2) return;
 			this.FillRectangle(x1, y, x2 - x1 + 1, 1, col);
 		}
 
 		private void VLine(int x, int y1, int y2, byte col)
 		{
 			if (y1 > y2) { int t = y1; y1 = y2; y2 = t; }
-			y1 = Math.Max(_treeTop, y1);
+			y1 = Math.Max(_nodesTop, y1);
 			y2 = Math.Min(Height - 1, y2);
 			if (x < 0 || x >= Width || y1 > y2) return;
 			this.FillRectangle(x, y1, 1, y2 - y1 + 1, col);
@@ -152,8 +153,8 @@ namespace CivOne.Screens.Reports
 			int x0 = from.X + from.W - _scrollX;
 			int xm = to.X - CONNECTOR / 2 - _scrollX;
 			int x1 = to.X - _scrollX;
-			int y0 = from.Y + from.H / 2 + _treeTop;
-			int y1 = to.Y   + to.H   / 2 + _treeTop;
+			int y0 = from.Y + from.H / 2 + _nodesTop;
+			int y1 = to.Y   + to.H   / 2 + _nodesTop;
 
 			if (x1 < 0 || x0 > Width) return;
 
@@ -180,9 +181,9 @@ namespace CivOne.Screens.Reports
 		private void DrawNode(TechNode node)
 		{
 			int sx = node.X - _scrollX;
-			int sy = node.Y + _treeTop;
+			int sy = node.Y + _nodesTop;
 			if (sx + node.W < 0 || sx >= Width)         return;
-			if (sy + node.H < _treeTop || sy >= Height) return;
+			if (sy + node.H < _nodesTop || sy >= Height) return;
 
 			bool onPath   = _pathIds != null && _pathIds.Contains(node.Advance.Id);
 			bool isTarget = _selected != null && node.Advance.Id == _selected.Id;
@@ -328,7 +329,7 @@ namespace CivOne.Screens.Reports
 			foreach (var node in _nodes)
 			{
 				int sx = node.X - _scrollX;
-				int sy = node.Y + _treeTop;
+				int sy = node.Y + _nodesTop;
 				if (args.X >= sx && args.X < sx + node.W &&
 				    args.Y >= sy && args.Y < sy + node.H)
 				{
@@ -371,8 +372,10 @@ namespace CivOne.Screens.Reports
 				int barX = (Width - barW) / 2;
 
 				this.FillRectangle(barX, 28, barW, 10, 9);
-				this.DrawText($"Researching: {Human.CurrentResearch.Name}", 0, CassetteTheme.PHOS_GHOST, Width / 2, 29, TextAlign.Center)
-				    .DrawText($"Researching: {Human.CurrentResearch.Name}", 0, CassetteTheme.PHOS_GLOW,  Width / 2 - 1, 29, TextAlign.Center);
+				// The label goes under the bar: inside it, the bulbs drew over it as research grew.
+				const int labelY = 40;
+				this.DrawText($"Researching: {Human.CurrentResearch.Name}", 0, CassetteTheme.PHOS_GHOST, Width / 2, labelY, TextAlign.Center)
+				    .DrawText($"Researching: {Human.CurrentResearch.Name}", 0, CassetteTheme.PHOS_GLOW,  Width / 2 - 1, labelY, TextAlign.Center);
 
 				int plotX = -1;
 				for (int i = 0; i < Human.Science; i++)
@@ -382,7 +385,7 @@ namespace CivOne.Screens.Reports
 					plotX = nx;
 					this.AddLayer(Icons.Science, nx, 30);
 				}
-				_treeTop = 42;
+				_treeTop = labelY + Resources.GetFontHeight(0) + 2;
 			}
 			else
 			{
@@ -390,6 +393,7 @@ namespace CivOne.Screens.Reports
 			}
 
 			BuildLayout();
+			_nodesTop = _treeTop + _fontH + 3;
 
 			// Start scroll so the current research (or earliest locked tech) is in view.
 			if (Human.CurrentResearch is not null &&
