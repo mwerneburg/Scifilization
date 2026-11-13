@@ -303,5 +303,28 @@ namespace CivOne.Tests
 			Assert.Contains(skynet, CivOne.Screens.Reports.CivilizationScore.Plotted(culturePage: false));
 			Assert.Contains(g.HumanPlayer, CivOne.Screens.Reports.CivilizationScore.Plotted(culturePage: true));
 		}
+
+		// A civ born mid-game draws a line from its birth, not a point at the live end. The user's
+		// Lakota, split off by the Internet's schism, sat at zero on this page while the score
+		// page drew them: the running peak was sized from the first sample, before their column.
+		[Fact]
+		public void ACivBornMidGamePlotsFromItsBirth()
+		{
+			(Game g, Player big, Player _) = AWorldWhereTotalAndPerHeadDisagree();
+			City home = big.Cities[0];
+			home.AddBuilding(new CivOne.Buildings.Palace());
+			g.AddCity(big, 2, 32, 20)!.Size = 6;
+			g.AddCity(big, 3, 48, 31)!.Size = 6;
+			g.RecordScoreSnapshot();
+
+			Player splinter = g.ExecuteSocialMediaSchism(big, home)!;
+			Assert.NotNull(splinter);
+			Sim.ClearTasks();
+			g.RecordScoreSnapshot();
+
+			Assert.True(splinter.Culture > 0, "fixture: the splinter should take culture with it");
+			Assert.True(Game.CulturePerHeadHistory()[^1][g.PlayerNumber(splinter) + 1] > 0,
+				"the new civ's per-head line reads zero");
+		}
 	}
 }

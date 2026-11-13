@@ -98,10 +98,13 @@ namespace CivOne
 			// forward pass is the whole of it.
 			var peak = new Dictionary<int, int[]>(byTurn.Count);
 			{
-				int[] running = null!;
+				int[] running = new int[0];
 				foreach (int[] q in g._populaceHistory.OrderBy(q => q[0]))
 				{
-					if (running is null) running = new int[q.Length];
+					// A civ added mid-game (the Internet's schism, Skynet, the Thing) widens every
+					// later sample. Sized once from the first, its column was cut off and the
+					// Lakota plotted flat at zero until the live end jumped to their real figure.
+					if (running.Length < q.Length) running = running.Concat(new int[q.Length - running.Length]).ToArray();
 					for (int pi = 1; pi < q.Length && pi < running.Length; pi++)
 						running[pi] = Math.Max(running[pi], q[pi]);
 					int[] row = (int[])running.Clone();
