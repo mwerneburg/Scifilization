@@ -2443,7 +2443,7 @@ namespace CivOne
 						// The probe sees whoever is actually coming. VisitorType is drawn at the
 						// SETI signal, well before dispatch, so it is settled by phase 3. The
 						// Owners do not pose for a portrait: they shoot the camera.
-						if (phase == 3) ShowVisitorContactArt();
+						if (phase == 3) ShowVisitorContactArt(probe: true);
 					}
 					else if (ProbeInterimPhase == 3 && _gameTurn >= resultTurn)
 					{
@@ -4489,12 +4489,18 @@ namespace CivOne
 		//
 		// Misses fall back to OlvirInSpace rather than showing nothing: an asset-free install
 		// still gets a picture. ProbeContactArtTests demands all three files ship.
-		private void ShowVisitorContactArt()
+		//
+		// The Owners' probe plate is the probe being shot down. The probe is retired for
+		// Starlab, and through the observatories' telescopes there is no probe to lose, so
+		// they see the fleet instead (seen wrongly in a game at 1806 CE, Nov 2026).
+		private void ShowVisitorContactArt(bool probe = false)
 		{
-			(string art, string caption) = ContactPlate(VisitorType);
+			(string art, string caption) = !probe && VisitorType == VisitorArchetype.Owners
+				? ("OthersSighted", "VISUAL CONTACT — TAU CETI")
+				: ContactPlate(VisitorType);
 			string? path = EventArtScreen.FindPath(art) ?? EventArtScreen.FindPath("OlvirInSpace");
 			if (path is not null)
-				GameTask.Enqueue(Show.Screen(new EventArtScreen(path, caption)));
+				GameTask.Enqueue(Show.Screen(new EventArtScreen(path, caption, art)));
 		}
 
 		// The Evaluators used to fall to the default and showed the player the Olvir.

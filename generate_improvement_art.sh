@@ -196,6 +196,8 @@ resize_and_install_event "$SRC/OtherVoice.png"            "OtherVoice.png"
 resize_and_install_event "$SRC/EvaluatorConstruct.png"       "EvaluatorConstruct.png"
 
 resize_and_install_event "$SRC/ScavengerContact.png"         "ScavengerContact.png"
+# The Owners through the observatories' telescopes (the probe's plate, OthersIntercept, is its death).
+resize_and_install_event "$SRC/OthersSighted.png"            "OthersSighted.png"
 resize_and_install_event "$SRC/ScavengerExtraction.png"      "ScavengerExtraction.png"
 
 echo "Done."

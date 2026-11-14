@@ -631,6 +631,54 @@ namespace CivOne.Tests
 			Assert.NotEqual(0u, g.ArchetypeRevealTurn);
 		}
 
+		// The Owners' probe plate is the probe being shot down. The user saw it at the
+		// observatories' reveal (Nov 2026), years after the probe was retired: a telescope has
+		// no probe to lose. It sees the fleet. The Scavengers row is the control.
+		[Theory]
+		[InlineData((int)VisitorArchetype.Owners, "OthersSighted")]
+		[InlineData((int)VisitorArchetype.Scavengers, "ScavengerContact")]
+		public void TheObservatoriesShowNoProbeBeingShotDown(int who, string plate)
+		{
+			Game g = AWorldBeforeTheSignal();
+			AdvanceToTheSignal(g);
+			g.VisitorType = (VisitorArchetype)who;
+			Sim.ClearTasks();
+
+			// The plates are looked up in the data folder, which the test host does not fill;
+			// without them nothing is shown and the Owners row would pass on nothing.
+			string artDir = Path.Combine(Settings.Instance.DataDirectory, "event_art");
+			Directory.CreateDirectory(artDir);
+			var added = new System.Collections.Generic.List<string>();
+			foreach (string key in new[] { "OthersIntercept", "OthersSighted", "ScavengerContact" })
+			{
+				string to = Path.Combine(artDir, key + ".png");
+				if (File.Exists(to)) continue;
+				File.Copy(Path.Combine(Sim.RepoRoot(), Common.RepoArtDir, "event_art", key + ".png"), to);
+				added.Add(to);
+			}
+			try
+			{
+				var shown = new System.Collections.Generic.List<string>();
+				var tasks = (System.Collections.IList)typeof(GameTask)
+					.GetField("_tasks", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.GetValue(null)!;
+				for (int i = 0; i < Game.ArchetypeRevealTurns && Transmissions(g, "ArchetypeReveal") == 0; i++)
+				{
+					AdvanceOneRound(g);
+					shown.AddRange(tasks.OfType<CivOne.Tasks.Show>().Select(s => s.Displayed)
+						.OfType<CivOne.Screens.EventArtScreen>().Select(e => e.ArtKey ?? ""));
+				}
+
+				Assert.Equal(1, Transmissions(g, "ArchetypeReveal"));
+				Assert.DoesNotContain("OthersIntercept", shown);
+				Assert.Contains(plate, shown);
+			}
+			finally
+			{
+				foreach (string f in added) File.Delete(f);
+				Sim.ClearTasks();
+			}
+		}
+
 		// The probe used to be the only way to learn this, and it still reports. When it has
 		// already shown the player the plate, the observatories do not show it again.
 		[Fact]
