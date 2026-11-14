@@ -59,7 +59,10 @@ namespace CivOne.Screens.Reports
 				string? production = (city.CurrentProduction as ICivilopedia)?.Name;
 				string progress   = $"{city.Shields}/{city.ProductionCost(city.CurrentProduction)}";
 
-				byte prodColor = invalid ? CassetteTheme.ALERT : CassetteTheme.INK_MID;
+				// A wonder in near-white, so it stands out from the ordinary builds (the user, Nov 2026).
+				byte prodColor = invalid ? CassetteTheme.ALERT
+				               : city.CurrentProduction is IWonder ? CassetteTheme.WHITE
+				               : CassetteTheme.INK_MID;
 				byte progColor = invalid ? CassetteTheme.ALERT : CassetteTheme.INK_LOW;
 
 				this.DrawText(city.Name, FONT_ID, CassetteTheme.PHOS, colName, yy)
