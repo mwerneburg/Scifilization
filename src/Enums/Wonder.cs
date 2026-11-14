@@ -56,5 +56,7 @@ namespace CivOne.Enums
 		TheReprocessor           = 43,
 		Starlab                  = 44,
 		KyotoAccord              = 45,
+		// 46 was Deacon (retired): not reused, so a save with Deacon built cannot load as this.
+		CabinetNoir              = 47,
 	}
 }

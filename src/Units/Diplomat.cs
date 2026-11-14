@@ -84,14 +84,19 @@ namespace CivOne.Units
 		// True when this city cannot be sabotaged at all. Checked at both call sites — the AI's
 		// mission dispatch in Confront and the player's own DiplomatSabotage screen — so the
 		// rule reads the same whichever direction the agent is travelling.
-		internal static bool SabotageProof(City city) => city.HasBuilding<Buildings.PoliceStation>();
+		// Cabinet Noir guards every city of its owner's (Wonders/CabinetNoir.cs).
+		internal static bool SabotageProof(City city) =>
+			city.HasBuilding<Buildings.PoliceStation>() || CabinetGuarded(city);
+
+		private static bool CabinetGuarded(City city) => city.Player?.HasWonder<Wonders.CabinetNoir>() == true;
 
 		public string Sabotage(City city)
 		{
 			Game.DisbandUnit(this);
 
 			// The police got there first. The agent is spent either way.
-			if (SabotageProof(city)) return $"agent held by {city.Name} police";
+			if (SabotageProof(city))
+				return city.HasBuilding<Buildings.PoliceStation>() ? $"agent held by {city.Name} police" : "agent held by the Cabinet Noir";
 
 			IList<IBuilding> buildings = city.Buildings.Where(b => (b.GetType() != typeof(Buildings.Palace))).ToList();
 
@@ -253,6 +258,14 @@ namespace CivOne.Units
 								GameTask.Insert(Message.Spy("Spies report:", $"{Player.TribeName} steal", $"{advance.Name}"));
 						};
 						GameTask.Enqueue(task);
+					}
+					// Only sabotage is left, and the Cabinet Noir knew it was coming. The police
+					// above catch every agent; the Cabinet stops sabotage alone.
+					else if (CabinetGuarded(target))
+					{
+						Game.DisbandUnit(this);
+						if (target.Player == Human || Player == Human)
+							GameTask.Insert(Message.Spy("Spies report:", $"{Player.TribeName} agent held", "by the Cabinet Noir."));
 					}
 					else if (target.Player == Human)
 					{

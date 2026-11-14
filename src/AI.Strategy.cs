@@ -5019,7 +5019,7 @@ namespace CivOne
 				{
 					new ShakespearesTheatre(), new JSBachsCathedral(),
 					new HangingGardens(), new MichelangelosChapel(), new Oracle(),
-					new AdamSmithsTradingHouse()
+					new AdamSmithsTradingHouse(), new CabinetNoir()
 				};
 			}
 			else
@@ -5032,7 +5032,7 @@ namespace CivOne
 					new Colossus(), new Lighthouse(), new MagellansExpedition(),
 					new LeonardosWorkshop(), new SunTzusWarAcademy(),
 					new AdamSmithsTradingHouse(),
-					new MarcoPoloVoyage(), new ZhengHeVoyage()
+					new MarcoPoloVoyage(), new ZhengHeVoyage(), new CabinetNoir()
 				};
 			}
 
@@ -5192,6 +5192,8 @@ namespace CivOne
 		// rule here is about need, not affordability, and it is deliberately narrow.
 		private bool EarnsItsKeep(IBuilding building, City city)
 		{
+			if (building is PoliceStation && PoliceRedundant(city)) return false;
+
 			// Happiness buildings only pay for themselves where there is unhappiness to
 			// quell. The autoplayed Japan held NINE Temples across ten cities that each
 			// showed happy 0 / unhappy 0 — content at size 2 — for 9 gold a turn out of
@@ -5643,7 +5645,7 @@ namespace CivOne
 			// a city that cannot keep another unit, and a Palace moves the capital.
 			if (plan.Count == 0 && GarrisonFull(city)
 			    && city.AvailableProduction.OfType<IBuilding>()
-			           .Where(b => b is not Palace && b is not Barracks)
+			           .Where(b => b is not Palace && b is not Barracks && !(b is PoliceStation && PoliceRedundant(city)))
 			           .OrderBy(b => b.Price).FirstOrDefault() is IBuilding cheapest)
 				plan.Add(cheapest);
 			// Nothing left to build, a full garrison sends out a settler instead, on the unit-glut
@@ -5655,6 +5657,12 @@ namespace CivOne
 
 			return plan;
 		}
+
+		// The Cabinet Noir already stops sabotage in every city we own; a Police Station is still
+		// worth its upkeep where it stops the Democracy size leak (City.Corruption).
+		private bool PoliceRedundant(City city) =>
+			Player.HasWonder<CabinetNoir>()
+			&& !(Player.Government.CorruptionMultiplier == 0 && city.Size > 4);
 
 		// The Crossing Fever and the Dome, ahead of everything and past every filter.
 		private void PlanEmergencies(List<IProduction> plan, City city, int defenders)
