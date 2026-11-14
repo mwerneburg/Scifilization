@@ -464,7 +464,7 @@ namespace CivOne
 			BaseUnit.RestartSerials();
 			// New-game setup sequence:
 			//   1. Apply game options (animations, sound, advice level, etc.).
-			//   2. Assign player slots: the human player goes into tribe.PreferredPlayerNumber;
+			//   2. Assign player slots: the human player goes into tribe.PreferredPlayerNumber (or the last seat);
 			//      each AI slot picks randomly from civs that share that PreferredPlayerNumber
 			//      (Olvir is excluded — it only enters via the post-contact story arc).
 			//   3. Place starting Settlers for each AI player (AddStartingUnits).
@@ -484,28 +484,31 @@ namespace CivOne
 			_units = new List<IUnit>();
 			int slotCount = competition + 1;
 			_players = new List<Player>(Enumerable.Repeat<Player>(null!, slotCount));
+			// The human may play any tribe (Screens/NewGame.cs, the user, Nov 2026). One whose
+			// own seat is beyond this game's size takes the last seat: safe for the reason the
+			// refills below are, since the human never respawns and no civ that prefers that
+			// seat is dealt. Seated before the AI draws, so no refill deals the human's tribe a
+			// second time and its region is claimed before any AI seat is filled.
+			int humanSeat = Math.Min((int)tribe.PreferredPlayerNumber, competition);
+			_players[humanSeat] = new Player(tribe, leaderName, tribeName, tribeNamePlural);
+			_players[humanSeat].Destroyed += PlayerDestroyed;
+			HumanPlayer = _players[humanSeat];
+			// The human's continent counts as claimed. Without this the slot loop
+			// `continue`s past it, so a human playing in Europe leaves Europe looking
+			// unclaimed — and slot 3, which holds the Franks AND the Guarani, then
+			// draws between them at random instead of taking South America. Measured
+			// over five seeds: the Guarani appeared in one game before this line.
+			if (CivRegion(tribe, EarthCentroids) is string humanRegion && humanRegion != "")
+				_claimedRegions.Add(humanRegion);
+			if (difficulty == 0)
+			{
+				// Chieftain starts with 50 Gold
+				HumanPlayer.Gold = 50;
+			}
+			Log("- Player {0} is {1} of the {2} (human)", humanSeat, _players[humanSeat].LeaderName, _players[humanSeat].TribeNamePlural);
 			for (int i = 0; i <= competition; i++)
 			{
-				if (i == tribe.PreferredPlayerNumber)
-				{
-					_players[i] = new Player(tribe, leaderName, tribeName, tribeNamePlural);
-					_players[i].Destroyed += PlayerDestroyed;
-					HumanPlayer = _players[i];
-					// The human's continent counts as claimed. Without this the slot loop
-					// `continue`s past it, so a human playing in Europe leaves Europe looking
-					// unclaimed — and slot 3, which holds the Franks AND the Guarani, then
-					// draws between them at random instead of taking South America. Measured
-					// over five seeds: the Guarani appeared in one game before this line.
-					if (CivRegion(tribe, EarthCentroids) is string humanRegion && humanRegion != "")
-						_claimedRegions.Add(humanRegion);
-					if (difficulty == 0)
-					{
-						// Chieftain starts with 50 Gold
-						HumanPlayer.Gold = 50;
-					}
-					Log("- Player {0} is {1} of the {2} (human)", i, _players[i].LeaderName, _players[i].TribeNamePlural);
-					continue;
-				}
+				if (i == humanSeat) continue;
 				
 				// Story-arc factions (Olvir, The Others, The Thing) share slot 0 with
 				// the Barbarians but only ever join mid-game via their own arcs — the

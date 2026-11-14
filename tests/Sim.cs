@@ -390,7 +390,8 @@ namespace CivOne.Tests
 		// world produce independent histories on identical ground. That is the control.
 		public static void NewGame(int width = 80, int height = 50, int competition = 7,
 		                           int difficulty = 0, short seed = DefaultSeed,
-		                           string map = "generated", bool varyHuman = false)
+		                           string map = "generated", bool varyHuman = false,
+		                           CivOne.Civilizations.ICivilization? human = null)
 		{
 			EnsureRuntime();
 			ResetState();
@@ -434,9 +435,9 @@ namespace CivOne.Tests
 			var eligible = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Where(
 				Common.Civilizations,
 				c => c.PreferredPlayerNumber >= 1 && c.PreferredPlayerNumber <= competition));
-			var tribe = (varyHuman && eligible.Length > 0)
+			var tribe = human ?? ((varyHuman && eligible.Length > 0)
 				? eligible[Math.Abs((int)seed) % eligible.Length]
-				: eligible[0];
+				: eligible[0]);
 			Game.CreateGame(difficulty, competition, tribe, "Tester", "Test", "Testers");
 			System.IO.Directory.CreateDirectory(Settings.Instance.SavesDirectory);
 		}

@@ -146,8 +146,11 @@ namespace CivOne.Screens
 			// there (Game.NewGame.EarthMapExcluded): the real homeland cannot support a
 			// playable start under this generator, and offering it to the player is just
 			// a trap. Still offered on random maps.
+			// Every tribe, whatever the game's size: one whose own seat is beyond it takes
+			// the last seat (Game.NewGame). Only the first tribes were offered before, so a
+			// three-civ game had no tribe from Asia or North America (the user, Nov 2026).
 			_tribesAvailable = Common.Civilizations
-				.Where(c => c.PreferredPlayerNumber > 0 && c.PreferredPlayerNumber <= _competition)
+				.Where(c => c.PreferredPlayerNumber > 0)
 				.Where(c => !Game.EarthMapExcludes(c))
 				.OrderBy(c => c.Name, System.StringComparer.OrdinalIgnoreCase)
 				.ToArray();
@@ -169,7 +172,7 @@ namespace CivOne.Screens
 		{
 			if (sender.GetType() != typeof(Menu)) return;
 			
-			_tribe = Common.Random.Next(_competition);
+			_tribe = Common.Random.Next(_tribesAvailable.Length);
 			this.AddLayer((Menu)sender);
 			CloseMenus();
 			
