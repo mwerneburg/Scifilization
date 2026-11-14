@@ -461,14 +461,9 @@ namespace CivOne
 				Directory.CreateDirectory(dir);
 			}
 			
-			for (char c = 'a'; c <= 'z'; c++)
-			{
-				string dir = Path.Combine(SavesDirectory, c.ToString());
-				if (!Directory.Exists(dir))
-				{
-					Directory.CreateDirectory(dir);
-				}
-			}
+			// Save and Load use saves/c, the DOS game's drive C:. The other 25 drive letters
+			// were made at every start and never used.
+			Directory.CreateDirectory(Path.Combine(SavesDirectory, "c"));
 		}
 		
 		private static Settings _instance = null!;
