@@ -679,6 +679,17 @@ namespace CivOne
 			GameTask.Enqueue(Turn.GameOver(HumanPlayer));
 		}
 
+		// A rival's streak is news the way the human's own is: when it starts and at half
+		// way. Only the claimant used to be told, so a rival's Cultural Ascendancy first
+		// showed as 53/75 on the score report, too late to answer (the user, Nov 2026).
+		private static void ReportRivalStreak(Player rival, uint streak, uint target, string started, string goal)
+		{
+			if (streak == 1)
+				GameTask.Enqueue(Message.Newspaper(null!, $"The {rival.TribeNamePlural}", started, $"{target} turns to {goal}."));
+			else if (streak == target / 2)
+				GameTask.Enqueue(Message.Newspaper(null!, $"The {rival.TribeNamePlural}", $"are half way to {goal}:", $"{target - streak} turns remain."));
+		}
+
 		internal bool StartedWarWith(byte aggressor, byte victim)
 			=> Progress(aggressor).StartedWarsWith.Contains(victim);
 
@@ -3020,6 +3031,8 @@ namespace CivOne
 					else if (isHuman && Progress(cnum).EconStreak == EconomicHoldFor(claimant) / 2)
 						GameTask.Enqueue(Message.Newspaper(null!, "Half way to hegemony!",
 							"The world's markets", "answer to us."));
+					if (!isHuman)
+						ReportRivalStreak(claimant, Progress(cnum).EconStreak, EconomicHoldFor(claimant), "dominate world trade.", "hegemony");
 
 					if (Progress(cnum).EconStreak >= EconomicHoldFor(claimant) && !_econVictoryFired)
 					{
@@ -3219,6 +3232,8 @@ namespace CivOne
 					else if (isHuman && Progress(cnum).CultureStreak == CultureHoldFor(claimant) / 2)
 						GameTask.Enqueue(Message.Newspaper(null!, "Half way to ascendancy!",
 							"Our arts and learning", "are the world's measure."));
+					if (!isHuman)
+						ReportRivalStreak(claimant, Progress(cnum).CultureStreak, CultureHoldFor(claimant), "lead the world in culture.", "ascendancy");
 
 					if (Progress(cnum).CultureStreak >= CultureHoldFor(claimant) && !_cultVictoryFired)
 					{
@@ -3474,6 +3489,8 @@ namespace CivOne
 					else if (isHuman && Progress(dnum).DiasporaStreak == DiasporaStreakTarget / 2)
 						GameTask.Enqueue(Message.Newspaper(null!, "Half way to independence!",
 							"Alpha Centauri II reports", "its first harvest."));
+					if (!isHuman)
+						ReportRivalStreak(colonist, Progress(dnum).DiasporaStreak, DiasporaStreakTarget, "are resupplying a colony.", "independence");
 
 					// Latched. The win enqueues a screen chain that ends in Runtime.Quit(),
 					// and the queue takes several rounds to drain — during which this block
@@ -5114,8 +5131,8 @@ namespace CivOne
 		// turns into its Diaspora hold does not displace the civ that got there first.
 		// ArrivalTurn is non-zero only for a ship in flight; Streak only for a landed colony.
 		//
-		// Nothing is reported before launch. Part counts are private — you do not get to see
-		// a rival's hull coming together, only the day it leaves.
+		// Part counts are private — you do not get to see a rival's hull coming together,
+		// only the day its first part is finished (City.NewTurn) and the day it leaves.
 		internal (Player? Holder, int ArrivalTurn, uint Streak) SpaceLeader()
 		{
 			Player? colonist = null; int order = int.MaxValue;

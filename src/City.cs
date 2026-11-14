@@ -2739,6 +2739,9 @@ namespace CivOne
 					// hold here too or the queue becomes a way around it.
 					if (Game.Progress(playerIndex).SpaceshipLaunchTurn == 0)
 					{
+						PlayerProgress ss = Game.Progress(playerIndex);
+						if (Human != Owner && ss.SpaceshipStructural + ss.SpaceshipComponent + ss.SpaceshipModule == 0)
+							GameTask.Enqueue(Message.Newspaper(null!, $"The {Player!.TribeNamePlural}", "have started a spaceship!"));
 						if (CurrentProduction is Buildings.SSStructural)
 							Game.Progress(playerIndex).SpaceshipStructural = Math.Min(Game.MaxSpaceshipStructural, Game.Progress(playerIndex).SpaceshipStructural + 1);
 						else if (CurrentProduction is Buildings.SSComponent)
@@ -2752,6 +2755,8 @@ namespace CivOne
 					// popup every turn or two about someone else's factory. The parts are
 					// visible on the SpaceShips screen, which is where a player tracking the
 					// race is already looking. (Launches still announce; see Game.cs:1074.)
+					// A rival's FIRST part is the exception above: once per hull, so a player
+					// learns the race has begun (the user, Nov 2026).
 				}
 				else if (CurrentProduction is IBuilding currentBuilding && !_buildings.Any(b => b.Id == currentBuilding.Id))
 				{
