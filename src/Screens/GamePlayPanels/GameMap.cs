@@ -45,6 +45,18 @@ namespace CivOne.Screens.GamePlayPanels
 	{
 		private IUnit? ActiveUnit => Game.ActiveUnit;
 
+		// The unit the human is to move now. While a task is up (a popup, an enemy's move)
+		// Game.ActiveUnit holds whatever unit its index last pointed at, of any owner, moved
+		// or not, and a fortified unit of ours far off pulled the view there behind a news
+		// popup (the user, Nov 2026).
+		private bool OursToMove(IUnit unit) => Game.CurrentPlayer == Human && Human == unit.Owner
+			&& (unit.MovesLeft > 0 || unit.PartMoves > 0) && !unit.Sentry && !unit.Fortify;
+
+		// The view went to an enemy's move (Enemy Moves). The human's next unit brings it back
+		// even if it is still on screen: early on, with the barbarians close by, it was, and
+		// the turn began looking at them (the user, Nov 2026).
+		private bool _viewOnEnemy;
+
 		// Tile pixel size at 100% zoom. All hardcoded "16" multipliers in the
 		// rendering path were replaced with _tilePixelSize to support Ctrl+wheel
 		// cursor-focused zoom; this constant is the upper bound (100%).
@@ -186,12 +198,13 @@ namespace CivOne.Screens.GamePlayPanels
 
 			if ((gameTick % 2) == 0 && (_lastTurn != Game.GameTurn || _lastUnit != unit))
 			{
-				if (unit is not null && Game.Human == unit.Owner)
+				if (unit is not null && OursToMove(unit))
 				{
 					if (!unit.Goto.IsEmpty)
 						CenterOnUnit();
-					else if (_lastUnit != unit && ShouldCenter())
+					else if (_lastUnit != unit && (_viewOnEnemy || ShouldCenter()))
 						CenterOnUnit();
+					_viewOnEnemy = false;
 				}
 				_fullRedraw = true;
 				_update = true;
@@ -214,9 +227,10 @@ namespace CivOne.Screens.GamePlayPanels
 			{
 				_update = true;
 			}
-			else if (unit != _lastUnit && ShouldCenter() && Human == unit.Owner)
+			else if (unit != _lastUnit && OursToMove(unit) && (_viewOnEnemy || ShouldCenter()))
 			{
 				CenterOnUnit();
+				_viewOnEnemy = false;
 				_update = true;
 				_fullRedraw = true;
 			}
@@ -376,6 +390,7 @@ namespace CivOne.Screens.GamePlayPanels
 					if (ShouldCenter(moveUnit.RelX, moveUnit.RelY))
 					{
 						CenterOnUnit();
+						if (Human != unit.Owner) _viewOnEnemy = true;
 					}
 					return;
 			}
