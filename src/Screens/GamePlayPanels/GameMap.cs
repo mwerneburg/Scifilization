@@ -392,6 +392,12 @@ namespace CivOne.Screens.GamePlayPanels
 						CenterOnUnit();
 						if (Human != unit.Owner) _viewOnEnemy = true;
 					}
+					// An attack slides the attacker into the defender's tile and its last frame
+					// stays drawn there. A kill repaints it with its own animation; a capture
+					// only changes the owner, and our unit's icon sat on the captured one until
+					// something else redrew the map (the user, Nov 2026).
+					int fromX = unit.X, fromY = unit.Y;
+					moveUnit.Done += (s, a) => { if (unit.X == fromX && unit.Y == fromY) { _fullRedraw = true; _update = true; } };
 					return;
 			}
 		}

@@ -122,5 +122,35 @@ namespace CivOne.Tests
 
 			Assert.True(CentredOn(map, ours), $"the popup moved the view to X {map.X}");
 		}
+
+		// An attack's last frame leaves the attacker drawn on the defender's tile. A capture
+		// must repaint it, or our icon sits on the captured unit (the user, Nov 2026). Salvage
+		// is a one-in-four roll, so this attacks until one is taken.
+		[Fact]
+		public void ACaptureRepaintsTheMap()
+		{
+			(Game g, byte human, IUnit _) = AWorld();
+			var map = new GameMap();
+			var fullRedraw = typeof(GameMap).GetField("_fullRedraw", BindingFlags.NonPublic | BindingFlags.Instance)!;
+			bool captured = false;
+			for (int i = 0; i < 200 && !captured; i++)
+			{
+				IUnit armor = g.CreateUnit(UnitType.Armor, 30, 25, human)!;
+				IUnit catapult = g.CreateUnit(UnitType.Catapult, 31, 25, 0)!;
+				g.ActiveUnit = armor;
+				map.CenterOnPoint(armor.X, armor.Y);
+				fullRedraw.SetValue(map, false);
+
+				armor.MoveTo(1, 0);
+				Sim.Settle();
+
+				captured = catapult.Owner == human;
+				if (captured)
+					Assert.True((bool)fullRedraw.GetValue(map)!, "the capture left the attack's last frame on screen");
+				foreach (IUnit u in new[] { armor, catapult }.Where(u => g.GetUnits().Contains(u)))
+					g.DisbandUnit(u);
+			}
+			Assert.True(captured, "scenario is broken: nothing was captured in 200 attacks");
+		}
 	}
 }
