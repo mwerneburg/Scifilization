@@ -26,7 +26,7 @@ using CivOne.Units;
 //
 //   type          string   "settler" | "city_prod" | "game_outcome" | "salvage" | "defection" | "plague"
 //                          | "landfall" | "disorder_collapse" | "advance" | "disband" | "decommission" | "idle_unit"
-//                          | "round_trip"
+//                          | "round_trip" | "wonder_rollover"
 //   game_id       string   8-char hex, one per GAME — survives save/load, so a resumed
 //                          run keeps one identity and its game_outcome scores all of it
 //   session_id    string   8-char hex, one per LOAD. Two sessions sharing a game_id are a
@@ -889,6 +889,28 @@ namespace CivOne
 				KV("held_turns", heldTurns),
 				// What it taught, or "" at capture time.
 				KV("advance",    advance ?? ""),
+			}));
+		}
+
+		// A city whose wonder another civ finished first (the user, Nov 2026). Nothing recorded
+		// it, so whether a town had rolled over and over could not be read back. "rolled":
+		// switched to next_wonder, keeping its shields; "held": the player's city banks on the
+		// lost wonder until the player chooses (once per wonder); "none": nothing left to roll
+		// to, so the box was emptied.
+		internal static void LogWonderRollover(City city, string outcome, Wonders.IWonder lost, Wonders.IWonder? next)
+		{
+			if (!_active) return;
+			Enqueue(Fmt(new[] {
+				KV("type",        "wonder_rollover"),
+				KV("game_id",     _gameId),
+				KV("turn",        Game.Instance?.GameTurn ?? 0),
+				KV("is_human",    city.Player is not null && city.Player.IsHuman),
+				KV("civ",         city.Player?.Civilization?.NamePlural ?? "?"),
+				KV("city",        city.Name),
+				KV("outcome",     outcome),
+				KV("lost_wonder", (lost as ICivilopedia)?.Name ?? "?"),
+				KV("next_wonder", (next as ICivilopedia)?.Name ?? ""),
+				KV("shields",     city.Shields),
 			}));
 		}
 

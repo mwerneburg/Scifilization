@@ -1410,7 +1410,10 @@ namespace CivOne
 		public void SetProduction(IProduction production)
 		{
 			bool switchingWonders = CurrentProduction is IWonder && production is IWonder;
-			if (!switchingWonders && CurrentProduction is not null && CurrentProduction.GetType() != production.GetType())
+			// A wonder this city has just finished left its excess in the box; moving on from
+			// it is not a change of plan, so nothing is forfeit.
+			bool wonderFinishedHere = CurrentProduction is IWonder done && HasWonder(done);
+			if (!switchingWonders && !wonderFinishedHere && CurrentProduction is not null && CurrentProduction.GetType() != production.GetType())
 				Shields = 0;
 			CurrentProduction = production;
 		}
@@ -2642,6 +2645,10 @@ namespace CivOne
 				}
 			}
 
+			// Set when a wonder is finished below. Its excess shields stay in the box, so the
+			// box is not empty and the re-plan at the end must be told (the user, Nov 2026).
+			bool wonderCompleted = false;
+
 			// A Research Grant is never finished — it is a standing commitment, not a
 			// building. Guarded here rather than by keeping Shields at zero, because
 			// shields can also arrive from outside (the bond pool), and one stray
@@ -2823,7 +2830,10 @@ namespace CivOne
 					bool ours = Player.ProductionAvailable(wonder);
 					if (!Game.WonderBuilt(wonder) && ours)
 					{
-						Shields = 0;
+						// The excess carries over to whatever the city builds next (the user,
+						// Nov 2026: a bank saved for Darwin's Voyage lost everything over 300).
+						Shields -= ProductionCost(wonder);
+						wonderCompleted = true;
 						AddWonder(wonder);
 						Game.Instance.AddReplayEvent(new ReplayData.WonderBuilt(Game.GameTurn, Owner, (wonder as ICivilopedia).Name, X, Y));
 						var impTask = new ImprovementBuilt(this, wonder);
@@ -3213,6 +3223,7 @@ namespace CivOne
 						if (_heldWonderNotice != wonder.Id)
 						{
 							_heldWonderNotice = wonder.Id;
+							DecisionLogger.LogWonderRollover(this, "held", wonder, null);
 							GameTask.Enqueue(Message.Newspaper(this,
 							    $"{(wonder as ICivilopedia).Name} was", ours ? "built by another civ." : "never ours to build.",
 							    "Shields kept until you choose."));
@@ -3229,6 +3240,7 @@ namespace CivOne
 							// Remove from queue if it was planned there
 							_productionQueue.Remove(next);
 							CurrentProduction = next;
+							DecisionLogger.LogWonderRollover(this, "rolled", wonder, next);
 							if (Player == Human)
 								GameTask.Enqueue(Message.Newspaper(this,
 								    $"{lostName} was", ours ? "built by another civ." : "never ours to build.",
@@ -3237,6 +3249,7 @@ namespace CivOne
 						else
 						{
 							Shields = 0; // no more wonders — let production re-evaluate
+							DecisionLogger.LogWonderRollover(this, "none", wonder, null);
 						}
 					}
 				}
@@ -3280,7 +3293,7 @@ namespace CivOne
 			// around turn 357 until the game ended at 617. The AI was never asked again. The
 			// civ finished on one city with a gross output of 1, and left no trace in the
 			// decision log, because a city that is never re-planned is never logged.
-			if (Shields == 0 || ShieldIncome <= 0)
+			if (Shields == 0 || ShieldIncome <= 0 || wonderCompleted)
 			{
 				// Under Autopilot a governed city of the player's is still governed: the
 				// governor picks after a finished building, ahead of the queue the AI planner
