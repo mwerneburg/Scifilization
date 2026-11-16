@@ -154,11 +154,12 @@ namespace CivOne
 
 				if (unit.Goto.IsEmpty)
 				{
-					// Target a coastal ocean tile adjacent to the nearest palace city.
+					// Target a coastal ocean tile adjacent to the nearest coastal city — any city,
+					// not only a capital: with one coastal capital in a game, raids found no target.
 					// Targeting the city tile itself would make GotoStep fail (water→land),
 					// causing an infinite re-targeting loop.
 					City nearestCity = Game.GetCities()
-						.Where(x => x.Owner != 0 && x.HasBuilding<Palace>()
+						.Where(x => x.Owner != 0
 						         && x.Tile.GetBorderTiles().Any(t => t.IsOcean && !IsPolarTile(t)))
 						.OrderBy(x => Common.DistanceToTile(x.X, x.Y, unit.X, unit.Y))
 						.FirstOrDefault();

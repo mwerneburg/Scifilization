@@ -41,11 +41,16 @@ namespace CivOne.Civilizations
 		{
 			get
 			{
-				ITile[] tiles = Map.AllTiles().Where(t => t is not null && t.IsOcean).ToArray();
+				// Within 10 tiles of a coastal city, the furthest a raid ship will sail
+				// (AI.BarbarianMoveWater). Open ocean anywhere in the world almost never was:
+				// 5 tiles of 38,121 on an Epic Earth map, so every raid was disbanded unseen.
+				City[] coastal = Game.GetCities().Where(c => c.Owner != 0 && c.Tile.GetBorderTiles().Any(t => t.IsOcean)).ToArray();
+				if (coastal.Length == 0) return null;
 				for (int i = 0; i < 1000; i++)
 				{
-					ITile tile = tiles[Common.Random.Next(tiles.Length)];
-					if (tile is null || !tile.IsOcean || tile.GetBorderTiles().Any(t => t is null || !t.IsOcean)) continue;
+					City city = coastal[Common.Random.Next(coastal.Length)];
+					ITile tile = Map[city.X + Common.Random.Next(-10, 11), city.Y + Common.Random.Next(-10, 11)];
+					if (tile is null || !tile.IsOcean || tile.Units.Length > 0 || tile.GetBorderTiles().Any(t => t is null || !t.IsOcean)) continue;
 					return tile;
 				}
 				return null;
