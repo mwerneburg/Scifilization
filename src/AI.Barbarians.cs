@@ -258,7 +258,9 @@ namespace CivOne
 				if (unit.Goto.IsEmpty)
 				{
 					City target = Game.GetCities()
-						.Where(c => c.Owner != 0)
+						// One it can walk to: the nearest across water left a hut horde in
+						// Greenland stood by the hut for good, its path failing every turn.
+						.Where(c => c.Owner != 0 && (unit.Tile.IsOcean || c.Tile.ContinentId == unit.Tile.ContinentId))
 						.OrderBy(c => Common.DistanceToTile(unit.X, unit.Y, c.X, c.Y))
 						.FirstOrDefault();
 					if (target is not null)

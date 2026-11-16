@@ -26,7 +26,7 @@ namespace CivOne.Wonders
 
 		private static readonly string[] _page2 =
 		{
-			"Requires COMMUNISM.",
+			"Requires GLOBALISM.",
 			"",
 			"A shield of diplomacy for a",
 			"peaceful or trade-focused empire —",
