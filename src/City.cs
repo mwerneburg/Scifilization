@@ -1867,6 +1867,10 @@ namespace CivOne
 		// Applied then tested, like the citizen governor above: each candidate is added for
 		// a moment and the city measured, rather than restating what Temples and Cathedrals
 		// do here.
+		// The lost wonder whose full box the player has been told about, so the notice is not
+		// repeated every turn the city keeps banking. Not saved: a reload repeats it once.
+		private byte? _heldWonderNotice;
+
 		private bool ProductionSpent =>
 			CurrentProduction is IBuilding b && HasBuilding(b)
 			|| CurrentProduction is IWonder w && Game.WonderBuilt(w);
@@ -3198,6 +3202,21 @@ namespace CivOne
 							}
 						}
 						GameTask.Enqueue(impTask);
+					}
+					else if (Player == Human && !Settings.Instance.Autopilot)
+					{
+						// The player's city keeps banking on the lost wonder until the player
+						// chooses another, as in Civ 1. The rollover below picked the first
+						// wonder in Id order, obsolete or not, and finished it at once if the
+						// bank covered it, spending shields saved for a wonder a few turns off
+						// (the user, Nov 2026: Darwin's Voyage). Told once, when the box fills.
+						if (_heldWonderNotice != wonder.Id)
+						{
+							_heldWonderNotice = wonder.Id;
+							GameTask.Enqueue(Message.Newspaper(this,
+							    $"{(wonder as ICivilopedia).Name} was", ours ? "built by another civ." : "never ours to build.",
+							    "Shields kept until you choose."));
+						}
 					}
 					else
 					{
