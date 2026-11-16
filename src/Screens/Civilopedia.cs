@@ -28,7 +28,10 @@ namespace CivOne.Screens
 	{
 		internal static ICivilopedia[] Advances = Reflect.GetCivilopediaAdvances().OrderBy(x => x.Name).ToArray();
 		internal static ICivilopedia[] Improvements = Reflect.GetCivilopediaCityImprovements().OrderBy(x => x.Name).ToArray();
-		internal static ICivilopedia[] Wonders = Reflect.GetCivilopediaWonders().OrderBy(x => x.Name).ToArray();
+		// The Interstellar Probe is retired (Starlab took its slot). Its class stays so a save
+		// with a probe en route still reports, but it is out of the book (the user, Nov 2026).
+		private static bool Listed(object article) => article is not InterstellarProbe;
+		internal static ICivilopedia[] Wonders = Reflect.GetCivilopediaWonders().Where(Listed).OrderBy(x => x.Name).ToArray();
 		internal static ICivilopedia[] Units = Reflect.GetCivilopediaUnits().OrderBy(x => x.Name).ToArray();
 		// Lakes has no ITile of its own (lakes are freshwater ocean tiles), but it
 		// belongs with the terrain, not the game concepts — list it there.
@@ -36,7 +39,7 @@ namespace CivOne.Screens
 			.Concat(Reflect.GetConcepts().Where(x => x is Lakes).Cast<ICivilopedia>())
 			.OrderBy(x => x.Name).ToArray();
 		internal static ICivilopedia[] Misc = Reflect.GetConcepts().Where(x => x is not Lakes).OrderBy(x => x.Name).ToArray();
-		internal static ICivilopedia[] Complete = Reflect.GetCivilopediaAll().OrderBy(x => x.Name).ToArray();
+		internal static ICivilopedia[] Complete = Reflect.GetCivilopediaAll().Where(Listed).OrderBy(x => x.Name).ToArray();
 
 		private readonly ICivilopedia[] _pages = null!;
 		private readonly ICivilopedia _singlePage = null!;
@@ -269,7 +272,7 @@ namespace CivOne.Screens
 					DrawLink(OX + 20, yy, $"{building.Name} improvement", building as ICivilopedia);
 					yy += 9;
 				}
-				foreach (IWonder wonder in Reflect.GetWonders().Where(wndr => wndr.RequiredTech is not null && wndr.RequiredTech.Id == adv.Id))
+				foreach (IWonder wonder in Reflect.GetWonders().Where(wndr => Listed(wndr) && wndr.RequiredTech is not null && wndr.RequiredTech.Id == adv.Id))
 				{
 					DrawLink(OX + 20, yy, $"{wonder.Name} Wonder", wonder as ICivilopedia);
 					yy += 9;

@@ -4,9 +4,9 @@
 // observatories now resolve the visitors' archetype on their own — which was the probe's
 // one unique job.
 //
-// Retired, NOT deleted: the wonder class, its Civilopedia entry and its five .cos fields
-// all stay, because a game already in flight may have a probe en route and its reports
-// must still arrive. These tests pin both halves of that — no new ones, and old ones
+// Retired, NOT deleted: the wonder class and its five .cos fields stay, because a game
+// already in flight may have a probe en route and its reports must still arrive. Its
+// Civilopedia entry is gone (the user, Nov 2026). These tests pin both halves of that — no new ones, and old ones
 // still fly.
 
 using System.Linq;
@@ -54,14 +54,16 @@ namespace CivOne.Tests
 				"Starlab is not available either — the gate refuses everything");
 		}
 
-		// It stays in the reference book. A player loading a save with a probe en route can
-		// still look up what it is, and the entry is history either way.
+		// Out of the reference book, but the class stays for saves with a probe en route.
 		[Fact]
-		public void ItIsStillInTheCivilopedia()
+		public void ItIsOutOfTheCivilopedia()
 		{
 			Sim.EnsureRuntime();
 
 			Assert.Contains(Reflect.GetWonders(), w => w is InterstellarProbe);
+			Assert.DoesNotContain(Civilopedia.Wonders, w => w is InterstellarProbe);
+			Assert.DoesNotContain(Civilopedia.Complete, w => w is InterstellarProbe);
+			Assert.Contains(Civilopedia.Wonders, w => w is Starlab);
 		}
 
 		// The half that matters for saves in flight: the mission clocks are untouched, so a
