@@ -234,6 +234,12 @@ namespace CivOne.Tests
 			Assert.Contains("Culture", names);
 			Assert.Contains("Strategic Resources", names);
 			Assert.Contains("Winning the Game", names);
+			// Rules the game used with no page of their own (the user, Nov 2026).
+			Assert.Contains("Capturing Units", names);
+			Assert.Contains("Diplomacy", names);
+			Assert.Contains("The Senate", names);
+			Assert.Contains("Zone of Control", names);
+			Assert.Contains("Barbarians", names);
 		}
 	}
 }
