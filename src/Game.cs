@@ -2919,7 +2919,7 @@ namespace CivOne
 					GameTask.Enqueue(Message.Advisor(Advisor.Science, false,
 						"The Dome is operational.",
 						OlvirArrivalTurn > 0
-							? $"Olvir landfall est. {Common.YearString((ushort)OlvirArrivalTurn)}."
+							? $"The visitors arrive about {Common.YearString((ushort)OlvirArrivalTurn)}."
 							: "Await the visitors.",
 						"Continue to 2200 CE."));
 				}
