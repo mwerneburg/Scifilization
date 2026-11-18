@@ -2929,7 +2929,7 @@ namespace CivOne
 		// ── Economic dominance: Pax Mercatoria ───────────────────────────────
 		// The merchant's finish line: hold EconomicLeadMargin times the gross economic
 		// output of the next-largest economy for EconomicHoldTurns consecutive turns, with Banking known, at least
-		// 3 rivals still standing, no war of your own making, and half the surviving
+		// VictoryRivalFloor rivals still standing, no war of your own making, and half the surviving
 		// rivals economically bound to you (tribute, defense pact, or an active trade
 		// route). Defensive wars don't break the streak: dominance by commerce,
 		// not cannon.
@@ -2957,7 +2957,7 @@ namespace CivOne
 					&& !p.IsDestroyed() && PlayerNumber(p) != 0
 					&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
 
-				if (!claimant.HasAdvance<Banking>() || econRivals.Length < 3)
+				if (!claimant.HasAdvance<Banking>() || econRivals.Length < VictoryRivalFloor)
 				{
 					Progress(cnum).EconStreak = 0;   // world shrank below the floor mid-streak
 					continue;
@@ -3094,6 +3094,12 @@ namespace CivOne
 		// being CLAIMANTS as well as from the rival list: the Registry does not court
 		// admiration, and it accumulated 4.25x the world's best culture in one measured
 		// game purely by owning two thirds of its cities.
+		// The rivals Pax Mercatoria and Cultural Ascendancy need still standing: three, or two
+		// in a world that began with five civs or fewer. A three-civ Epic Earth game had two
+		// rivals from its first turn, so neither win could ever start, and nothing said why
+		// (the user, Nov 2026). Competition counts the player's own civ.
+		internal int VictoryRivalFloor => _competition <= 5 ? 2 : 3;
+
 		private bool CheckCulturalAscendancy()
 		{
 			foreach (Player claimant in _players
@@ -3108,7 +3114,7 @@ namespace CivOne
 					&& !p.IsDestroyed() && PlayerNumber(p) != 0
 					&& !(p.Civilization is Civilizations.TheOthers or Civilizations.TheThing or Civilizations.Skynet or Civilizations.Federation)).ToArray();
 
-				if (!claimant.HasAdvance<Philosophy>() || cultRivals.Length < 3)
+				if (!claimant.HasAdvance<Philosophy>() || cultRivals.Length < VictoryRivalFloor)
 				{
 					Progress(cnum).CultureStreak = 0;
 					continue;

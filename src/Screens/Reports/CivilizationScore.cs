@@ -171,7 +171,7 @@ namespace CivOne.Screens.Reports
 			// about 1962. It would only have come back into view at the moment a civ reached
 			// it, which is exactly too late to be useful.
 			if (_page == Page.Output)
-				maxScore = Math.Max(maxScore, PeakThreshold(history, LiveThreshold(), HumanSlot));
+				maxScore = Math.Max(maxScore, PeakThreshold(history, LiveThreshold(), CanClaimPax));
 
 			int tickInterval = NiceInterval(maxScore);
 			int yTop         = ((maxScore / tickInterval) + 1) * tickInterval;
@@ -347,10 +347,11 @@ namespace CivOne.Screens.Reports
 
 			// ── Pax Mercatoria threshold ─────────────────────────────────────
 
-			// On the output page only: the finish line itself. The victory wants the human
-			// at Game.EconomicLeadMargin times the next-largest economy, so the useful
-			// reference is not a fixed value but a curve — that multiple of the best rival at
-			// that same turn. A trace above this line is a turn that counted toward the streak.
+			// On the output page only: the finish line itself, for whoever leads. The victory
+			// wants the leader at Game.EconomicLeadMargin times the next-largest economy, so the
+			// useful reference is not a fixed value but a curve — that multiple of the runner-up
+			// at that same turn. The leader's trace above this line is a turn that counted
+			// toward its streak, whether the leader is the player or a rival.
 			if (_page == Page.Output)
 			{
 				// Fewer than two samples means no segment to draw between — and this series
@@ -373,7 +374,7 @@ namespace CivOne.Screens.Reports
 					if (screenX > GraphRight + 1) break;
 
 					var snap = history[t];
-					int screenY = GraphBottom - (int)(ThresholdAt(snap, HumanSlot) * pxPerScore);
+					int screenY = GraphBottom - (int)(ThresholdAt(snap, CanClaimPax) * pxPerScore);
 					screenY = Math.Max(GraphTop, Math.Min(GraphBottom, screenY));
 
 					// Dashed, so it reads as a threshold rather than another civilization.
@@ -568,8 +569,12 @@ namespace CivOne.Screens.Reports
 				string streak = $"PAX MERCATORIA STREAK {econStreak}/{Game.EconomicHoldFor(Human)}";
 				byte col = econStreak > 0 ? CassetteTheme.OK : CassetteTheme.INK_LOW;
 				this.DrawText(streak, 0, col, GraphRight - 4, BannerRow(0), TextAlign.Right);
-				this.DrawText($"- - -  {Game.EconomicLeadMargin:0.0}X NEXT ECONOMY ({LiveThreshold()})", 0, CassetteTheme.ALERT,
-					GraphRight - 4, BannerRow(1), TextAlign.Right);
+				// Named when a rival leads: the line is then the bar THEY must clear.
+				Player? paxLeader = Game.GetPlayer((byte)(LeaderSlot(LiveSnapshot(), CanClaimPax) - 1));
+				string paxLine = paxLeader is null || paxLeader == Human
+					? $"- - -  {Game.EconomicLeadMargin:0.0}X NEXT ECONOMY ({LiveThreshold()})"
+					: $"- - -  {paxLeader.TribeNamePlural.ToUpper()} NEED {Game.EconomicLeadMargin:0.0}X ({LiveThreshold()})";
+				this.DrawText(paxLine, 0, CassetteTheme.ALERT, GraphRight - 4, BannerRow(1), TextAlign.Right);
 				DrawRivalStreak(LeadingRivalStreak(p => Game.Progress(Game.PlayerNumber(p)).EconStreak),
 					BannerRow(2), Game.EconomicHoldTurns);
 			}
@@ -599,32 +604,53 @@ namespace CivOne.Screens.Reports
 			.ToArray();
 
 		// History snapshots are [turn, player 0 (barbarians), player 1, ...].
-		private int HumanSlot => Game.PlayerNumber(Human) + 1;
 
-		// The Pax Mercatoria bar in one snapshot: the lead margin times the best economy other
-		// than the human's. The barbarians (slot 1) are no economy.
-		internal static int ThresholdAt(int[] snap, int humanSlot)
+		// The Pax Mercatoria bar in one snapshot, for whoever leads it: the lead margin times the
+		// best economy other than the leader's. It was the human's bar alone, so a rival's run at
+		// the win never showed on the chart (the user, Nov 2026). The leader is the largest
+		// economy that can claim the win; one that cannot (a story faction) is still an economy
+		// to beat, as in Game.CheckPaxMercatoria. The barbarians (slot 1) are no economy.
+		internal static int ThresholdAt(int[] snap, Func<int, bool>? canClaim = null)
 		{
-			int best = 0;
+			int leader = LeaderSlot(snap, canClaim), best = 0;
 			for (int pi = 2; pi < snap.Length; pi++)
-				if (pi != humanSlot && snap[pi] > best) best = snap[pi];
+				if (pi != leader && snap[pi] > best) best = snap[pi];
 			return (int)(best * Game.EconomicLeadMargin);
 		}
 
+		internal static int LeaderSlot(int[] snap, Func<int, bool>? canClaim = null)
+		{
+			int leader = -1;
+			for (int pi = 2; pi < snap.Length; pi++)
+				if ((canClaim is null || canClaim(pi)) && (leader < 0 || snap[pi] > snap[leader])) leader = pi;
+			return leader;
+		}
+
+		// Slot → may this civ claim Pax Mercatoria (the same exclusion as Game.CheckPaxMercatoria).
+		private static bool CanClaimPax(int slot) => Game.Instance.GetPlayer((byte)(slot - 1)) is Player p
+			&& !(p.Civilization is TheOthers or TheThing or Skynet or Federation or Olvir);
+
+		// Today's outputs in the history's [turn, barbarians, player 1, ...] layout.
+		private int[] LiveSnapshot()
+		{
+			Player[] live = Game.Players.Where(p => p is not null && !p.IsDestroyed() && Game.PlayerNumber(p) != 0).ToArray();
+			int[] snap = new int[live.Select(p => (int)Game.PlayerNumber(p)).DefaultIfEmpty(0).Max() + 2];
+			foreach (Player p in live) snap[Game.PlayerNumber(p) + 1] = Game.GrossOutputOf(p);
+			return snap;
+		}
+
 		// Today's bar, which is what the threshold line's last point is drawn at.
-		private int LiveThreshold() => (int)(Game.Players
-			.Where(p => p is not null && p != Human && !p.IsDestroyed() && Game.PlayerNumber(p) != 0)
-			.Select(Game.GrossOutputOf).DefaultIfEmpty(0).Max() * Game.EconomicLeadMargin);
+		private int LiveThreshold() => ThresholdAt(LiveSnapshot(), CanClaimPax);
 
 		// The tallest the threshold reaches across the plotted history and today. It is a
 		// SERIES, not a constant — it climbs as the next economy grows — so the axis has to fit
 		// its peak, not its current value, or the line leaves the chart partway along.
-		internal static int PeakThreshold(System.Collections.Generic.IReadOnlyList<int[]> history, int liveThreshold, int humanSlot)
+		internal static int PeakThreshold(System.Collections.Generic.IReadOnlyList<int[]> history, int liveThreshold, Func<int, bool>? canClaim = null)
 		{
 			int peak = liveThreshold;
 			if (history is not null)
 				foreach (int[] snap in history)
-					if (snap is not null) peak = Math.Max(peak, ThresholdAt(snap, humanSlot));
+					if (snap is not null) peak = Math.Max(peak, ThresholdAt(snap, canClaim));
 			return peak;
 		}
 

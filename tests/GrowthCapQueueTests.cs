@@ -55,8 +55,8 @@ namespace CivOne.Tests
 		[InlineData(true)]
 		public void ACityAtItsCapBuildsTheAqueductBeforeTheStaleQueue(bool autopilotedHuman)
 		{
-			Settings.Instance.Autopilot = autopilotedHuman;
 			City c = AnAiCityFinishingABuild(size: 7, human: autopilotedHuman);
+			Settings.Instance.Autopilot = autopilotedHuman;   // after the game: a new one starts with it off
 
 			c.NewTurn();
 

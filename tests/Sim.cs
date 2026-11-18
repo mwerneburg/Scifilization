@@ -156,6 +156,11 @@ namespace CivOne.Tests
 			((System.Collections.IList)typeof(Common)
 				.GetField("_screens", BindingFlags.NonPublic | BindingFlags.Static)!
 				.GetValue(null)!).Clear();
+
+			// ...and Autopilot, a static setting more than twenty tests switch on and never off.
+			// It hands the human's cities to the AI, so every test after one of them ran a
+			// different game, and the run order decided whether the lost-wonder tests passed.
+			Settings.Instance.Autopilot = false;
 		}
 
 		private static void SetStaticField(Type type, string name, object value)

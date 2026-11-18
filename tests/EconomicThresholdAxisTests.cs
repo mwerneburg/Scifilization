@@ -19,8 +19,7 @@ namespace CivOne.Tests
 {
 	public class EconomicThresholdAxisTests
 	{
-		// Snapshots are [turn, barbarians, player 1, player 2, ...]. The human is player 1 here.
-		private const int Human = 2;
+		// Snapshots are [turn, barbarians, player 1, player 2, ...].
 		private static int[] Snap(params int[] civs)
 		{
 			var snap = new int[civs.Length + 2];
@@ -28,11 +27,11 @@ namespace CivOne.Tests
 			return snap;
 		}
 
-		// The bar is the best RIVAL's output times the margin: not the human's own, not the world's.
+		// The bar is the runner-up's output times the margin: not the leader's own, not the world's.
 		[Fact]
 		public void TheBarIsTheMarginTimesTheBestRival()
 		{
-			Assert.Equal((int)(400 * Game.EconomicLeadMargin), CivilizationScore.ThresholdAt(Snap(9000, 400, 300), Human));
+			Assert.Equal((int)(400 * Game.EconomicLeadMargin), CivilizationScore.ThresholdAt(Snap(9000, 400, 300)));
 		}
 
 		// The barbarians are no economy, and the turn number is not an output.
@@ -40,29 +39,50 @@ namespace CivOne.Tests
 		public void TheTurnAndTheBarbariansAreNotRivals()
 		{
 			int[] snap = { 5000, 7000, 9000, 100, 100 };
-			Assert.Equal((int)(100 * Game.EconomicLeadMargin), CivilizationScore.ThresholdAt(snap, Human));
+			Assert.Equal((int)(100 * Game.EconomicLeadMargin), CivilizationScore.ThresholdAt(snap));
 		}
 
 		[Fact]
 		public void ThePeakIsTheTallestBarInTheHistory()
 		{
 			var history = new[] { Snap(100, 100), Snap(400, 600), Snap(300, 300) };
-			Assert.Equal((int)(600 * Game.EconomicLeadMargin), CivilizationScore.PeakThreshold(history, 0, Human));
+			Assert.Equal((int)(400 * Game.EconomicLeadMargin), CivilizationScore.PeakThreshold(history, 0));
 		}
 
 		// Today counts too — the last point of the line is drawn from the live value.
 		[Fact]
 		public void TodayCountsAsWellAsTheHistory()
 		{
-			Assert.Equal(3000, CivilizationScore.PeakThreshold(new[] { Snap(100, 100) }, 3000, Human));
+			Assert.Equal(3000, CivilizationScore.PeakThreshold(new[] { Snap(100, 100) }, 3000));
 		}
 
 		// A fresh game has no history at all, and the page is reachable immediately.
 		[Fact]
 		public void AnEmptyHistoryFallsBackToToday()
 		{
-			Assert.Equal(50, CivilizationScore.PeakThreshold(System.Array.Empty<int[]>(), 50, Human));
-			Assert.Equal(50, CivilizationScore.PeakThreshold(null!, 50, Human));
+			Assert.Equal(50, CivilizationScore.PeakThreshold(System.Array.Empty<int[]>(), 50));
+			Assert.Equal(50, CivilizationScore.PeakThreshold(null!, 50));
+		}
+
+		// The line follows whoever leads (the user, Nov 2026). It was the human's bar alone, so
+		// when a rival led, the line sat at 2.5x that rival and the rival's own run at the win
+		// never showed. Player 1 is the human here; the rival in slot 3 leads.
+		[Fact]
+		public void WhenARivalLeadsTheBarIsTheirs()
+		{
+			Assert.Equal((int)(400 * Game.EconomicLeadMargin), CivilizationScore.ThresholdAt(Snap(400, 9000, 300)));
+		}
+
+		// A leader that cannot claim the win (a story faction) is still an economy to beat, so
+		// the bar is the claimable leader's: 2.5x the faction, not 2.5x the claimant's runner-up.
+		[Fact]
+		public void AStoryFactionCannotLeadButMustBeBeaten()
+		{
+			int[] snap = Snap(400, 9000, 300);
+			System.Func<int, bool> notSlot3 = slot => slot != 3;
+
+			Assert.Equal(2, CivilizationScore.LeaderSlot(snap, notSlot3));
+			Assert.Equal((int)(9000 * Game.EconomicLeadMargin), CivilizationScore.ThresholdAt(snap, notSlot3));
 		}
 
 		// PeakThreshold is worthless unless the axis actually consults it. Draw() paints a bitmap
