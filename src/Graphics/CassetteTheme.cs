@@ -31,6 +31,9 @@ namespace CivOne.Graphics
 		public const byte ALERT      = 16;  // #c42820 red alert
 		public const byte CYAN       = 17;  // #3aaccc info / cold accent
 		public const byte OCEAN      = 18;  // #165080 static deep ocean (not part of wave cycle)
+		// Not a cassette token and never merged: the base palette's own yellow (palette.txt),
+		// which no art file uses. The city numeral of a city that has seen the King in Yellow.
+		public const byte SIGN       = 73;  // #ccc400 sickly yellow
 
 		// Shore-wave cycling palette (96–103 — the range cycled in GamePlay.HasUpdate).
 		// Pixel index 96 starts as the foam crest; with right-shift cycling it travels

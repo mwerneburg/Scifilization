@@ -5553,6 +5553,7 @@ namespace CivOne
 				{
 					YellowCities.Remove(key);
 					InvalidateCitiesAt(key.x, key.y);
+					c.RefreshTileIfAppearanceChanged();
 					if (c.Owner == hnum)
 						GameTask.Enqueue(Message.Advisor(Advisor.Domestic, false,
 							$"The mask has left {c.Name}.",
@@ -5577,6 +5578,7 @@ namespace CivOne
 					{
 						YellowCities.Add((healthy.X, healthy.Y));
 						InvalidateCitiesAt(healthy.X, healthy.Y);
+						healthy.RefreshTileIfAppearanceChanged();
 						home.RemoveTradeRoutesTo(partner); // both ends know what rode that road
 						if (healthy.Owner == hnum || carrier.Owner == hnum
 						    || HumanPlayer.HasEmbassy(GetPlayer(healthy.Owner)))

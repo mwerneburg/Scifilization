@@ -425,6 +425,9 @@ namespace CivOne.Graphics
 		//   ALERT     rioting. The loudest state, and it wins: a celebrating city that tips
 		//             into disorder has stopped celebrating (City.NewTurn agrees — CityView
 		//             reads `WasWeLoveKing && !IsInDisorder` for exactly this reason).
+		//   SIGN      the King in Yellow, in the player's own city: it needs a Cathedral, and
+		//             nothing else on the map says which city saw the play. Above the
+		//             celebration because it asks the player to act.
 		//   INK_HIGH  We Love the King Day. Bright cream against the amber field, so a
 		//             flourishing city reads at a glance the way a rioting one does.
 		//   PHOS      the ordinary amber.
@@ -433,6 +436,7 @@ namespace CivOne.Graphics
 		// in two places and the celebration colour in none.
 		internal static byte CityNumeralColour(City city)
 			=> city.IsInDisorder    ? CassetteTheme.ALERT
+			 : city.SeenThePlay     ? CassetteTheme.SIGN
 			 : city.WasWeLoveKing   ? CassetteTheme.INK_HIGH
 			 :                        CassetteTheme.PHOS;
 
@@ -490,7 +494,7 @@ namespace CivOne.Graphics
 				.FillRectangle(11, 1, 3, 2, CassetteTheme.INK_MID)  // right merlon
 				.FillRectangle(3, 3, 11, 1, CassetteTheme.INK_MID); // base wall
 
-			// See CityNumeralColour: red rioting, cream celebrating, amber otherwise.
+			// See CityNumeralColour: red rioting, yellow cursed, cream celebrating, amber otherwise.
 			byte numCol = CityNumeralColour(city);
 			output.DrawText($"{city.Size}", (smallFont ? 1 : 0), numCol, 8, 6, TextAlign.Center);
 

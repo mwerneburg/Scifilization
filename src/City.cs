@@ -306,7 +306,7 @@ namespace CivOne
 
 		// What the map tile last showed for this city, so a change can be noticed.
 		//
-		// The city-size numeral on the map is drawn in three colours — red rioting, cream
+		// The city-size numeral on the map is drawn in four colours — red rioting, yellow cursed, cream
 		// celebrating, amber otherwise (Icons.CityNumeralColour) — but it is baked into the
 		// city's 16x16 icon when the TILE is rendered. Nothing repainted the tile when a city
 		// changed state, so the numeral stayed whatever it was until something else forced a
@@ -319,6 +319,11 @@ namespace CivOne
 		// waste this was mistaken for in the first place.
 		private bool? _shownDisorder;
 		private bool? _shownCelebrating;
+		private bool? _shownPlay;
+
+		// The King in Yellow, as the player's own map shows it (Icons.CityNumeralColour).
+		// Rivals' cities are left out: the news of them does not always reach the player.
+		internal bool SeenThePlay => Player == Human && Game.Instance.YellowCities.Contains((X, Y));
 
 		// Has what this city LOOKS like changed since the last time anyone asked? Records the
 		// new appearance as a side effect, so the answer is true exactly once per change.
@@ -332,9 +337,11 @@ namespace CivOne
 			if (!Game.Started) return false;
 			bool disorder = IsInDisorder;
 			bool celebrating = WasWeLoveKing;
-			if (_shownDisorder == disorder && _shownCelebrating == celebrating) return false;
+			bool play = SeenThePlay;
+			if (_shownDisorder == disorder && _shownCelebrating == celebrating && _shownPlay == play) return false;
 			_shownDisorder = disorder;
 			_shownCelebrating = celebrating;
+			_shownPlay = play;
 			return true;
 		}
 
@@ -3054,6 +3061,7 @@ namespace CivOne
 							// cures it (Game.ProcessKingInYellow).
 							Game.Instance.YellowCities.Add((X, Y));
 							Game.InvalidateCitiesAt(X, Y);
+							RefreshTileIfAppearanceChanged();
 							string stage = Name;
 							impTask.Done += (s, a) =>
 							{
