@@ -1991,6 +1991,10 @@ namespace CivOne
 		// DiasporaAward), so the cost was a misleading projection rather than a wrong result —
 		// and it now tells a player something true: the 4th and 5th modules buy nothing until
 		// the 6th completes the set.
+		// A colony's size is its ship's expected colonists. Parts stop counting at launch
+		// (City.cs), so this is fixed from the day it leaves.
+		private static int ColonySize(Player p) => SpaceshipScore(p.Progress.SpaceshipModule, p.Progress.SpaceshipComponent);
+
 		internal static int SpaceshipScore(int module, int component)
 		{
 			int carried = (module / 3) * 3;
@@ -3427,6 +3431,9 @@ namespace CivOne
 					// nothing at all. ColonyOrder is the arrival rank, for the first-mover
 					// premium: being first to another star is the achievement, and the
 					// fifth ship to make the same crossing is not the same feat.
+					// Ships that land on the same turn share the rank: the slot order is not
+					// an achievement (the user's Romans and Guarani both landing 1903, Nov 2026).
+					int rank = _players.Count(x => x is not null && x.Progress.ColonyOrder > 0) + 1;
 					for (int p = 1; p < _players.Count; p++)
 					{
 						if (Progress(p).SpaceshipArrivalTurn != bestArrival) continue;
@@ -3435,7 +3442,7 @@ namespace CivOne
 						Progress(p).SpaceshipArrivalTurn = 0;
 						if (Progress(p).ColonyFounded) continue;
 						Progress(p).ColonyFounded = true;
-						Progress(p).ColonyOrder = _players.Count(x => x is not null && x.Progress.ColonyOrder > 0) + 1;
+						Progress(p).ColonyOrder = rank;
 
 						if (_players[p] == HumanPlayer)
 						{
@@ -3475,8 +3482,11 @@ namespace CivOne
 		// be rebuilt elsewhere, and the twenty turns start over.
 		private bool CheckDiaspora()
 		{
+			// Biggest colony first, so two holds that finish on the same turn go to the larger
+			// colony, not the lower slot. OrderBy is stable: equal colonies keep slot order.
 			foreach (Player colonist in _players
-			         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0).ToArray())
+			         .Where(p => p is not null && !p.IsDestroyed() && PlayerNumber(p) != 0)
+			         .OrderByDescending(ColonySize).ToArray())
 			{
 				byte dnum = PlayerNumber(colonist);
 				if (!Progress(dnum).ColonyFounded) continue;
@@ -5139,13 +5149,14 @@ namespace CivOne
 		//
 		// Part counts are private — you do not get to see a rival's hull coming together,
 		// only the day its first part is finished (City.NewTurn) and the day it leaves.
+		// Colonies that landed together share a rank; the larger one leads, as it would win.
 		internal (Player? Holder, int ArrivalTurn, uint Streak) SpaceLeader()
 		{
 			Player? colonist = null; int order = int.MaxValue;
 			Player? flier = null; int arrival = int.MaxValue;
-			foreach (Player p in _players)
+			foreach (Player p in _players.Where(x => x is not null).OrderByDescending(ColonySize))
 			{
-				if (p is null || p.IsDestroyed() || PlayerNumber(p) == 0) continue;
+				if (p.IsDestroyed() || PlayerNumber(p) == 0) continue;
 				PlayerProgress pr = p.Progress;
 				if (pr.ColonyFounded && pr.ColonyOrder > 0 && pr.ColonyOrder < order)
 				{
