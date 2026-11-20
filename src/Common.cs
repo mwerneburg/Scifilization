@@ -659,6 +659,13 @@ namespace CivOne
 				|| (OwnCity(t) && moverHasRail);
 			bool RoadAt(ITile t) => t.Road || t.RailRoad || t.TransportTube || OwnCity(t);
 
+			// A settler laying a road (Show.RoadTo) cannot road a river before Bridge Building
+			// (Settlers.BuildRoad), so a route across one leaves a gap. It goes round where it
+			// can; a river with no way round is still crossed. ponytail: a flat ten open tiles
+			// of detour, tune if long rivers make it wander.
+			bool skirtRivers = unit is Settlers roader && !roader.RoadTo.IsEmpty
+				&& !moverPlayer.HasAdvance<BridgeBuilding>();
+
 			// Unit occupancy as a per-tile bitmask of owners, built once per search.
 			// ITile.Units routes to Game.GetUnits(x, y), which scans EVERY unit in the
 			// game, sorts the matches and allocates an array. A* consulted it once per
@@ -885,6 +892,7 @@ namespace CivOne
 						cost = 3;
 					else
 						cost = tile.Movement * 9;
+					if (skirtRivers && tile is River && !RoadAt(tile)) cost += 90;
 
 					int tentativeG = node.g + cost;
 					int nextPos = Encode(nx, ny);

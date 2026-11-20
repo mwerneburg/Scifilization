@@ -383,9 +383,9 @@ namespace CivOne.Units
 					ITile tile = Map[X, Y];
 					bool needsRoad = !tile.Road && !tile.RailRoad && tile.City is null && !tile.IsOcean;
 					Log($"[Settlers.MovementDone] needsRoad={needsRoad} (road={tile.Road} rail={tile.RailRoad} city={tile.City is not null} ocean={tile.IsOcean})");
-					if (needsRoad)
+					// BuildRoad refuses a river before Bridge Building; walk on across it.
+					if (needsRoad && BuildRoad())
 					{
-						BuildRoad();
 						Log($"[Settlers.MovementDone] After BuildRoad: Goto cleared, BuildingRoad={BuildingRoad}");
 						Goto = Point.Empty;
 					}
@@ -945,9 +945,9 @@ namespace CivOne.Units
 				{
 					ITile tile = Map[X, Y];
 					bool needsRoad = !tile.Road && !tile.RailRoad && tile.City is null && !tile.IsOcean;
-					if (needsRoad)
-						BuildRoad();
-					else
+					// A refused road (a river before Bridge Building) stranded the settler on
+					// it for good: no road started, and no Goto either.
+					if (!needsRoad || !BuildRoad())
 						Goto = new Point(RoadTo.X, RoadTo.Y);
 				}
 			}
