@@ -121,7 +121,11 @@ namespace CivOne.Tasks
 			_city = Game.AddCity(_player, nameId, _x, _y);
 			if (_city is not null)
 			{
-				if (_player.IsHuman)
+				// Autopilot founds as the AI does, as CreateCity(player, x, y) below already
+				// names. The settler is spent when this screen closes, and in a headless run
+				// nothing closes it: one immortal settler gave the harness's player 23 cities
+				// by turn 100 (Nov 2026).
+				if (_player.IsHuman && !Settings.Instance.Autopilot)
 				{
 					CityManager cityManager = new CityManager(_city!, viewCity: false, allowCycle: false);
 					cityManager.Closed += CityManagerClosed;
