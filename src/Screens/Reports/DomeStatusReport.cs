@@ -118,7 +118,7 @@ namespace CivOne.Screens.Reports
 			this.DrawText("Component",   0, CassetteTheme.INK_LOW, x0,          top);
 			this.DrawText("Assigned To", 0, CassetteTheme.INK_LOW, x0 + 130,    top);
 			this.DrawText("Progress",    0, CassetteTheme.INK_LOW, x0 + 230,    top);
-			this.DrawText("Infuse $200", 0, CassetteTheme.INK_LOW, OX + bodyW - 60, top, TextAlign.Center);
+			this.DrawText($"Infuse 200{IconGlyphs.Gold}", 0, CassetteTheme.INK_LOW, OX + bodyW - 60, top, TextAlign.Center);
 			top += rowH - 2;
 			this.DrawCassetteDivider(x0, top, bodyW);
 			top += 4;
@@ -193,7 +193,7 @@ namespace CivOne.Screens.Reports
 			this.DrawText(summary, 0, summaryColour, Width / 2, top, TextAlign.Center);
 
 			this.DrawCassetteDivider(x0, Height - 18, bodyW);
-			this.DrawText("Click [+50] to spend $200 gold adding 50 shields to an AI dome project  •  Any key closes",
+			this.DrawText($"Click [+50] to spend 200{IconGlyphs.Gold} adding 50 shields to an AI dome project  •  Any key closes",
 			              0, CassetteTheme.INK_LOW, Width / 2, Height - 14, TextAlign.Center);
 
 			return true;

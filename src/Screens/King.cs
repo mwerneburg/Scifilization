@@ -179,19 +179,19 @@ namespace CivOne.Screens
 			{
 				var parts = new System.Collections.Generic.List<string> { $"Return {d.City!.Name}" };
 				if (d.Advance is not null) parts.Add(d.Advance!.Name);
-				if (d.Amount > 0) parts.Add($"${d.Amount}");
+				if (d.Amount > 0) parts.Add($"{d.Amount}{IconGlyphs.Gold}");
 				return $"Accept settlement: {string.Join(" + ", parts)} → {d.Duration} turns of peace";
 			}
 			return d.Kind switch
 			{
-				AIDemandKind.BegForAid => $"Send aid: ${d.Amount} + emergency food → {d.Duration} turns of goodwill",
+				AIDemandKind.BegForAid => $"Send aid: {d.Amount}{IconGlyphs.Gold} + emergency food → {d.Duration} turns of goodwill",
 				AIDemandKind.ReturnCity => $"Return {d.City!.Name} → {d.Duration} turns of peace",
 				AIDemandKind.GiveMap   => $"Share your maps → {d.Duration} turns of goodwill",
 				AIDemandKind.GiveTech  => $"Transfer {d.Advance!.Name} → {d.Duration} turns of goodwill",
-				AIDemandKind.GiveMoney => $"Pay ${d.Amount} tribute → {d.Duration} turns of goodwill",
+				AIDemandKind.GiveMoney => $"Pay {d.Amount}{IconGlyphs.Gold} tribute → {d.Duration} turns of goodwill",
 				AIDemandKind.CedeCity  => $"Cede {d.City!.Name} → {d.Duration} turns of goodwill",
 				AIDemandKind.NuclearUltimatum => $"Cede {d.City!.Name} → the warhead stays in its silo",
-				AIDemandKind.OfferTribute => $"Accept tribute: ${d.Amount}/turn → peace while the gold flows",
+				AIDemandKind.OfferTribute => $"Accept tribute: {d.Amount}{IconGlyphs.Gold}/turn → peace while the gold flows",
 				_                      => "Unknown demand"
 			};
 		}
@@ -250,7 +250,7 @@ namespace CivOne.Screens
 					_enemy.Gold += d.Amount;
 					_enemy.SetAttitudeBonus(Human, d.Duration);
 					SetResponse(FaceState.Smiling,
-						$"${d.Amount} received. Satisfactory.",
+						$"{d.Amount}{IconGlyphs.Gold} received. Satisfactory.",
 						$"{d.Duration} turns of goodwill — agreed.");
 					break;
 
@@ -275,7 +275,7 @@ namespace CivOne.Screens
 					// treaty; the gold arrives each turn the payer stays solvent.
 					_enemy.EstablishTribute(Human, d.Amount);
 					SetResponse(FaceState.Neutral,
-						$"${d.Amount} will arrive each year.",
+						$"{d.Amount}{IconGlyphs.Gold} will arrive each year.",
 						"Call your armies home.");
 					break;
 
@@ -290,7 +290,7 @@ namespace CivOne.Screens
 						$"{d.City!.Name} is restored to us."
 					};
 					if (d.Advance is not null) responseLines.Add($"{d.Advance!.Name} received.");
-					if (d.Amount > 0) responseLines.Add($"${d.Amount} received.");
+					if (d.Amount > 0) responseLines.Add($"{d.Amount}{IconGlyphs.Gold} received.");
 					responseLines.Add($"{d.Duration} turns of peace — agreed.");
 					SetResponse(FaceState.Smiling, responseLines.ToArray());
 					break;
@@ -684,7 +684,7 @@ namespace CivOne.Screens
 				int amount = TributeAmount();
 				_enemy.Gold -= amount;
 				Human.Gold  += amount;
-				SetResponse(FaceState.Neutral, $"We will pay ${amount}.", "Now take it and leave.");
+				SetResponse(FaceState.Neutral, $"We will pay {amount}{IconGlyphs.Gold}.", "Now take it and leave.");
 			}
 			else
 			{
@@ -763,7 +763,7 @@ namespace CivOne.Screens
 				Human.Gold  += amount;
 				Human.MakePeace(_enemy);
 				SetResponse(FaceState.Neutral,
-					$"We will pay ${amount} and agree to peace.", "The war is now over.");
+					$"We will pay {amount}{IconGlyphs.Gold} and agree to peace.", "The war is now over.");
 			}
 			else
 			{

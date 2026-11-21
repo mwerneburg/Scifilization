@@ -55,7 +55,7 @@ namespace CivOne.Screens.Dialogs
 				Human.Gold += paid;
 				GameTask.Insert(Message.Advisor(Advisor.Foreign, false,
 					$"The {_culprit.TribeNamePlural} disavow", "their agents and pay",
-					$"${paid} in reparations."));
+					$"{paid}{IconGlyphs.Gold} in reparations."));
 			}
 			else
 			{

@@ -83,8 +83,8 @@ namespace CivOne.Screens.Dialogs
 		public ConfirmBuy(string name, short price, int treasury) : base(MouseCursor.Pointer)
 		{
 			_line1 = "Cost to complete";
-			_line2 = $"{name}: ${price}";
-			_line3 = $"Treasury: ${treasury}";
+			_line2 = $"{name}: {price}{IconGlyphs.Gold}";
+			_line3 = $"Treasury: {treasury}{IconGlyphs.Gold}";
 
 			using Palette p = Common.DefaultPalette;
 			using (Palette cassette = CassetteTheme.CreatePalette())

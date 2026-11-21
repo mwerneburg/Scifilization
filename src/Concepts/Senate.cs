@@ -7,6 +7,8 @@
 // You should have received a copy of the CC0 legalcode along with this
 // work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 
+using CivOne.Graphics;
+
 namespace CivOne.Concepts
 {
 	// The veto is in BaseUnit.Confront and King.BuildMenu; the hearings are
@@ -38,7 +40,7 @@ namespace CivOne.Concepts
 			"third act of sabotage calls a",
 			"hearing: take no action, declare",
 			"war, or, with an EMBASSY, demand",
-			"reparations of up to $200.",
+			$"reparations of up to 200{IconGlyphs.Gold}.",
 			"",
 			"An incited city calls a hearing at",
 			"once. With an embassy you may",

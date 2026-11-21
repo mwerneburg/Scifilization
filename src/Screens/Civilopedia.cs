@@ -203,7 +203,7 @@ namespace CivOne.Screens
 					this.DrawText("Requires: (none)", 0, CassetteTheme.INK_MID, OX + 12, yy);
 				yy += 9;
 				this.DrawText($"Cost: {b.Price * 10} shields", 0, CassetteTheme.INK_MID, OX + 12, yy); yy += 9;
-				this.DrawText($"Maintenance: ${b.Maintenance}/turn", 0, CassetteTheme.INK_MID, OX + 12, yy);
+				this.DrawText($"Maintenance: {b.Maintenance}{IconGlyphs.Gold}/turn", 0, CassetteTheme.INK_MID, OX + 12, yy);
 				return;
 			}
 			if (_singlePage is BaseWonder w)

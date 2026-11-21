@@ -25,6 +25,7 @@ using Gov = CivOne.Governments;
 using UniversityBuilding = CivOne.Buildings.University;
 using ObservatoryBuilding = CivOne.Buildings.Observatory;
 using static CivOne.Enums.DevelopmentLevel;
+using CivOne.Graphics;
 
 namespace CivOne
 {
@@ -2193,7 +2194,7 @@ namespace CivOne
 							if (Human.HasEmbassy(Player) || Human.HasEmbassy(protector))
 								GameTask.Enqueue(Message.Newspaper(null!,
 									$"{Player.TribeNamePlural} sue for protection!",
-									$"${annual}/turn tribute flows",
+									$"{annual}{IconGlyphs.Gold}/turn tribute flows",
 									$"to the {protector.TribeNamePlural}."));
 						}
 					}

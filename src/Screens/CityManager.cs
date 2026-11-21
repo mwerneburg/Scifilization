@@ -730,7 +730,7 @@ namespace CivOne.Screens
 				return true; // already complete, or will finish next turn unaided — nothing to buy
 			if (gold < price)
 			{
-				Common.AddScreen(new MessageBox("Cost to complete", $"{name}: ${price}", $"Treasury: ${gold}"));
+				Common.AddScreen(new MessageBox("Cost to complete", $"{name}: {price}{IconGlyphs.Gold}", $"Treasury: {gold}{IconGlyphs.Gold}"));
 				return true;
 			}
 			var confirm = new ConfirmBuy(name, price, gold);

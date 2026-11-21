@@ -13,6 +13,7 @@ using CivOne.Enums;
 using CivOne.Tasks;
 using CivOne.Tiles;
 using CivOne.Wonders;
+using CivOne.Graphics;
 
 namespace CivOne.Units
 {
@@ -85,7 +86,7 @@ namespace CivOne.Units
 					$"{ware} caravan from {homeName}",
 					$"arrives in {city.Name}",
 					"Trade route established",
-					$"Revenue: ${revenue}."));
+					$"Revenue: {revenue}{IconGlyphs.Gold}."));
 			// No (short) cast. Revenue is unbounded — the reported case was 10,000 — and the
 			// cast is what truncated the sum before Player.Gold's clamp could see it.
 			Game.Instance.GetPlayer(unit.Owner).Gold += revenue;

@@ -139,7 +139,7 @@ namespace CivOne.Buildings
 				if (RequiredTech is not null) requiredTech = RequiredTech.Name;
 				output.DrawText($"Requires {requiredTech}", 6, 9, 12, yy); yy += 8;
 				output.DrawText($"Cost: {Price}0 shields.", 6, 9, 12, yy); yy += 8;
-				output.DrawText($"Maintenance: ${Maintenance}", 6, 12, 12, yy);
+				output.DrawText($"Maintenance: {Maintenance}{IconGlyphs.Gold}", 6, 12, 12, yy);
 			}
 			
 			return output;

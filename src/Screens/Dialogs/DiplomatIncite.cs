@@ -113,7 +113,7 @@ namespace CivOne.Screens.Dialogs
 
 			DialogBox.DrawText($"Spies Report", 0, 15, 45, 5);
 			DialogBox.DrawText($"Dissidents in {_cityToIncite.Name}", 0, 15, 45, 5 + Resources.GetFontHeight(FONT_ID));
-			DialogBox.DrawText($"will revolt for ${_inciteCost}", 0, 15, 45, 5 + (2 * Resources.GetFontHeight(FONT_ID)));
+			DialogBox.DrawText($"will revolt for {_inciteCost}{IconGlyphs.Gold}", 0, 15, 45, 5 + (2 * Resources.GetFontHeight(FONT_ID)));
 		}
 	}
 }
