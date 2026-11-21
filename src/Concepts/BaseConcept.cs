@@ -19,8 +19,7 @@ namespace CivOne.Concepts
 
 		public virtual string[] GetPageText(byte pageNumber)
 		{
-			string suffix = pageNumber == 1 ? "" : "2";
-			return Resources.GetCivilopediaText("BLURB4/" + Name.ToUpper() + suffix);
+			return System.Array.Empty<string>();
 		}
 
 		public Picture DrawPage(byte pageNumber)

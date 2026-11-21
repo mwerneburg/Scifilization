@@ -945,29 +945,13 @@ namespace CivOne.Units
 		public byte PageCount => 2;
 
 		// Override in a subclass to supply Civilopedia text directly from code, parallel to
-		// BaseBuilding.GetPageText / BaseWonder.GetPageText. Returning a non-empty array takes
-		// precedence over the BLURB2.TXT fallback used by the original game data.
+		// BaseBuilding.GetPageText / BaseWonder.GetPageText.
 		public virtual string[] GetPageText(byte pageNumber) => new string[0];
 
 		public Picture DrawPage(byte pageNumber)
 		{
 			string[] text = GetPageText(pageNumber);
-			if (text.Length == 0)
-			{
-				switch (pageNumber)
-				{
-					case 1:
-						text = Resources.GetCivilopediaText("BLURB2/" + _name.ToUpper());
-						break;
-					case 2:
-						text = Resources.GetCivilopediaText("BLURB2/" + _name.ToUpper() + "2");
-						break;
-					default:
-						Log("Invalid page number: {0}", pageNumber);
-						break;
-				}
-			}
-			
+
 			Picture output = new Picture(320, 200);
 			
 			output.AddLayer(this.ToBitmap(1), 215, 47);
@@ -1322,8 +1306,8 @@ namespace CivOne.Units
 		{
 			if (_iconCache[(int)Type] is null)
 			{
-				_iconCache[(int)Type] = Resources[$"ICONPG{page}"][col * 160, row * 62, 160, 60]
-					.ColourReplace((byte)(GFX256 ? 253 : 15), 0);
+				// A blank stand-in, as it always was without the DOS files (gone Nov 2026).
+				_iconCache[(int)Type] = new Picture(160, 60, Common.GetPalette256).FillRectangle(0, 0, 160, 60, 1);
 			}
 			Icon = _iconCache[(int)Type];
 		}

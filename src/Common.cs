@@ -130,7 +130,7 @@ namespace CivOne
 				GamePlay gamePlay = GamePlay;
 				if (gamePlay is not null)
 					return gamePlay.MainPalette.Copy();
-				return Resources["SP257"].Palette.Copy();
+				return GetPalette256.Copy();
 			}
 		}
 

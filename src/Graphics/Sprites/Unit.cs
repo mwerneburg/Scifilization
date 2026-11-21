@@ -17,17 +17,12 @@ namespace CivOne.Graphics.Sprites
 	{
 		private static IBitmap? BaseSprite(UnitType type) => CivOne.Units.BaseUnit.GetBaseSprite(type);
 		private static Free Free => Free.Instance;
-		private static Resources Resources => Resources.Instance;
-		private static Settings Settings => Settings.Instance;
-
-		private static bool GFX256 => (Settings.GraphicsMode == GraphicsMode.Graphics256);
 
 		private static Bytemap GetUnit((UnitType Type, byte PlayerNumber) unit)
 		{
 			byte colourLight = Common.ColourLight[unit.PlayerNumber];
 			// The Sea Caravan borrows the Sail's artwork.
 			UnitType artType = unit.Type == UnitType.SeaCaravan ? UnitType.Sail : unit.Type;
-			int unitId = (int)artType;
 
 			// Collect art as a transparent-background bytemap (index 0 = transparent)
 			Bytemap art;
@@ -44,20 +39,7 @@ namespace CivOne.Graphics.Sprites
 				}
 				else
 				{
-					string resFile = GFX256 ? "SP257" : "SPRITES";
-					int xx = (unitId % 20) * 16;
-					int yy = unitId < 20 ? 160 : 176;
-
-					if (unitId <= 27 && Resources.Exists(resFile))
-					{
-						art = Resources[resFile].Bitmap[xx, yy, 16, 16]
-							.FillRectangle(0, 0, 16, 1, 0)
-							.FillRectangle(0, 1, 1, 15, 0);
-					}
-					else
-					{
-						art = Free.GetUnit(artType);
-					}
+					art = Free.GetUnit(artType);
 				}
 				art.ColourReplace((10, CassetteTheme.PHOS_DIM), (2, CassetteTheme.BG3));
 			}

@@ -86,39 +86,13 @@ namespace CivOne.Screens
 			_dx = x - 14;
 			_dy = y - 14;
 			
-			bool free = RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("NUKE1");
-			if (free)
-			{
-				Palette = Common.DefaultPalette;
-			}
-			else
-			{
-				using (Palette palette = Common.DefaultPalette)
-				{
-					for (int i = 192; i < 256; i++)
-					{
-						palette[i] = Resources["NUKE1"].Palette[i];
-					}
-					Palette = palette;
-				}
-			}
+			Palette = Common.DefaultPalette;
 			Player? renderPlayer = Settings.RevealWorld ? null : Human;
 			_gameMap = Map[_x, _y, 15, 12].ToBitmap(TileSettings.BlinkOff, renderPlayer);
 
 			_sprites = new Picture[28];
-			if (free)
-			{
-				for (int f = 0; f < 28; f++)
-					_sprites[f] = new Picture(Free.Instance.NukeBlast(f), Common.GetPalette256);
-			}
-			else
-			{
-				for (int yy = 0; yy < 4; yy++)
-				for (int xx = 0; xx < 7; xx++)
-				{
-					_sprites[(yy * 7) + xx] = Resources["NUKE1"][1 + (45 * xx), 1 + (45 * yy), 44, 44];
-				}
-			}
+			for (int f = 0; f < 28; f++)
+				_sprites[f] = new Picture(Free.Instance.NukeBlast(f), Common.GetPalette256);
 		}
 	}
 }

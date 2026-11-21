@@ -24,10 +24,9 @@ namespace CivOne.Tiles
 	{
 		private static Game Game => Game.Instance;
 		private static Resources Resources => Resources.Instance;
-		private static Palette Palette => Resources["SP257"].Palette;
+		private static Palette Palette => Common.GetPalette256.Copy();
 		private static Settings Settings => Settings.Instance;
 		
-		private static bool GFX256 => (Settings.GraphicsMode == GraphicsMode.Graphics256);
 
 		private static TextSettings CityLabel = TextSettings.ShadowText(15, 5);
 
@@ -236,7 +235,7 @@ namespace CivOne.Tiles
 			output.AddLayer(MapTile.TileLayer(tile));
 			// Irrigation goes on top of the terrain texture: the desert texture is fully
 			// opaque, so drawing under it (the old order) hid the channels entirely.
-			if (GFX256 && settings.Improvements && tile.DrawIrrigation()) output.AddLayer(MapTile.Irrigation);
+			if (settings.Improvements && tile.DrawIrrigation()) output.AddLayer(MapTile.Irrigation);
 			output.AddLayer(MapTile.TileSpecial(tile));
 			Bytemap? erosion = MapTile.LandCoastErosion(tile);
 			if (erosion is not null) output.AddLayer(erosion, dispose: true);
@@ -244,7 +243,6 @@ namespace CivOne.Tiles
 			// Add tile improvements
 			if (tile.Type != Terrain.River && settings.Improvements)
 			{
-				if (!GFX256 && tile.DrawIrrigation()) output.AddLayer(MapTile.Irrigation);
 				if (tile.DrawMine()) output.AddLayer(MapTile.Mine);
 				if (tile.Terrace) output.AddLayer(MapTile.Terrace);
 				if (tile.MoistureFarm) output.AddLayer(MapTile.MoistureFarm);

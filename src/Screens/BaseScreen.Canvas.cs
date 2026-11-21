@@ -77,41 +77,12 @@ namespace CivOne.Screens
 
 		protected void DrawBorder(int border)
 		{
-			if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP299"))
-			{
-				// Procedural cassette frame: bright top/left edge, dark bottom/right.
-				const byte hi = 7, lo = 5;   // INK_MID / BORDER
-				this.FillRectangle(0, 0, Width, 1, hi)
-					.FillRectangle(0, 0, 1, Height, hi)
-					.FillRectangle(0, Height - 1, Width, 1, lo)
-					.FillRectangle(Width - 1, 0, 1, Height, lo);
-				return;
-			}
-
-			border = (border % 2);
-			Picture[] borders = new Picture[8];
-			int index = 0;
-			for (int yy = 0; yy < 2; yy++)
-			for (int xx = 0; xx < 4; xx++)
-			{
-				borders[index] = Resources["SP299"][((border == 0) ? 192 : 224) + (8 * xx), 120 + (8 * yy), 8, 8];
-				index++;
-			}
-			
-			for (int x = 8; x < Width - 8; x += 8)
-			{
-				this.AddLayer(borders[4], x, 0)
-					.AddLayer(borders[6], x, Height - 8);
-	}
-			for (int y = 8; y < Height - 8; y += 8)
-			{
-				this.AddLayer(borders[7], 0, y)
-					.AddLayer(borders[5], Width - 8, y);
-			}
-			this.AddLayer(borders[0], 0, 0)
-				.AddLayer(borders[1], Width - 8, 0)
-				.AddLayer(borders[2], 0, Height - 8)
-				.AddLayer(borders[3], Width - 8, Height - 8);
+			// Procedural cassette frame: bright top/left edge, dark bottom/right.
+			const byte hi = 7, lo = 5;   // INK_MID / BORDER
+			this.FillRectangle(0, 0, Width, 1, hi)
+				.FillRectangle(0, 0, 1, Height, hi)
+				.FillRectangle(0, Height - 1, Width, 1, lo)
+				.FillRectangle(Width - 1, 0, 1, Height, lo);
 		}
 
 		protected void DrawButton(string text, byte fontId, byte colour, byte colourDark, int x, int y, int width, int height)

@@ -29,13 +29,11 @@ namespace CivOne.Screens
 	{
 		private const int NOISE_COUNT = 8;
 
-		private readonly DestroyAnimation _animation;
 		private readonly Random _rng = new Random();   // the screen's own dice; see ScreenDiceTests
 		private readonly IUnit _unit;
 		private readonly bool _stack;
 		private readonly Player? _credit;
 		private int _noiseCounter = NOISE_COUNT + 2;
-		private readonly IBitmap[]? _destroySprites = null;
 
 		internal DestroyUnit(IUnit unit, bool stack, Player? credit = null)
 		{
@@ -46,26 +44,6 @@ namespace CivOne.Screens
 			using var p = Common.DefaultPalette;
 			Palette = p;
 
-			_animation = Settings.DestroyAnimation;
-			if (!Resources.Exists("SP257"))
-				_animation = DestroyAnimation.Noise;
-
-			if (_animation == DestroyAnimation.Sprites)
-			{
-				_destroySprites = new IBitmap[8];
-				for (int i = 0; i < 8; i++)
-					_destroySprites[i] = Resources["SP257"][16 * i, 96, 16, 16].ColourReplace(9, 0);
-			}
-		}
-
-		// Nearest-neighbour scale of a 16x16 explosion frame to the current tile size.
-		private static Bytemap Scale(IBitmap source, int size)
-		{
-			Bytemap output = new Bytemap(size, size);
-			for (int y = 0; y < size; y++)
-			for (int x = 0; x < size; x++)
-				output[x, y] = source.Bitmap[(x * source.Bitmap.Width) / size, (y * source.Bitmap.Height) / size];
-			return output;
 		}
 
 		protected override bool HasUpdate(uint gameTick)
@@ -86,28 +64,12 @@ namespace CivOne.Screens
 			{
 				int sx = ox + xx * px;
 				int sy = oy + yy * px;
-				int step = 8 - _noiseCounter;
-				if (_animation == DestroyAnimation.Sprites && step >= 0 && step < 8)
-				{
-					if (px == 16)
-					{
-						this.AddLayer(_destroySprites![step], sx, sy);
-					}
-					else
-					{
-						using Bytemap frame = Scale(_destroySprites![step], px);
-						this.AddLayer(frame, sx, sy);
-					}
-				}
-				else if (_animation == DestroyAnimation.Noise)
-				{
-					// ponytail: crude static block, only reached when SP257 is missing
-					Bytemap noise = new Bytemap(px, px);
-					for (int y = 0; y < px; y++)
-					for (int x = 0; x < px; x++)
-						noise[x, y] = (byte)_rng.Next(1, NOISE_COUNT);
-					this.AddLayer(noise, sx, sy);
-				}
+				// ponytail: crude static block; the DOS explosion sprites it stood in for are gone
+				Bytemap noise = new Bytemap(px, px);
+				for (int y = 0; y < px; y++)
+				for (int x = 0; x < px; x++)
+					noise[x, y] = (byte)_rng.Next(1, NOISE_COUNT);
+				this.AddLayer(noise, sx, sy);
 			}
 
 			_noiseCounter--;

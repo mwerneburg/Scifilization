@@ -216,13 +216,9 @@ namespace CivOne.Screens
 			{
 				_nextScreen = story;
 			}
-			else if (!Runtime.Settings.ShowIntro || Resources.SplashRawImage is not null)
-			{
-				_nextScreen = new NewGame();
-			}
 			else
 			{
-				_nextScreen = new Intro();
+				_nextScreen = new NewGame();
 			}
 		}
 		
@@ -394,8 +390,7 @@ namespace CivOne.Screens
 			OnResize += Resize;
 			Closed += (s, a) => Runtime.WindowTitle = Settings.WindowTitle;
 
-			_introText = TextFile.Instance.LoadArray("CREDITS");
-			if (_introText.Length == 0) _introText = new string[25];
+			_introText = new string[25];   // the DOS CREDITS.TXT lines, no longer read
 			_pictures = new Picture[3];
 			for (int i = 0; i < 2; i++)
 				_pictures[i] = new Picture(320, 200);
@@ -419,15 +414,7 @@ namespace CivOne.Screens
 					_noiseMap[x, y] = (byte)rng.Next(1, _noiseCounter);
 				}
 			}
-			switch (Settings.GraphicsMode)
-			{
-				case GraphicsMode.Graphics256:
-					DefaultTextSettings = TextSettings.ThreeLayers(244, 248, 242);
-					break;
-				case GraphicsMode.Graphics16:
-					DefaultTextSettings = TextSettings.ThreeLayers(15, 15, 7);
-					break;
-			}
+			DefaultTextSettings = TextSettings.ThreeLayers(244, 248, 242);
 			DefaultTextSettings!.Alignment = TextAlign.Center;
 			DefaultTextSettings!.FontId = 4;
 			

@@ -15,7 +15,7 @@ namespace CivOne.Leaders
 	{
 		protected override Leader Leader => Leader.Caesar;
 
-		public Caesar() : base("Caesar", "KING10", 40, 22)
+		public Caesar() : base("Caesar")
 		{
 			Development = DevelopmentLevel.Expansionistic;
 			Militarism = MilitarismLevel.Civilized;

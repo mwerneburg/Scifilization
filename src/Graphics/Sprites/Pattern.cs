@@ -14,22 +14,10 @@ namespace CivOne.Graphics.Sprites
 	public static class Pattern
 	{
 		private static Free Free => Free.Instance;
-		private static Resources Resources => Resources.Instance;
 
-		private static Bytemap PatternPanelGrey()
-		{
-			if (!Resources.Exists("SP299"))
-				return Free.PanelGrey;
-			return Resources["SP299"].Bitmap[288, 120, 32, 16];
-		}
+		private static Bytemap PatternPanelGrey() => Free.PanelGrey;
 
-		private static Bytemap PatternPanelBlue()
-		{
-			if (!Resources.Exists("SP299"))
-				return Free.PanelBlue;
-			return Resources["SP299"].Bitmap[288, 120, 32, 16]
-				.ColourReplace((7, 57), (22, 9));
-		}
+		private static Bytemap PatternPanelBlue() => Free.PanelBlue;
 
 		public static readonly ISprite PanelGrey = new CachedSprite(PatternPanelGrey);
 		public static readonly ISprite PanelBlue = new CachedSprite(PatternPanelBlue);

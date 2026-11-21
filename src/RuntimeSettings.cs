@@ -15,27 +15,9 @@ namespace CivOne
 	{
 		private readonly Dictionary<string, object> _customSettings = new();
 
-		private bool _free;
-
 		public bool Demo { get; set; }
 		public bool Setup { get; set; }
-		public bool Free
-		{
-			get
-			{
-				return _free;
-			}
-			set
-			{
-				if (_free = value)
-				{
-					ShowCredits = false;
-					ShowIntro = false;
-				}
-			}
-		}
 		public bool ShowCredits { get; set; }
-		public bool ShowIntro { get; set; }
 
 		public object this[string customSetting]
 		{
@@ -71,8 +53,6 @@ namespace CivOne
 		public RuntimeSettings()
 		{
 			ShowCredits = false;
-			ShowIntro = true;
-			Free = false;
 		}
 	}
 }

@@ -15,7 +15,7 @@ namespace CivOne.Leaders
 	{
 		protected override Leader Leader => Leader.Frederick;
 
-		public Frederick() : base("Frederick", "KING12", 38, 22)
+		public Frederick() : base("Frederick")
 		{
 			Aggression = AggressionLevel.Aggressive;
 			Development = DevelopmentLevel.Perfectionist;

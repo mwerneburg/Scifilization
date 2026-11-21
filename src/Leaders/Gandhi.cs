@@ -15,7 +15,7 @@ namespace CivOne.Leaders
 	{
 		protected override Leader Leader => Leader.Gandhi;
 
-		public Gandhi() : base("M.Gandhi", "KING02", 43, 33)
+		public Gandhi() : base("M.Gandhi")
 		{
 			Aggression = AggressionLevel.Friendly;
 			Development = DevelopmentLevel.Perfectionist;

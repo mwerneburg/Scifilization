@@ -108,7 +108,7 @@ Try 'civone-sdl --help' for more information.
 					case "demo": settings.Demo = true; continue;
 					case "setup": settings.Setup = true; continue;
 					case "mapgen-preview": settings["mapgen-preview"] = true; continue;
-					case "free": settings.Free = true; continue;
+					case "free": continue; // obsolete: the game no longer reads the DOS files at all
 					case "no-data-check": continue; // obsolete: data-files check removed; now always the default
 					case "profile":
 						if (args.GetUpperBound(0) == i)
@@ -121,7 +121,7 @@ Try 'civone-sdl --help' for more information.
 						Console.WriteLine($@"Using profile ""{settings["profile-name"]}""");
 						break;
 					case "skip-credits": settings.ShowCredits = false; continue;
-					case "skip-intro": settings.ShowIntro = false; continue;
+					case "skip-intro": continue; // obsolete: the DOS story intro is gone
 					case "software-render": settings["software-render"] = true; continue;
 					default: Console.WriteLine(ErrorText); return;
 				}

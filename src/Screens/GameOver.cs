@@ -50,9 +50,7 @@ namespace CivOne.Screens
 
 		public GameOver()
 		{
-			_background = (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("ARCH"))
-				? new Picture(Free.Instance.Backdrop(320, 200), Common.GetPalette256)
-				: Resources["ARCH"];
+			_background = new Picture(Free.Instance.Backdrop(320, 200), Common.GetPalette256);
 			Palette = _background.Palette;
 			this.AddLayer(_background, OX, OY);
 

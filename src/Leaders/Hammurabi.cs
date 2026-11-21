@@ -15,7 +15,7 @@ namespace CivOne.Leaders
 	{
 		protected override Leader Leader => Leader.Hammurabi;
 
-		public Hammurabi() : base("Hammurabi", "KING07", 38, 37)
+		public Hammurabi() : base("Hammurabi")
 		{
 			Aggression = AggressionLevel.Friendly;
 			Development = DevelopmentLevel.Perfectionist;

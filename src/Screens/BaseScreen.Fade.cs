@@ -44,8 +44,6 @@ namespace CivOne.Screens
 		
 		private void FadeColours()
 		{
-			if (!GFX256) return;
-			
 			using (Palette palette = Palette.Copy())
 			{
 				for (int i = 1; i < 256; i++)
@@ -56,8 +54,6 @@ namespace CivOne.Screens
 		
 		protected bool HandleScreenFadeIn(Speed speed = Speed.Normal)
 		{
-			if (!GFX256) return false;
-			
 			if (FadeStep < 1.0F)
 			{
 				switch (speed)
@@ -75,8 +71,6 @@ namespace CivOne.Screens
 		
 		protected bool HandleScreenFadeOut(Speed speed = Speed.Normal)
 		{
-			if (!GFX256) return false;
-
 			if (FadeStep > 0.0F)
 			{
 				switch (speed)

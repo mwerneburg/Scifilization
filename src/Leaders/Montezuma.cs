@@ -15,7 +15,7 @@ namespace CivOne.Leaders
 	{
 		protected override Leader Leader => Leader.Montezuma;
 
-		public Montezuma() : base("Montezuma", "KING09", 34, 35)
+		public Montezuma() : base("Montezuma")
 		{
 			Development = DevelopmentLevel.Perfectionist;
 			Militarism = MilitarismLevel.Civilized;

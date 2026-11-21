@@ -504,7 +504,7 @@ namespace CivOne.Screens
 		{
 			OnResize += Resize;
 			
-			Palette = Resources["SP257"].Palette;
+			Palette = Common.GetPalette256.Copy();
 			using (Palette cassette = CassetteTheme.CreatePalette())
 			{
 				Palette.MergePalette(cassette, 1, 18);

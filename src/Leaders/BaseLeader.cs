@@ -35,10 +35,6 @@ namespace CivOne.Leaders
 		
 		public string Name { get; set; }
 
-		private readonly string? _picFile = null;
-		private readonly int _overlayX;
-		private readonly int _overlayY;
-		private Picture? _picture;
 		private Picture _portraitSmall;
 		private Picture? _pngPortrait;
 
@@ -89,32 +85,11 @@ namespace CivOne.Leaders
 
 				if (_modifiedPicture is not null && _modifiedPicture.Width() == 139 && _modifiedPicture.Height() == 133)
 				{
-					return GFX256 ? _modifiedPicture.MakePalette(64, 16) : _modifiedPicture.MakePalette(1, 15);
+					return _modifiedPicture.MakePalette(64, 16);
 				}
 			}
 
-			if (_picFile is null || RuntimeHandler.Runtime.Settings.Free || !Resources.Exists(_picFile))
-				return new Picture(Free.Instance.Portrait(139, 133), Common.GetPalette256);
-
-			if (_picture is null)
-			{
-				_picture = Resources[_picFile];
-			}
-
-			Picture output = _picture[181, 67, 139, 133];
-			switch (state)
-			{
-				case FaceState.Smiling:
-					output.AddLayer(_picture[1, 51, 59, 49], _overlayX, _overlayY);
-					break;
-				case FaceState.Angry:
-					output.AddLayer(_picture[1, 151, 59, 49], _overlayX, _overlayY);
-					break;
-				case FaceState.Neutral:
-				default:
-					break; // base portrait is already the neutral expression
-			}
-			return output;
+			return new Picture(Free.Instance.Portrait(139, 133), Common.GetPalette256);
 		}
 
 		public Picture PortraitSmall
@@ -130,7 +105,7 @@ namespace CivOne.Leaders
 
 					if (_modifiedPortraitSmall is not null && _modifiedPortraitSmall.Width() == 27 && _modifiedPortraitSmall.Height() == 33)
 					{
-						return new Picture(_modifiedPortraitSmall.MatchColours(Resources["SLAM2"].Palette, 1, 255), Resources["SLAM2"].Palette);
+						return new Picture(_modifiedPortraitSmall.MatchColours(Common.GetPalette256, 1, 255), Common.GetPalette256);
 					}
 				}
 				return _portraitSmall;
@@ -210,42 +185,13 @@ namespace CivOne.Leaders
 		}
 		public IEnumerable<LeaderModification> Modifications => _modifications.ContainsKey(Leader) ? _modifications[Leader].ToArray() : new LeaderModification[0];
 
-		protected BaseLeader(string name, string picFile, int overlayX, int overlayY)
-		{
-			DefaultName = name;
-			Name = DefaultName;
-			_picFile = picFile;
-			_overlayX = overlayX;
-			_overlayY = overlayY;
-			if (picFile.StartsWith("KING"))
-			{
-				int id;
-				if (int.TryParse(picFile.Substring(4), out id) && id >= 0 && id <= 13)
-				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SLAM2"))
-					{
-						_portraitSmall = new Picture(Free.Instance.Portrait(27, 33), Common.GetPalette256);
-						return;
-					}
-					int col = (id % 7);
-					int row = (id - col) / 7;
-					_portraitSmall = Resources["SLAM2"][(28 * col) + 1, 34 * row, 27, 33];
-					_portraitSmall.ColourReplace(0, 191, 0, 0, 27, 33);
-					return;
-				}
-			}
-			_portraitSmall = new Picture(27, 33, Common.GetPalette256);
-
-			Aggression = AggressionLevel.Normal;
-			Development = DevelopmentLevel.Normal;
-			Militarism = MilitarismLevel.Normal;
-		}
-
+		// The DOS leaders once took their KINGnn.PIC name here; only they got a face on the
+		// conquest screen, and everyone else a blank box.
 		protected BaseLeader(string name)
 		{
 			DefaultName = name;
 			Name = DefaultName;
-			_portraitSmall = new Picture(27, 33, Common.GetPalette256);
+			_portraitSmall = new Picture(Free.Instance.Portrait(27, 33), Common.GetPalette256);
 		}
 	}
 }

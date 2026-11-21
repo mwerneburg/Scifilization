@@ -880,7 +880,7 @@ namespace CivOne.Screens.GamePlayPanels
 			_x = 0;
 			_y = 0;
 			
-			Palette = Resources["SP257"].Palette;
+			Palette = Common.GetPalette256.Copy();
 		}
 	}
 }

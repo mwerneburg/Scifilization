@@ -85,16 +85,6 @@ namespace CivOne
 			}
 		}
 
-		public static string ToText(this GraphicsMode graphicsMode)
-		{
-			switch (graphicsMode)
-			{
-				case GraphicsMode.Graphics256: return "256 colors";
-				case GraphicsMode.Graphics16: return "16 colors";
-				default: return null!;
-			}
-		}
-
 		public static string ToText(this CursorType cursorType)
 		{
 			switch (cursorType)
@@ -102,16 +92,6 @@ namespace CivOne
 				case CursorType.Default: return "Default";
 				case CursorType.Builtin: return "Built-in";
 				case CursorType.Native: return "Native";
-				default: return null!;
-			}
-		}
-
-		public static string ToText(this DestroyAnimation destroyAnimation)
-		{
-			switch (destroyAnimation)
-			{
-				case DestroyAnimation.Sprites: return "Sprites (original)";
-				case DestroyAnimation.Noise: return "Noise";
 				default: return null!;
 			}
 		}
@@ -262,17 +242,9 @@ namespace CivOne
 			}
 
 			Colour[] colours = colourCount.OrderByDescending(x => x.Value).Select(x => bitmap.Palette[x.Key]).Take(colourLength).ToArray();
-			Colour[] palette;
-			if (Settings.GraphicsMode == GraphicsMode.Graphics256)
-			{
-				palette = new Colour[256];
-				palette[0] = Colour.Transparent;
-				Array.Copy(colours, 0, palette, startIndex, Math.Min(colourLength, colours.Length));
-			}
-			else
-			{
-				palette = Common.GetPalette16.Entries.ToArray();
-			}
+			Colour[] palette = new Colour[256];
+			palette[0] = Colour.Transparent;
+			Array.Copy(colours, 0, palette, startIndex, Math.Min(colourLength, colours.Length));
 			
 			Bytemap bytemap = bitmap.MatchColours(palette, startIndex, colourLength);
 			return new Picture(bytemap, palette);

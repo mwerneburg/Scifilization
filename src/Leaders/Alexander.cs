@@ -15,7 +15,7 @@ namespace CivOne.Leaders
 	{
 		protected override Leader Leader => Leader.Alexander;
 
-		public Alexander() : base("Alexander", "KING13", 41, 19)
+		public Alexander() : base("Alexander")
 		{
 			Development = DevelopmentLevel.Expansionistic;
 			Militarism = MilitarismLevel.Militaristic;

@@ -19,187 +19,6 @@ namespace CivOne
 {
 	public partial class Map
 	{
-		private void LoadMap(Bytemap bitmap)
-		{
-			_tiles = new ITile[WIDTH, HEIGHT];
-			
-			for (int x = 0; x < WIDTH; x++)
-			for (int y = 0; y < HEIGHT; y++)
-			{
-				ITile tile;
-				bool special = TileIsSpecial(x, y);
-				switch (bitmap[x, y])
-				{
-					case 2: tile = new Forest(x, y, special); break;
-					case 3: tile = new Swamp(x, y, special); break;
-					case 6: tile = new Plains(x, y, special); break;
-					case 7: tile = new Tundra(x, y, special); break;
-					case 9: tile = new River(x, y); break;
-					case 10: tile = new Grassland(x, y); break;
-					case 11: tile = new Jungle(x, y, special); break;
-					case 12: tile = new Hills(x, y, special); break;
-					case 13: tile = new Mountains(x, y, special); break;
-					case 14: tile = new Desert(x, y, special); break;
-					case 15: tile = new Arctic(x, y, special); break;
-					default: tile = new Ocean(x, y, special); break;
-				}
-				_tiles[x, y] = tile;
-			}
-		}
-		
-		public void LoadMap(string filename, int randomSeed)
-		{
-			Log("Map: Loading {0} - Random seed: {1}", filename, randomSeed);
-			_terrainMasterWord = randomSeed;
-			
-			using (Bytemap bitmap = Resources[filename].Bitmap)
-			{
-				_tiles = new ITile[WIDTH, HEIGHT];
-				
-				LoadMap(bitmap);
-				PlaceHuts();
-				CalculateLandValue();
-				
-				// Load improvement layer
-				for (int x = 0; x < WIDTH; x++)
-				for (int y = 0; y < HEIGHT; y++)
-				{
-					if (_tiles[x, y].IsOcean) continue;
-					byte b = bitmap[x, y + (HEIGHT * 2)];
-					// 0x01 = CITY ?
-					_tiles[x, y].Irrigation = (b & 0x02) > 0;
-					_tiles[x, y].Mine = (b & 0x04) > 0;
-					_tiles[x, y].Road = (b & 0x08) > 0;
-					_tiles[x, y].Pollution = (b & 0x10) > 0;
-				}
-
-				// Load improvement layer 2
-				for (int x = 0; x < WIDTH; x++)
-				for (int y = 0; y < HEIGHT; y++)
-				{
-					if (_tiles[x, y].IsOcean) continue;
-					byte b = bitmap[x, y + (HEIGHT * 3)];
-					_tiles[x, y].RailRoad = (b & 0x01) > 0;
-				}
-				
-				// Remove huts
-				for (int x = 0; x < WIDTH; x++)
-				for (int y = 0; y < HEIGHT; y++)
-				{
-					if (!_tiles[x, y].Hut) continue;
-					byte b = bitmap[x + (WIDTH * 2), y];
-					_tiles[x, y].Hut = (b == 0);
-				}
-			}
-			
-			ComputeFreshwaterLakes();
-			Ready = true;
-			Log("Map: Ready");
-		}
-
-		public ushort SaveMap(string filename)
-		{
-			Log($"Map: Saving {filename} - Random seed: {_terrainMasterWord}");
-
-			using (Bytemap bitmap = Resources["SP299"].Bitmap)
-			{
-				// Save terrainlayer
-				for (int x = 0; x < WIDTH; x++)
-				for (int y = 0; y < HEIGHT; y++)
-				{
-					byte b;
-					switch (_tiles[x, y].Type)
-					{
-						case Terrain.Forest: b = 2; break;
-						case Terrain.Swamp: b = 3; break;
-						case Terrain.Plains: b = 6; break;
-						case Terrain.Tundra: b = 7; break;
-						case Terrain.River: b = 9; break;
-						case Terrain.Grassland1:
-						case Terrain.Grassland2: b = 10; break;
-						case Terrain.Jungle: b = 11; break;
-						case Terrain.Hills: b = 12; break;
-						// Civ 1's MAP format has no code for wooded slopes, and the default here is
-						// OCEAN — exporting a hill as sea would drown the continent. Degrade to bare
-						// Hills instead: lossy, but it is still a hill.
-						case Terrain.ForestedHills: b = 12; break;
-						// SaltFlat has the same hole and was still falling through to Ocean, which
-						// is the drowning this file already refuses to do for wooded hills. Desert
-						// is the honest degrade: dry, bare, and above sea level.
-						case Terrain.SaltFlat: b = 14; break;
-						case Terrain.Mountains: b = 13; break;
-						case Terrain.Desert: b = 14; break;
-						case Terrain.Arctic: b = 15; break;
-						default: b = 1; break; // Ocean
-					}
-					bitmap[x, y] = b;
-				}
-
-				// Save improvement layer
-				for (int x = 0; x < WIDTH; x++)
-				for (int y = 0; y < HEIGHT; y++)
-				{
-					byte b = 0;
-					if (!_tiles[x, y].IsOcean)
-					{
-						if (_tiles[x, y].City is not null) b |= 0x01;
-						if (_tiles[x, y].Irrigation) b |= 0x02;
-						if (_tiles[x, y].Mine) b |= 0x04;
-						if (_tiles[x, y].Road) b |= 0x08;
-						if (_tiles[x, y].Pollution) b |= 0x10;
-					}
-					bitmap[x, y + (HEIGHT * 2)] = b;
-					bitmap[x + (WIDTH * 1), y + (HEIGHT * 2)] = b; // Visibility layer
-				}
-
-				// Save improvement layer 2
-				for (int x = 0; x < WIDTH; x++)
-				for (int y = 0; y < HEIGHT; y++)
-				{
-					byte b = (!_tiles[x, y].IsOcean && _tiles[x, y].RailRoad) ? (byte)0x01 : (byte)0x00;
-					bitmap[x, y + (HEIGHT * 3)] = b;
-					bitmap[x + (WIDTH * 1), y + (HEIGHT * 3)] = b; // Visibility layer
-				}
-
-				// Save explored layer
-				for (int x = 0; x < WIDTH; x++)
-				for (int y = 0; y < HEIGHT; y++)
-				{
-					bitmap[x + (WIDTH * 2), y] = _tiles[x, y].Visited;
-				}
-
-				using (Picture picture = new Picture(bitmap, Resources["SP299"].Palette))
-				{
-					PicFile picFile = new PicFile(picture)
-					{
-						HasPalette256 = false
-					};
-					using (BinaryWriter bw = new BinaryWriter(File.Open(filename, FileMode.Create)))
-					{
-						bw.Write(picFile.GetBytes());
-					}
-					return (ushort)_terrainMasterWord;
-				}
-			}
-		}
-		
-		private void LoadMapThread()
-		{
-			Log("Map: Loading MAP.PIC");
-			
-			using (Bytemap bitmap = Resources["MAP"].Bitmap)
-			{
-				LoadMap(bitmap);
-			}
-			
-			CreatePoles();
-			PlaceHuts();
-			CalculateLandValue();
-			
-			Ready = true;
-			Log("Map: Ready");
-		}
-		
 		// Row -> latitude edges for a loaded Earth map (see LoadEarthBin). Null when
 		// the map was generated, or loaded from a file without the table.
 		public static float[]? LatitudeEdges { get; private set; }
@@ -403,19 +222,14 @@ namespace CivOne
 			_age = -1;
 			FixedStartPositions = true;
 
-			// Prefer the generated 80x50 Earth (design/build_earth_map.py) over the
-			// original MAP.PIC, so "Play on Earth" works with no DOS assets present.
-			// Same dimensions and terrain codes, so the per-civ StartX/StartY records
-			// still land in roughly the right places. Falls back to MAP.PIC when the
-			// binary is absent.
+			// The generated 80x50 Earth (design/build_earth_map.py). It replaced the original
+			// MAP.PIC, with the same dimensions and terrain codes, so the per-civ StartX/StartY
+			// records land in roughly the right places. The MAP.PIC fallback went with the DOS
+			// assets (Nov 2026); without either, it built an all-ocean world in silence.
 			string standard = EarthStandardPath;
-			if (File.Exists(standard))
-			{
-				LoadEarthBin(standard);
-				return;
-			}
-
-			Task.Run(() => LoadMapThread());
+			if (!File.Exists(standard))
+				throw new FileNotFoundException("The Earth map is missing; reinstall the game.", standard);
+			LoadEarthBin(standard);
 		}
 	}
 }

@@ -35,18 +35,14 @@ namespace CivOne.Advances
 		{
 			get
 			{
-				int xx = 1 + (111 * _column);
-				int yy = 1 + (69 * _row);
 				int ww = _column < 2 ? 112 : 96;
 				int hh = _row < 2 ? 68 : 60;
 				
-				using (IBitmap icon = Resources[$"ICONPG{_page}"][xx, yy, ww, hh])
-				{
-					OriginalColours = icon.Palette.Copy();
-					return new Picture(112, 68, icon.Palette)
-						.AddLayer(icon, _column < 2 ? 0 : 7, _row < 2 ? 0 : 4)
-						.FillRectangle(110, 0, 2, 68, 0);
-				}
+				// A blank stand-in, as it always was without the DOS files (gone Nov 2026).
+				OriginalColours = Common.GetPalette256.Copy();
+				return new Picture(112, 68, Common.GetPalette256)
+					.FillRectangle(_column < 2 ? 0 : 7, _row < 2 ? 0 : 4, ww, hh, 1)
+					.FillRectangle(110, 0, 2, 68, 0);
 			}
 		}
 
@@ -69,7 +65,7 @@ namespace CivOne.Advances
 			{
 				case 1:
 					string[] text = new string[0];
-					text = Resources.GetCivilopediaText("BLURB0/" + Name.ToUpper());
+					text = GetPageText(1);
 					
 					yy = 76;
 					foreach (string line in text)

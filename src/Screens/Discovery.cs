@@ -37,8 +37,6 @@ namespace CivOne.Screens
 
 		private void FadeColours()
 		{
-			if (Settings.GraphicsMode != GraphicsMode.Graphics256) return;
-
 			Palette palette = Palette;
 			for (int i = 86; i < 256; i++)
 				palette[i] = FadeColour(OriginalColours[i], _advance.OriginalColours[i]);
@@ -79,7 +77,9 @@ namespace CivOne.Screens
 			_modern = Human.HasAdvance<Electricity>() && advance.Not<Electricity>();
 			string scientistName = Human.HasAdvance<Invention>() && (advance.Not<Invention>()) ? "scientists" : "scholars";
 
-			Picture background = Resources[$"DISCOVR{(_modern ? 2 : 1)}"];
+			// A blank stand-in, as it always was without the DOS files (gone Nov 2026).
+			Picture background = new Picture(320, 200, Common.GetPalette256);
+			background.FillRectangle(0, 0, 320, 200, 1);
 
 			Palette = background.Palette;
 			this.Clear(32)

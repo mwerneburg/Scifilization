@@ -15,7 +15,7 @@ namespace CivOne.Leaders
 	{
 		protected override Leader Leader => Leader.Elizabeth;
 
-		public Elizabeth() : base("Elizabeth I", "KING00", 43, 29)
+		public Elizabeth() : base("Elizabeth I")
 		{
 			Development = DevelopmentLevel.Expansionistic;
 		}

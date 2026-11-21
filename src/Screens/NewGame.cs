@@ -44,22 +44,18 @@ namespace CivOne.Screens
 		// DIFFS.PIC) and the menu starts 10px below that. Anything past the panel
 		// bottom simply draws over its edge and off the screen — which is what the
 		// 15-entry competition list and the 24-entry tribe list were doing.
-		// Free's panel is both wider and taller than DIFFS.PIC's, so it has more
-		// room for the menu; the asset panel keeps its original budget.
-		private int MenuSpaceHeight => WidePanel ? 142 : 122;
+		// The panel is both wider and taller than DIFFS.PIC's was, so it has more
+		// room for the menu.
+		private const int MenuSpaceHeight = 142;
 
-		// Free mode's DefaultFont draws 7px glyphs one pixel down, so a row needs a
-		// full 8px or each line bleeds into the next. The original fonts are
-		// smaller and survive 7px rows, which is what asset mode always used.
-		private int MinRowHeight => WidePanel ? 8 : 7;
+		// The DefaultFont draws 7px glyphs one pixel down, so a row needs a full 8px or
+		// each line bleeds into the next.
+		private const int MinRowHeight = 8;
 
-		// The Free background draws a wider panel than DIFFS.PIC does, so the menus
-		// can be wider too — needed for the two-column tribe list, whose longest
-		// name (Haudenosaunee) is 66px. Keep the narrow geometry in asset mode so
-		// the menu stays inside the original artwork.
-		private bool WidePanel => Runtime.Settings.Free || !Resources.Exists("DIFFS");
-		private int MenuLeft => WidePanel ? 149 : 163;
-		private int MenuSpaceWidth => WidePanel ? 140 : 114;
+		// Wide enough for the two-column tribe list, whose longest name (Haudenosaunee)
+		// is 66px. (The narrow 163/114 geometry fitted the DOS DIFFS.PIC, now gone.)
+		private const int MenuLeft = 149;
+		private const int MenuSpaceWidth = 140;
 
 		private Menu CreateMenu(string title, MenuItemEventHandler<int> setChoice, params string[] menuTexts)
 		{
@@ -436,14 +432,7 @@ namespace CivOne.Screens
 		{
 			OnResize += Resize;
 			
-			if (Runtime.Settings.Free || !Resources.Exists("DIFFS"))
-			{
-				_background = new Picture(Free.Instance.Difficulties, Common.GetPalette256);
-			}
-			else
-			{
-				_background = Resources["DIFFS"];
-			}
+			_background = new Picture(Free.Instance.Difficulties, Common.GetPalette256);
 			
 			Palette = _background.Palette;
 			this.AddLayer(_background);

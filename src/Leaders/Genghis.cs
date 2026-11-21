@@ -15,7 +15,7 @@ namespace CivOne.Leaders
 	{
 		protected override Leader Leader => Leader.Genghis;
 
-		public Genghis() : base("Genghis Khan", "KING05", 40, 46)
+		public Genghis() : base("Genghis Khan")
 		{
 			Aggression = AggressionLevel.Aggressive;
 			Development = DevelopmentLevel.Expansionistic;

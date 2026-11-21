@@ -25,7 +25,5 @@ namespace CivOne
 		protected static MenuCollection Menus => MenuCollection.Instance;
 
 		protected static void Log(string text, params object[] parameters) => Runtime.Log(text, parameters);
-
-		protected bool GFX256 => (Settings.GraphicsMode == GraphicsMode.Graphics256);
 	}
 }

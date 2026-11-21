@@ -16,8 +16,6 @@ using CivOne.IO;
 using CivOne.UserInterface;
 
 using static CivOne.Enums.CursorType;
-using static CivOne.Enums.DestroyAnimation;
-using static CivOne.Enums.GraphicsMode;
 
 namespace CivOne.Screens
 {
@@ -118,25 +116,18 @@ namespace CivOne.Screens
 
 		private void SettingsMenu(int activeItem = 0) => CreateMenu("Settings", activeItem,
 			MenuItem.Create($"Window Title: {Settings.WindowTitle}").OnSelect(GotoScreen<WindowTitle>(ChangeWindowTitle)),
-			MenuItem.Create($"Graphics Mode: {Settings.GraphicsMode.ToText()}").OnSelect(GotoMenu(GraphicsModeMenu)),
 			MenuItem.Create($"Full Screen: {Settings.FullScreen.YesNo()}").OnSelect(GotoMenu(FullScreenMenu)),
 			MenuItem.Create($"Window Scale: {Settings.Scale}x").OnSelect(GotoMenu(WindowScaleMenu)),
 			MenuItem.Create($"Back").OnSelect(GotoMenu(MainMenu, 0))
 		);
 
-		private void GraphicsModeMenu() => CreateMenu("Graphics Mode", GotoMenu(SettingsMenu, 1),
-			MenuItem.Create($"{Graphics256.ToText()} (default)").OnSelect((s, a) => Settings.GraphicsMode = Graphics256).SetActive(() => Settings.GraphicsMode == Graphics256),
-			MenuItem.Create(Graphics16.ToText()).OnSelect((s, a) => Settings.GraphicsMode = Graphics16).SetActive(() => Settings.GraphicsMode == Graphics16),
-			MenuItem.Create("Back")
-		);
-
-		private void FullScreenMenu() => CreateMenu("Full Screen", GotoMenu(SettingsMenu, 3),
+		private void FullScreenMenu() => CreateMenu("Full Screen", GotoMenu(SettingsMenu, 1),
 			MenuItem.Create($"{false.YesNo()} (default)").OnSelect((s, a) => Settings.FullScreen = false).SetActive(() => !Settings.FullScreen),
 			MenuItem.Create(true.YesNo()).OnSelect((s, a) => Settings.FullScreen = true).SetActive(() => Settings.FullScreen),
 			MenuItem.Create("Back")
 		);
 
-		private void WindowScaleMenu() => CreateMenu("Window Scale", GotoMenu(SettingsMenu, 4),
+		private void WindowScaleMenu() => CreateMenu("Window Scale", GotoMenu(SettingsMenu, 2),
 			MenuItem.Create("1x").OnSelect((s, a) => Settings.Scale = 1).SetActive(() => Settings.Scale == 1),
 			MenuItem.Create("2x (default)").OnSelect((s, a) => Settings.Scale = 2).SetActive(() => Settings.Scale == 2),
 			MenuItem.Create("3x").OnSelect((s, a) => Settings.Scale = 3).SetActive(() => Settings.Scale == 3),
@@ -150,7 +141,6 @@ namespace CivOne.Screens
 			MenuItem.Create($"Side bar location: {(Settings.RightSideBar ? "right" : "left")}").OnSelect(GotoMenu(SideBarMenu)),
 			MenuItem.Create($"Debug menu: {Settings.DebugMenu.YesNo()}").OnSelect(GotoMenu(DebugMenuMenu)),
 			MenuItem.Create($"Cursor type: {Settings.CursorType.ToText()}").OnSelect(GotoMenu(CursorTypeMenu)),
-			MenuItem.Create($"Destroy animation: {Settings.DestroyAnimation.ToText()}").OnSelect(GotoMenu(DestroyAnimationMenu)),
 			MenuItem.Create($"Enable Deity difficulty: {Settings.DeityEnabled.YesNo()}").OnSelect(GotoMenu(DeityEnabledMenu)),
 			MenuItem.Create($"Enable (no keypad) arrow helper: {Settings.ArrowHelper.YesNo()}").OnSelect(GotoMenu(ArrowHelperMenu)),
 			MenuItem.Create($"Custom map sizes (experimental): {Settings.CustomMapSize.YesNo()}").OnSelect(GotoMenu(CustomMapSizeMenu)),
@@ -176,31 +166,24 @@ namespace CivOne.Screens
 		);
 
 		private void CursorTypeMenu() => CreateMenu("Mouse cursor type", GotoMenu(PatchesMenu, 3),
-			MenuItem.Create(Default.ToText()).OnSelect((s, a) => Settings.CursorType = Default).SetActive(() => Settings.CursorType == Default && FileSystem.DataFilesExist(FileSystem.MouseCursorFiles)).SetEnabled(FileSystem.DataFilesExist(FileSystem.MouseCursorFiles)),
-			MenuItem.Create(Builtin.ToText()).OnSelect((s, a) => Settings.CursorType = Builtin).SetActive(() => Settings.CursorType == Builtin || (Settings.CursorType == Default && !FileSystem.DataFilesExist(FileSystem.MouseCursorFiles))),
+			MenuItem.Create($"{Builtin.ToText()} (default)").OnSelect((s, a) => Settings.CursorType = Builtin).SetActive(() => Settings.CursorType == Builtin),
 			MenuItem.Create(Native.ToText()).OnSelect((s, a) => Settings.CursorType = Native).SetActive(() => Settings.CursorType == Native),
 			MenuItem.Create("Back")
 		);
 
-		private void DestroyAnimationMenu() => CreateMenu("Destroy animation", GotoMenu(PatchesMenu, 4),
-			MenuItem.Create(Sprites.ToText()).OnSelect((s, a) => Settings.DestroyAnimation = Sprites).SetActive(() => Settings.DestroyAnimation == Sprites),
-			MenuItem.Create(Noise.ToText()).OnSelect((s, a) => Settings.DestroyAnimation = Noise).SetActive(() => Settings.DestroyAnimation == Noise),
-			MenuItem.Create("Back")
-		);
-
-		private void DeityEnabledMenu() => CreateMenu("Enable Deity difficulty", GotoMenu(PatchesMenu, 5),
+		private void DeityEnabledMenu() => CreateMenu("Enable Deity difficulty", GotoMenu(PatchesMenu, 4),
 			MenuItem.Create($"{false.YesNo()} (default)").OnSelect((s, a) => Settings.DeityEnabled = false).SetActive(() => !Settings.DeityEnabled),
 			MenuItem.Create(true.YesNo()).OnSelect((s, a) => Settings.DeityEnabled = true).SetActive(() => Settings.DeityEnabled),
 			MenuItem.Create("Back")
 		);
 
-		private void ArrowHelperMenu() => CreateMenu("Enable (no keypad) arrow helper", GotoMenu(PatchesMenu, 6),
+		private void ArrowHelperMenu() => CreateMenu("Enable (no keypad) arrow helper", GotoMenu(PatchesMenu, 5),
 			MenuItem.Create($"{false.YesNo()} (default)").OnSelect((s, a) => Settings.ArrowHelper = false).SetActive(() => !Settings.ArrowHelper),
 			MenuItem.Create(true.YesNo()).OnSelect((s, a) => Settings.ArrowHelper = true).SetActive(() => Settings.ArrowHelper),
 			MenuItem.Create("Back")
 		);
 
-		private void CustomMapSizeMenu() => CreateMenu("Custom map sizes (experimental)", GotoMenu(PatchesMenu, 7),
+		private void CustomMapSizeMenu() => CreateMenu("Custom map sizes (experimental)", GotoMenu(PatchesMenu, 6),
 			MenuItem.Create($"{false.YesNo()} (default)").OnSelect((s, a) => Settings.CustomMapSize = false).SetActive(() => !Settings.CustomMapSize),
 			MenuItem.Create(true.YesNo()).OnSelect((s, a) => Settings.CustomMapSize = true).SetActive(() => Settings.CustomMapSize),
 			MenuItem.Create("Back")

@@ -20,15 +20,9 @@ namespace CivOne.Graphics.Sprites
 	{
 		private static Direction[] Cross => [North, East, South, West];
 		private static Free Free => Free.Instance;
-		private static Resources Resources => Resources.Instance;
-		private static Settings Settings => Settings.Instance;
-
-		private static bool GFX256 => (Settings.GraphicsMode == GraphicsMode.Graphics256);
 
 		private static Bytemap GetLandBase() => Free.LandBase;
 
-		// Always uses the free ocean tile. The original resource lookup was
-		// Resources["TER257"/"SPRITES"].Bitmap[0, 160, 16, 16].
 		private static Bytemap GetOceanBase() => Free.OceanBase;
 
 		private static Bytemap GetLakeBase() => Free.LakeTile();
@@ -39,87 +33,6 @@ namespace CivOne.Graphics.Sprites
 			return Free.LakeShoreLayer(directions);
 		}
 
-		private static bool DrawCoastCorners(ref Bytemap output, Direction land)
-		{
-			if (!Resources.Exists("SP299")) return false;
-
-			Bytemap pic = Resources["SP299"].Bitmap;
-
-			if (land.And(South | East) && land.Not(North | West | SouthWest | NorthEast)) output.AddLayer(pic[224, 100, 16, 16]);
-			else if (land.And(North | West) && land.Not(South | East | NorthEast | SouthWest)) output.AddLayer(pic[240, 100, 16, 16]);
-			else if (land.And(North | East) && land.Not(South | West | NorthWest | SouthEast)) output.AddLayer(pic[256, 100, 16, 16]);
-			else if (land.And(South | West) && land.Not(North | East | SouthEast | NorthWest)) output.AddLayer(pic[272, 100, 16, 16]);
-			else return false;
-			return true;
-		}
-
-		private static void DrawCoastSegments(ref Bytemap output, Direction land)
-		{
-			if (!Resources.Exists("TER257")) return;
-
-			Bytemap pic = Resources["TER257"].Bitmap;
-			
-			if (land.And(North))
-			{
-				int xw = land.And(West) ? 80 : land.And(NorthWest) ? 96 : 64;
-				int xe = land.And(East) ? 88 : land.And(NorthEast) ? 56 : 24;
-				
-				output.AddLayer(pic[xw, 176, 8, 8], 0, 0);
-				output.AddLayer(pic[xe, 176, 8, 8], 8, 0);
-			}
-			if (land.And(East))
-			{
-				int xn = land.And(North) ? 88 : land.And(NorthEast) ? 104 : 72;
-				int xs = land.And(South) ? 88 : land.And(SouthEast) ? 56 : 24;
-				
-				output.AddLayer(pic[xn, 176, 8, 8], 8, 0);
-				output.AddLayer(pic[xs, 184, 8, 8], 8, 8);
-			}
-			if (land.And(South))
-			{
-				int xw = land.And(West) ? 80 : land.And(SouthWest) ? 48 : 16;
-				int xe = land.And(East) ? 88 : land.And(SouthEast) ? 104 : 72;
-
-				output.AddLayer(pic[xw, 184, 8, 8], 0, 8);
-				output.AddLayer(pic[xe, 184, 8, 8], 8, 8);
-			}
-			if (land.And(West))
-			{
-				int xn = land.And(North) ? 80 : land.And(NorthWest) ? 48 : 16;
-				int xs = land.And(South) ? 80 : land.And(SouthWest) ? 96 : 64;
-				
-				output.AddLayer(pic[xn, 176, 8, 8], 0, 0);
-				output.AddLayer(pic[xs, 184, 8, 8], 0, 8);
-			}
-		}
-
-		private static void DrawCoastDiagonal(ref Bytemap output, Direction land)
-		{
-			if (!Resources.Exists("TER257")) return;
-
-			Bytemap pic = Resources["TER257"].Bitmap;
-
-			if (land.And(NorthWest) && land.Not(North | West)) output.AddLayer(pic[32, 176, 8, 8], 0, 0);
-			if (land.And(NorthEast) && land.Not(North | East)) output.AddLayer(pic[40, 176, 8, 8], 8, 0);
-			if (land.And(SouthWest) && land.Not(South | West)) output.AddLayer(pic[32, 184, 8, 8], 0, 8);
-			if (land.And(SouthEast) && land.Not(South | East)) output.AddLayer(pic[40, 184, 8, 8], 8, 8);
-		}
-
-		private static void DrawRiverMouths(ref Bytemap output, Direction rivers)
-		{
-			// The river_overlays.txt deltas draw on the RIVER tile; the legacy
-			// TER257 mouths on the sea tile would double them.
-			if (Free.HasRiverOverlays) return;
-			if (!Resources.Exists("TER257")) return;
-
-			Bytemap pic = Resources["TER257"].Bitmap;
-
-			if (rivers.And(North)) output.AddLayer(pic[128, 176, 16, 16]);
-			if (rivers.And(East)) output.AddLayer(pic[144, 176, 16, 16]);
-			if (rivers.And(South)) output.AddLayer(pic[160, 176, 16, 16]);
-			if (rivers.And(West)) output.AddLayer(pic[176, 176, 16, 16]);
-		}
-
 		private static Bytemap? GetOceanLayer((Direction Land, Direction Rivers) directions)
 		{
 			if (directions.Land == Direction.None && directions.Rivers == Direction.None)
@@ -128,7 +41,7 @@ namespace CivOne.Graphics.Sprites
 			Bytemap output = new Bytemap(16, 16);
 			if (directions.Land != Direction.None)
 				output.AddLayer(Free.CoastLayer(directions.Land));
-			DrawRiverMouths(ref output, directions.Rivers);
+			// River mouths are drawn on the river tile (river_overlays.txt), not here.
 			return output;
 		}
 		
@@ -162,31 +75,7 @@ namespace CivOne.Graphics.Sprites
 				return Free.Arctic;
 			if (typeof(T) == typeof(Tundra))
 				return Free.Tundra;
-			int terrainId = (int)new T().Type;
-			string picFile = (GFX256 ? "TER257" : "SPRITES");
-			if (!Resources.Exists(picFile))
-			{
-				switch (new T().Type)
-				{
-					case Terrain.Arctic: return Free.Arctic;
-					case Terrain.Desert: return Free.Desert;
-					case Terrain.SaltFlat: return Free.SaltFlat;
-					case Terrain.Forest: return Free.Forest;
-					case Terrain.Grassland1:
-					case Terrain.Grassland2: return Free.Grassland;
-					case Terrain.Jungle: return Free.Jungle;
-					case Terrain.Hills: return Free.Hills;
-					case Terrain.ForestedHills: return Free.ForestedHillTexture(Direction.None);
-					case Terrain.Mountains: return Free.Mountains;
-					case Terrain.Plains: return Free.Plains;
-					case Terrain.Swamp: return Free.Swamp;
-					case Terrain.Tundra: return Free.Tundra;
-				}
-				return null;
-			}
-			if (!GFX256)
-				return Resources[picFile].Bitmap[terrainId * 16, (directions == Alternating) ? 0 : 16, 16, 16];
-			return Resources[picFile].Bitmap[(int)directions * 16, terrainId * 16, 16, 16];
+			return null;
 		}
 
 		private static Bytemap GetSpecial<T>() where T : ITile, new()
@@ -615,11 +504,6 @@ namespace CivOne.Graphics.Sprites
 				}
 			}
 
-			if (!(tile is River || tile is Ocean) && !GFX256 && Resources.Exists("SPRITES"))
-			{
-				directions = ((tile.X + tile.Y) % 2 == 1) ? Alternating : Direction.None;
-			}
-			
 			switch (tile)
 			{
 				case Arctic _: return Arctic[directions];

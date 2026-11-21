@@ -8,44 +8,19 @@
 // work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 
 using System.Collections.Generic;
-using System.IO;
-using System.Text.RegularExpressions;
 
 namespace CivOne.IO
 {
 	internal class TextFile
 	{
-		private static void Log(string text, params object[] parameters) => RuntimeHandler.Runtime.Log(text, parameters);
-
-		private readonly string[] TEXT_FILES = ["BLURB0", "BLURB1", "BLURB2", "BLURB3", "BLURB4", "ERROR", "HELP", "KING", "PRODUCE"];
-		private readonly Dictionary<string, string[]> _gameTexts = new();
-		
-		public string[] LoadArray(string filename)
-		{
-			filename += ".TXT";
-			
-			Regex rgx = new Regex("[^a-zA-Z0-9 -_]");
-			List<string> textLines = new();
-			if (!File.Exists(Path.Combine(Settings.Instance.DataDirectory, filename)))
-			{
-				Log($"File not found: {filename}");
-				return new string[0];
-			}
-			using (FileStream fs = new FileStream(Path.Combine(Settings.Instance.DataDirectory, filename), FileMode.Open, FileAccess.Read))
-			using (StreamReader sr = new StreamReader(fs))
-				while (!sr.EndOfStream)
-					textLines.Add(rgx.Replace(sr.ReadLine(), "").Trim());
-			return textLines.ToArray();
-		}
-		
-		// CC0 replacements for the original ERROR.TXT entries, used when the DOS text
-		// files are absent — which is the normal case now, since asset-free mode ships
-		// no *.TXT at all. Returning an empty array there meant every one of these
+		// The game's own text, keyed as the original ERROR.TXT, HELP.TXT and KING.TXT entries
+		// were. The DOS files themselves are no longer read (Nov 2026). Before these existed,
+		// a missing entry returned an empty array, and every one of these
 		// refusals popped an EMPTY message box: the rule fired, the move was denied, and
 		// the player was told nothing. The zone-of-control case is the one that bites, as
 		// it stops a unit two tiles from a city it is at war with and looks for all the
 		// world like a bug in the map.
-		private static readonly Dictionary<string, string[]> _fallback = new()
+		private static readonly Dictionary<string, string[]> _text = new()
 		{
 			// The opening address, shown once on the new-game screen and immediately followed
 			// by the list of what the tribe already knows — so its LAST line has to run into
@@ -112,11 +87,7 @@ namespace CivOne.IO
 
 		public string[] GetGameText(string key)
 		{
-			if (_gameTexts.TryGetValue(key, out string[] text) && text.Length > 0)
-				return text;
-			if (_fallback.TryGetValue(key, out string[] spare))
-				return spare;
-			return new string[0];
+			return _text.TryGetValue(key, out string[] text) ? text : new string[0];
 		}
 		
 		private static TextFile _instance = null!;
@@ -137,34 +108,6 @@ namespace CivOne.IO
 		
 		private TextFile()
 		{
-			foreach (string file in TEXT_FILES)
-			{
-				string[] textfile = LoadArray(file);
-				List<string> keys = new();
-				List<string> lines = new();
-				for (int i = 0; i < textfile.Length; i++)
-				{
-					if (!textfile[i].StartsWith("*")) continue;
-					if (textfile[i] == "*END") break;
-					keys.Clear();
-					lines.Clear();
-					while (textfile.Length > i && textfile[i].StartsWith("*"))
-						keys.Add(textfile[i++].Substring(1));
-					while (textfile.Length > i && textfile[i].Length > 0 && !textfile[i].StartsWith("*"))
-						lines.Add(textfile[i++]);
-					
-					if (lines.Count == 0) continue;
-					foreach (string key in keys)
-					{
-						string ckey = $"{file}/{key}";
-						if (!_gameTexts.ContainsKey(ckey))
-						{
-							_gameTexts.Add(ckey, lines.ToArray());
-						}
-					}
-					if (textfile[i].StartsWith("*")) i--;
-				}
-			}
 		}
 	}
 }

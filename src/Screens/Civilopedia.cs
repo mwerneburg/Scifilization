@@ -84,7 +84,6 @@ namespace CivOne.Screens
 
 		private string[] GetBlurb(byte pageNumber)
 		{
-			string suffix = pageNumber == 1 ? "" : "2";
 			if (_singlePage is BaseConcept bc)
 				return bc.GetPageText(pageNumber);
 			if (_singlePage is IBuilding || _singlePage is IWonder)
@@ -99,7 +98,7 @@ namespace CivOne.Screens
 					string[] custom = bw.GetPageText(pageNumber);
 					if (custom.Length > 0) return custom;
 				}
-				return Resources.GetCivilopediaText("BLURB1/" + _singlePage.Name.ToUpper() + suffix);
+				return new string[0];
 			}
 			if (_singlePage is IUnit)
 			{
@@ -108,7 +107,7 @@ namespace CivOne.Screens
 					string[] custom = bu.GetPageText(pageNumber);
 					if (custom.Length > 0) return custom;
 				}
-				return Resources.GetCivilopediaText("BLURB2/" + _singlePage.Name.ToUpper() + suffix);
+				return new string[0];
 			}
 			if (_singlePage is IAdvance)
 			{
@@ -122,10 +121,10 @@ namespace CivOne.Screens
 					string[] custom = ba.GetPageText(pageNumber);
 					if (custom.Length > 0) return custom;
 				}
-				return Resources.GetCivilopediaText("BLURB0/" + _singlePage.Name.ToUpper() + suffix);
+				return new string[0];
 			}
 			if (_singlePage is IConcept)
-				return Resources.GetCivilopediaText("BLURB4/" + _singlePage.Name.ToUpper() + suffix);
+				return new string[0];
 			return new string[0];
 		}
 

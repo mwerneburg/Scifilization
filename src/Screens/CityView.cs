@@ -838,7 +838,6 @@ namespace CivOne.Screens
 
 		private void FadeColours()
 		{
-			if (Settings.GraphicsMode != GraphicsMode.Graphics256) return;
 			Palette palette = _background.Palette;
 			for (int i = 1; i < 256; i++)
 				palette[i] = FadeColour(new Colour(0, 0, 0), _background.OriginalColours[i]);

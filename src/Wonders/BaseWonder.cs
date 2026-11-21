@@ -28,10 +28,10 @@ namespace CivOne.Wonders
 			switch (pageNumber)
 			{
 				case 1:
-					text = Resources.GetCivilopediaText("BLURB1/" + Name.ToUpper());
+					text = GetPageText(1);
 					break;
 				case 2:
-					text = Resources.GetCivilopediaText("BLURB1/" + Name.ToUpper() + "2");
+					text = GetPageText(2);
 					break;
 				default:
 					Log("Invalid page number: {0}", pageNumber);
@@ -71,9 +71,8 @@ namespace CivOne.Wonders
 		
 		protected void SetSmallIcon(int col, int row)
 		{
-			SmallIcon = Resources[GFX256 ? "SP299" : "SPRITES"][160 + (19 * col), 50 + (10 * row), 20, 10]
-				.FillRectangle(0, 0, 1, 10, 0)
-				.FillRectangle(19, 0, 1, 10, 0);
+			// A blank stand-in, as it always was without the DOS files (gone Nov 2026).
+			SmallIcon = new Picture(20, 10, Common.GetPalette256).FillRectangle(1, 0, 18, 10, 1);
 		}
 		
 		public byte Id

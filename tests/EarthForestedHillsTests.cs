@@ -88,21 +88,5 @@ namespace CivOne.Tests
 
 			Assert.Equal(first, second);
 		}
-
-		// The MAP.PIC export has no code for either of the terrains this game added, and its
-		// default is OCEAN — so a salt flat was being written out as sea, drowning land the
-		// same way a wooded hill would have before it was degraded to a bare one.
-		[Fact]
-		public void TheExportNeverDrownsLand()
-		{
-			string src = System.IO.File.ReadAllText(
-				System.IO.Path.Combine(Sim.RepoRoot(), "src", "Map.LoadSave.cs"));
-			int at = src.IndexOf("// Save terrainlayer");
-			Assert.True(at > 0, "the terrain export has moved");
-			string block = src.Substring(at, src.IndexOf("// Save improvement layer", at) - at);
-
-			Assert.Contains("case Terrain.ForestedHills:", block);
-			Assert.Contains("case Terrain.SaltFlat:", block);
-		}
 	}
 }

@@ -225,10 +225,9 @@ namespace CivOne.Tests
 		//
 		// A measurement test here would have said they FIT: under the suite's font "CULTURE"
 		// is 40px and "22/75" is 24px, well inside the 74px between x=3 and x=77. The suite
-		// has no FONTS.CV in its data directory, so Resources.LoadFonts falls back to the
-		// built-in default (Resources.cs:38) — and the shipped game loads the original DOS
-		// font, which is WIDER. Every pixel figure a test can measure under-reports what the
-		// player sees, so no assertion about text fitting is worth writing here.
+		// ran on the built-in font while the player's install loaded the original DOS font,
+		// which is WIDER. (The DOS font no longer loads at all, Nov 2026, but a font can
+		// change again.) So no assertion about text fitting is worth writing here.
 		//
 		// The fix is structural instead, and font-independent: the label owns its line, so
 		// nothing can collide with it whatever the font; and the name is trimmed against the

@@ -25,16 +25,8 @@ namespace CivOne.Graphics
 			{
 				if (_food is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_food = new Picture(Free.Instance.Food, Common.GetPalette256);
-					}
-					else
-					{
-						_food = Resources["SP257"][128, 32, 8, 8]
-							.ColourReplace(3, 0)
-							.FillRectangle(0, 0, 1, 8, 0);
-					}
+					_food = new Picture(Free.Instance.Food, Common.GetPalette256);
+				
 				}
 				return _food;
 			}
@@ -47,16 +39,8 @@ namespace CivOne.Graphics
 			{
 				if (_foodLoss is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_foodLoss = new Picture(Free.Instance.Food, Common.GetPalette256).ColourReplace(14, 16);
-					}
-					else
-					{
-						_foodLoss = Resources["SP257"][128, 32, 8, 8]
-							.ColourReplace((3, 0), (15, 5))
-							.FillRectangle(0, 0, 1, 8, 0);
-					}
+					_foodLoss = new Picture(Free.Instance.Food, Common.GetPalette256).ColourReplace(14, 16);
+				
 				}
 				return _foodLoss;
 			}
@@ -69,14 +53,8 @@ namespace CivOne.Graphics
 			{
 				if (_shield is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_shield = new Picture(Free.Instance.Shield, Common.GetPalette256);
-					}
-					else
-					{
-						_shield = Resources["SP257"][136, 32, 8, 8].ColourReplace(3, 0);
-					}
+					_shield = new Picture(Free.Instance.Shield, Common.GetPalette256);
+				
 				}
 				return _shield;
 			}
@@ -89,14 +67,8 @@ namespace CivOne.Graphics
 			{
 				if (_shieldLoss is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_shieldLoss = new Picture(Free.Instance.Shield, Common.GetPalette256).ColourReplace(8, 16);
-					}
-					else
-					{
-						_shieldLoss = Resources["SP257"][136, 32, 8, 8].ColourReplace((3, 0), (15, 5));
-					}
+					_shieldLoss = new Picture(Free.Instance.Shield, Common.GetPalette256).ColourReplace(8, 16);
+				
 				}
 				return _shieldLoss;
 			}
@@ -109,14 +81,8 @@ namespace CivOne.Graphics
 			{
 				if (_trade is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_trade = new Picture(Free.Instance.Trade, Common.GetPalette256);
-					}
-					else
-					{
-						_trade = Resources["SP257"][144, 32, 8, 8].ColourReplace(3, 0);
-					}
+					_trade = new Picture(Free.Instance.Trade, Common.GetPalette256);
+				
 				}
 				return _trade;
 			}
@@ -129,14 +95,8 @@ namespace CivOne.Graphics
 			{
 				if (_corruption is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_corruption = new Picture(Free.Instance.Trade, Common.GetPalette256).ColourReplace(12, 16);
-					}
-					else
-					{
-						_corruption = Resources["SP257"][144, 32, 8, 8].ColourReplace((3, 0), (15, 5));
-					}
+					_corruption = new Picture(Free.Instance.Trade, Common.GetPalette256).ColourReplace(12, 16);
+				
 				}
 				return _corruption;
 			}
@@ -149,14 +109,8 @@ namespace CivOne.Graphics
 			{
 				if (_unhappy is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_unhappy = new Picture(Free.Instance.Unhappy, Common.GetPalette256);
-					}
-					else
-					{
-						_unhappy = Resources["SP257"][136, 40, 8, 8].ColourReplace(3, 0);
-					}
+					_unhappy = new Picture(Free.Instance.Unhappy, Common.GetPalette256);
+				
 				}
 				return _unhappy;
 			}
@@ -169,14 +123,8 @@ namespace CivOne.Graphics
 			{
 				if (_luxuries is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_luxuries = new Picture(Free.Instance.Luxuries, Common.GetPalette256);
-					}
-					else
-					{
-						_luxuries = Resources["SP257"][144, 40, 8, 8].ColourReplace(3, 0);
-					}
+					_luxuries = new Picture(Free.Instance.Luxuries, Common.GetPalette256);
+				
 				}
 				return _luxuries;
 			}
@@ -189,14 +137,8 @@ namespace CivOne.Graphics
 			{
 				if (_taxes is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_taxes = new Picture(Free.Instance.Taxes, Common.GetPalette256);
-					}
-					else
-					{
-						_taxes = Resources["SP257"][152, 32, 8, 8].ColourReplace(3, 0);
-					}
+					_taxes = new Picture(Free.Instance.Taxes, Common.GetPalette256);
+				
 				}
 				return _taxes;
 			}
@@ -209,14 +151,8 @@ namespace CivOne.Graphics
 			{
 				if (_science is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_science = new Picture(Free.Instance.Science, Common.GetPalette256);
-					}
-					else
-					{
-						_science = Resources["SP257"][128, 40, 8, 8].ColourReplace(3, 0);
-					}
+					_science = new Picture(Free.Instance.Science, Common.GetPalette256);
+				
 				}
 				return _science;
 			}
@@ -229,18 +165,12 @@ namespace CivOne.Graphics
 			{
 				if (_spy is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP299"))
-					{
-						// Was Free.PanelGrey — a 16x16 noise square standing in for a
-						// 40x52 portrait, which read as a missing image rather than as
-						// art. The intelligence badge is honest at this size.
-						IO.Bytemap? badge = Free.Instance.AdvisorBadge("intelligence");
-						_spy = new Picture(badge ?? Free.Instance.PanelGrey, Common.GetPalette256);
-					}
-					else
-					{
-						_spy = Resources["SP299"][160, 142, 40, 52].ColourReplace(3, 0);
-					}
+					// Was Free.PanelGrey — a 16x16 noise square standing in for a
+					// 40x52 portrait, which read as a missing image rather than as
+					// art. The intelligence badge is honest at this size.
+					IO.Bytemap? badge = Free.Instance.AdvisorBadge("intelligence");
+					_spy = new Picture(badge ?? Free.Instance.PanelGrey, Common.GetPalette256);
+				
 				}
 				return _spy;
 			}
@@ -253,14 +183,8 @@ namespace CivOne.Graphics
 			{
 				if (_newspaper is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-					{
-						_newspaper = new Picture(32, 16, Common.GetPalette256).Tile(Free.Instance.PanelGrey);
-					}
-					else
-					{
-						_newspaper = Resources["SP257"][176, 128, 32, 16];
-					}
+					_newspaper = new Picture(32, 16, Common.GetPalette256).Tile(Free.Instance.PanelGrey);
+				
 				}
 				return _newspaper;
 			}
@@ -383,18 +307,12 @@ namespace CivOne.Graphics
 		{
 			if (_citizen[(int)citizen] is null)
 			{
-				if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-				{
-					// Recolour the plain Free figure by role: green=happy, grey=content,
-					// red=unhappy, gold=taxman, cyan=scientist, amber=entertainer.
-					byte[] tint = { 14, 14, 7, 7, 16, 16, 13, 17, 12 };
-					_citizen[(int)citizen] = new Picture(Free.Instance.Citizen, Common.GetPalette256)
-						.ColourReplace(15, tint[(int)citizen]);
-				}
-				else
-				{
-					_citizen[(int)citizen] = Resources["SP257"][(8 * (int)citizen), 128, 8, 16];
-				}
+				// Recolour the plain Free figure by role: green=happy, grey=content,
+				// red=unhappy, gold=taxman, cyan=scientist, amber=entertainer.
+				byte[] tint = { 14, 14, 7, 7, 16, 16, 13, 17, 12 };
+				_citizen[(int)citizen] = new Picture(Free.Instance.Citizen, Common.GetPalette256)
+					.ColourReplace(15, tint[(int)citizen]);
+			
 			}
 			return _citizen[(int)citizen];
 		}
@@ -407,14 +325,8 @@ namespace CivOne.Graphics
 			
 			if (_lamp[stage] is null)
 			{
-				if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("SP257"))
-				{
-					_lamp[stage] = new Picture(Free.Instance.Lamp(stage), Common.GetPalette256);
-				}
-				else
-				{
-					_lamp[stage] = Resources["SP257"][128 + (8 * stage), 48, 8, 8];
-				}
+				_lamp[stage] = new Picture(Free.Instance.Lamp(stage), Common.GetPalette256);
+			
 			}
 			return _lamp[stage];
 		}
@@ -440,34 +352,13 @@ namespace CivOne.Graphics
 			 : city.WasWeLoveKing   ? CassetteTheme.INK_HIGH
 			 :                        CassetteTheme.PHOS;
 
-		private static IBitmap[,] _governmentPortrait = new Picture[7, 4];
+		// The DOS GOVT*.PIC ministers are gone (Nov 2026). Callers still lay out around a
+		// 40x60 panel, so they get a blank one, as they did with no DOS files present.
 		public static IBitmap GovernmentPortrait(IGovernment government, Advisor advisor, bool modern)
 		{
-			string filename;
-			int governmentId;
-			if (government is Monarchy)
-			{
-				governmentId = (modern ? 3 : 2);
-				filename = $"GOVT1" + (modern ? "M" : "A");
-			}
-			else if (government is Republic || government is Democracy)
-			{
-				governmentId = (modern ? 5 : 4);
-				filename = $"GOVT2" + (modern ? "M" : "A");
-			}
-			else if (government is Communism)
-			{
-				governmentId = 6;
-				filename = "GOVT3A";
-			}
-			else // Anarchy or Despotism
-			{
-				governmentId = (modern ? 1 : 0);
-				filename = "GOVT0" + (modern ? "M" : "A");
-			}
-			if (_governmentPortrait[governmentId, (int)advisor] is null)
-				_governmentPortrait[governmentId, (int)advisor] = Resources[filename][(40 * (int)advisor), 0, 40, 60];
-			return _governmentPortrait[governmentId, (int)advisor];
+			Picture panel = new Picture(40, 60, Common.GetPalette256);
+			panel.FillRectangle(0, 0, 40, 60, 1);
+			return panel;
 		}
 
 		public static IBitmap City(City city, bool smallFont = false)

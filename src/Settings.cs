@@ -30,7 +30,6 @@ namespace CivOne
 
 		// Set default settings
 		private string _windowTitle = "Scifilization";
-		private GraphicsMode _graphicsMode = GraphicsMode.Graphics256;
 		private bool _fullScreen = false;
 		private bool _rightSideBar = false;
 		private int _scale = 2;
@@ -49,7 +48,6 @@ namespace CivOne
 		private bool _arrowHelper = false;
 		private bool _customMapSize = false;
 		private CursorType _cursorType = CursorType.Default;
-		private DestroyAnimation _destroyAnimation = DestroyAnimation.Sprites;
 		private GameOption _instantAdvice, _autoSave, _endOfTurn, _animations, _enemyMoves, _civilopediaText;
 		
 		internal string StorageDirectory => Runtime.StorageDirectory;
@@ -69,20 +67,6 @@ namespace CivOne
 				_windowTitle = value;
 				SetSetting("WindowTitle", _windowTitle);
 				Common.ReloadSettings = true;
-			}
-		}
-		
-		internal GraphicsMode GraphicsMode
-		{
-			get => _graphicsMode;
-			set
-			{
-				_graphicsMode = value;
-				string saveValue = _graphicsMode == GraphicsMode.Graphics256 ? "1" : "2";
-				SetSetting("GraphicsMode", saveValue);
-				Common.ReloadSettings = true;
-				
-				Resources.ClearInstance();
 			}
 		}
 		
@@ -319,9 +303,8 @@ namespace CivOne
 		{
 			get
 			{
-				if (Runtime.Settings.Free && _cursorType == CursorType.Default)
-					return CursorType.Builtin;
-				return _cursorType;
+				// Default was the DOS sprite cursor; a profile that saved it gets the built-in one.
+				return _cursorType == CursorType.Default ? CursorType.Builtin : _cursorType;
 			}
 			internal set
 			{
@@ -329,18 +312,6 @@ namespace CivOne
 				string saveValue = ((int)_cursorType).ToString();
 				SetSetting("CursorType", saveValue);
 				Cursor.ClearCache();
-				Common.ReloadSettings = true;
-			}
-		}
-
-		internal DestroyAnimation DestroyAnimation
-		{
-			get => _destroyAnimation;
-			set
-			{
-				_destroyAnimation = value;
-				string saveValue = ((int)_destroyAnimation).ToString();
-				SetSetting("DestroyAnimation", saveValue);
 				Common.ReloadSettings = true;
 			}
 		}
@@ -483,7 +454,6 @@ namespace CivOne
 			
 			// Read settings
 			GetSetting("WindowTitle", ref _windowTitle);
-			GetSetting<GraphicsMode>("GraphicsMode", ref _graphicsMode);
 			GetSetting("FullScreen", ref _fullScreen);
 			GetSetting("SideBar", ref _rightSideBar);
 			GetSetting("Scale", ref _scale, 1, 8);
@@ -505,7 +475,6 @@ namespace CivOne
 			GetSetting("ArrowHelper", ref _arrowHelper);
 			GetSetting("CustomMapSize", ref _customMapSize);
 			GetSetting<CursorType>("CursorType", ref _cursorType);
-			GetSetting<DestroyAnimation>("DestroyAnimation", ref _destroyAnimation);
 			GetSetting<GameOption>("GameInstantAdvice", ref _instantAdvice);
 			GetSetting<GameOption>("GameAutoSave", ref _autoSave);
 			GetSetting<GameOption>("GameEndOfTurn", ref _endOfTurn);

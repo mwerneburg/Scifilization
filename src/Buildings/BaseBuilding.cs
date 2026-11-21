@@ -19,8 +19,6 @@ namespace CivOne.Buildings
 	{
 		private static IBitmap[,] _iconsCache = new IBitmap[6, 4], _iconsCacheGrass = new IBitmap[6, 4];
 		
-		private IBitmap GrassIcon => Resources["CITYPIX2"][250, 0, 50, 50].ColourReplace(1, 0);
-		
 		private IBitmap _icon = null!;
 		public virtual IBitmap Icon
 		{
@@ -114,10 +112,10 @@ namespace CivOne.Buildings
 			switch (pageNumber)
 			{
 				case 1:
-					text = Resources.GetCivilopediaText("BLURB1/" + Name.ToUpper());
+					text = GetPageText(1);
 					break;
 				case 2:
-					text = Resources.GetCivilopediaText("BLURB1/" + Name.ToUpper() + "2");
+					text = GetPageText(2);
 					break;
 				default:
 					Log("Invalid page number: {0}", pageNumber);
@@ -160,20 +158,7 @@ namespace CivOne.Buildings
 		{
 			if ((grassTile && _iconsCacheGrass[col, row] is null) || (!grassTile && _iconsCache[col, row] is null))
 			{
-				if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("CITYPIX2"))
-				{
-					Icon = new Picture(Free.Instance.BuildingIcon(), Common.GetPalette256);
-				}
-				else
-				{
-					Icon = new Picture(50, 50, Resources["CITYPIX2"].Palette);
-
-					if (grassTile)
-						Icon.AddLayer(GrassIcon);
-
-					Icon.AddLayer(Resources["CITYPIX2"][col * 50, row * 50, 50, 50]
-									.ColourReplace(1, 0));
-				}
+				Icon = new Picture(Free.Instance.BuildingIcon(), Common.GetPalette256);
 
 				if (grassTile) _iconsCacheGrass[col, row] = Icon;
 				else _iconsCache[col, row] = Icon;
@@ -183,16 +168,7 @@ namespace CivOne.Buildings
 		
 		protected void SetSmallIcon(int col, int row)
 		{
-			string picFile = GFX256 ? "SP299" : "SPRITES";
-			if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists(picFile))
-			{
-				SmallIcon = new Picture(Free.Instance.BuildingIconSmall(), Common.GetPalette256);
-				return;
-			}
-			SmallIcon = Resources[picFile][160 + (19 * col), 50 + (10 * row), 20, 10]
-				.ColourReplace(0, 5)
-				.FillRectangle(0, 0, 1, 10, 0)
-				.FillRectangle(19, 0, 1, 10, 0);
+			SmallIcon = new Picture(Free.Instance.BuildingIconSmall(), Common.GetPalette256);
 		}
 		
 		public byte Id => (byte)Type;

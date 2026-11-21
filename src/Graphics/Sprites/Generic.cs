@@ -14,15 +14,8 @@ namespace CivOne.Graphics.Sprites
 	public static class Generic
 	{
 		private static Free Free => Free.Instance;
-		private static Resources Resources => Resources.Instance;
 
-		private static Bytemap GetFortify()
-		{
-			if (!Resources.Exists("SP257"))
-				return Free.Instance.Fortify;
-			return Resources["SP257"].Bitmap[208, 112, 16, 16]
-				.ColourReplace(3, 0);
-		}
+		private static Bytemap GetFortify() => Free.Instance.Fortify;
 
 		public static ISprite Fortify = new CachedSprite(GetFortify);
 	}

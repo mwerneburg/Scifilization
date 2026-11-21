@@ -28,69 +28,7 @@ namespace CivOne.Tiles
 				if (terrainId == 12) terrainId = 2;
 				if (_icons[terrainId] is null)
 				{
-					if (RuntimeHandler.Runtime.Settings.Free || !Resources.Exists("ICONPGT1") || !Resources.Exists("ICONPGT2"))
-						_icons[terrainId] = new Picture(Free.Instance.TerrainThumbnail(Type, 108, 86), Common.GetPalette256);
-					else
-					switch (Type)
-					{
-						case Terrain.Arctic:
-							_icons[terrainId] = Resources["ICONPGT1"][108, 1, 108, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0)
-								.FillRectangle(106, 0, 2, 86, 0);
-							break;
-						case Terrain.Desert:
-							_icons[terrainId] = Resources["ICONPGT2"][1, 1, 108, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0)
-								.FillRectangle(106, 0, 2, 86, 0);
-							break;
-						case Terrain.Forest:
-							_icons[terrainId] = Resources["ICONPGT2"][215, 1, 104, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0);
-							break;
-						case Terrain.Grassland1:
-						case Terrain.Grassland2:
-							_icons[terrainId] = Resources["ICONPGT2"][108, 1, 108, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0)
-								.FillRectangle(106, 0, 2, 86, 0);
-							break;
-						case Terrain.Hills:
-							_icons[terrainId] = Resources["ICONPGT2"][108, 88, 108, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0)
-								.FillRectangle(106, 0, 2, 86, 0);
-							break;
-						case Terrain.Jungle:
-							_icons[terrainId] = Resources["ICONPGT1"][1, 88, 108, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0)
-								.FillRectangle(106, 0, 2, 86, 0);
-							break;
-						case Terrain.Mountains:
-							_icons[terrainId] = Resources["ICONPGT2"][215, 88, 104, 86]
-								.ColourReplace(253, 0);
-							break;
-						case Terrain.Ocean:
-							_icons[terrainId] = Resources["ICONPGT1"][108, 88, 108, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0)
-								.FillRectangle(106, 0, 2, 86, 0);
-							break;
-						case Terrain.Plains:
-							_icons[terrainId] = Resources["ICONPGT2"][1, 88, 108, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0)
-								.FillRectangle(106, 0, 2, 86, 0);
-							break;
-						case Terrain.River:
-							_icons[terrainId] = Resources["ICONPGT1"][215, 88, 104, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0);
-							break;
-						case Terrain.Swamp:
-							_icons[terrainId] = Resources["ICONPGT1"][215, 1, 104, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0);
-							break;
-						case Terrain.Tundra:
-							_icons[terrainId] = Resources["ICONPGT1"][1, 1, 108, 86]
-								.ColourReplace((byte)(Settings.Instance.GraphicsMode == GraphicsMode.Graphics256 ? 253 : 15), 0)
-								.FillRectangle(106, 0, 2, 86, 0);
-							break;
-					}
+					_icons[terrainId] = new Picture(Free.Instance.TerrainThumbnail(Type, 108, 86), Common.GetPalette256);
 				}
 				return _icons[terrainId];
 			}

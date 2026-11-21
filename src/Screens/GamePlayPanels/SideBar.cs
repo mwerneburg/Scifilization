@@ -28,8 +28,8 @@ namespace CivOne.Screens.GamePlayPanels
 		private readonly Picture _miniMap, _demographics;
 		private Picture _gameInfo;
 		
-		// The game's name above the minimap. Font 6: "SCIFILIZATION" measures 67x9 in the
-		// shipped FONTS.CV, so it fits the 80-pixel column with room to spare.
+		// The game's name above the minimap. "SCIFILIZATION" measures 60x7 in the built-in
+		// font (67x9 in the DOS FONTS.CV it was laid out for), so it fits the 80-pixel column.
 		private const int TitleH = 11;
 		internal const string Title = "SCIFILIZATION";
 

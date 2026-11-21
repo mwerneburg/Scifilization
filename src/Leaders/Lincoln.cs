@@ -15,7 +15,7 @@ namespace CivOne.Leaders
 	{
 		protected override Leader Leader => Leader.Lincoln;
 
-		public Lincoln() : base("Abe Lincoln", "KING04", 38, 20)
+		public Lincoln() : base("Abe Lincoln")
 		{
 			Aggression = AggressionLevel.Friendly;
 			Militarism = MilitarismLevel.Civilized;
