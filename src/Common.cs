@@ -951,53 +951,35 @@ namespace CivOne
 			return BytesToArray(reader.ReadBytes(length), itemLength);
 		}
 		
-		private static Palette _palette16 = null!;
-		public static Palette GetPalette16
-		{
-			get
-			{
-				if (_palette16 is null)
-				{
-					byte[] shades = [0, 104, 183, 255];
-					_palette16 = new Colour[]
-					{
-						Colour.Transparent,
-						new Colour(shades[0], shades[0], shades[2]),
-						new Colour(shades[0], shades[2], shades[0]),
-						new Colour(shades[0], shades[2], shades[2]),
-						new Colour(shades[2], shades[0], shades[0]),
-						new Colour(shades[0], shades[0], shades[0]),
-						new Colour(shades[2], shades[1], shades[0]),
-						new Colour(shades[2], shades[2], shades[2]),
-						new Colour(shades[1], shades[1], shades[1]),
-						new Colour(shades[1], shades[1], shades[3]),
-						new Colour(shades[1], shades[3], shades[1]),
-						new Colour(shades[1], shades[3], shades[3]),
-						new Colour(shades[3], shades[1], shades[1]),
-						new Colour(shades[3], shades[1], shades[3]),
-						new Colour(shades[3], shades[3], shades[1]),
-						new Colour(shades[3], shades[3], shades[3]),
-					};
-				}
-				return _palette16;
-			}
-		}
-
 		private static Palette _palette256 = null!;
 
 		// Drop the cached Free-mode palette so the next access re-reads palette.txt.
 		public static void ReloadPalette256() => _palette256 = null!;
 
-		// Free-mode 256-colour palette: prefer palette.txt in the working directory
-		// (editable, matches asset-mode rendering), else the built-in procedural ramp.
+		// The 256-colour palette, from palette.txt: a copy on disk wins (see ArtFile), so an edit
+		// shows on Debug > Reload free tiles; otherwise the copy built into the game. There was a
+		// procedural fallback built on the EGA 16 colours, which drew the tile art in the wrong
+		// colours without a word whenever the file was missing (removed Nov 2026).
+		internal const string PaletteResource = "CivOne.palette.txt";
+
 		public static Palette GetPalette256
 		{
 			get
 			{
 				if (_palette256 is null)
-					_palette256 = LoadPaletteFile() ?? BuildDefaultPalette256();
+					_palette256 = ParsePalette(File.Exists(PaletteFilePath) ? File.ReadAllLines(PaletteFilePath) : null)
+					           ?? ParsePalette(EmbeddedPaletteLines())
+					           ?? throw new InvalidOperationException($"no palette: {PaletteResource} is not in the assembly");
 				return _palette256;
 			}
+		}
+
+		internal static string[]? EmbeddedPaletteLines()
+		{
+			using Stream? stream = typeof(Common).Assembly.GetManifestResourceStream(PaletteResource);
+			if (stream is null) return null;
+			using StreamReader reader = new StreamReader(stream);
+			return reader.ReadToEnd().Replace("\r", "").Split('\n');
 		}
 
 		private static string PaletteFilePath => ArtFile("palette.txt");
@@ -1018,13 +1000,13 @@ namespace CivOne
 			return Path.Combine(Settings.Instance.DataDirectory, name);
 		}
 
-		private static Palette? LoadPaletteFile()
+		private static Palette? ParsePalette(string[]? lines)
 		{
-			if (!File.Exists(PaletteFilePath)) return null;
+			if (lines is null) return null;
 
 			Palette p = new Palette(256);
 			bool any = false;
-			foreach (string raw in File.ReadAllLines(PaletteFilePath))
+			foreach (string raw in lines)
 			{
 				string line = raw.Trim();
 				int hash = line.IndexOf('#');
@@ -1042,60 +1024,6 @@ namespace CivOne
 			// the cursor and other index-0 backgrounds render as opaque black boxes.
 			p[0] = Colour.Transparent;
 			return any ? p : null;
-		}
-
-		private static Palette BuildDefaultPalette256()
-		{
-			Palette _palette256 = new Palette(256);
-			{
-					for (int i = 0; i < 256; i++)
-					{
-						if (i >= 16 && i < 32)
-						{
-							int ii = (i % 16);
-							_palette256[i] = new Colour(254 - (ii * 16), 253 - (ii * 16), 252 - (ii * 16));
-							continue;
-						}
-						if (i >= 32 && i < 40)
-						{
-							// Greens
-							int ii = (i % 8);
-							_palette256[i] = new Colour(0, 197 - (ii * 11), 80 - (ii * 7));
-							continue;
-						}
-						if (i >= 40 && i < 42)
-						{
-							// Browns
-							int ii = (i % 2);
-							_palette256[i] = new Colour(128 + (ii * 16), 64 + (ii * 8), 0);
-							continue;
-						}
-						if (i >= 42 && i < 48)
-						{
-							// Yellows
-							int ii = (i + 2 % 6);
-							_palette256[i] = new Colour(254 - (ii * 6), 245 - (ii * 6), 0);
-							continue;
-						}
-						if (i >= 48 && i < 64)
-						{
-							int r = Convert.ToInt32((float)_palette16[i % 16].R * 0.7F);
-							int g = Convert.ToInt32((float)_palette16[i % 16].G * 0.7F);
-							int b = Convert.ToInt32((float)_palette16[i % 16].B * 0.7F);
-							_palette256[i] = new Colour(r, g, b);
-							continue;
-						}
-						if (i >= 64 && i < 80)
-						{
-							// Blues
-							int ii = (i % 8);
-							_palette256[i] = new Colour(0, 67 - (ii * 5), 211 - (ii * 9));
-							continue;
-						}
-						_palette256[i] = GetPalette16[i % 16];
-					}
-				}
-				return _palette256;
 		}
 
 		public static bool AllowSaveGame => Map.Instance.Ready;

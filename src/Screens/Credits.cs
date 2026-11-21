@@ -26,7 +26,6 @@ namespace CivOne.Screens
 		private readonly int[] SHOW_INTRO_LINE = [312, 279, 254, 221, 196, 171, 146, 121, 96, 71, 46, 21, -4, -37, -62, -95, -120, -145, -170, -195, -220, -245, -270, -295];
 		private readonly int[] HIDE_INTRO_LINE = [287, 229, -29, -87, -315];
 		
-		private readonly byte[] _menuColours;
 		private readonly string[] _introText;
 		private readonly Picture[] _pictures;
 		private readonly byte[,] _noiseMap;
@@ -153,12 +152,11 @@ namespace CivOne.Screens
 				this.ResetPalette();
 				_done = true;
 				
-				// Draw menu background
+				// Draw menu background: a theme panel. It was a DOS raised box in slots 8, 15 and
+				// 7, which in our palette are cream and white, under cream menu text.
 				int mx = ((Width - 120) / 2), my = Height - 59;
-				this.FillRectangle(mx, my, 122, 49, 5)
-					.FillRectangle(mx + 1, my + 1, 120, 47, _menuColours[0])
-					.FillRectangle(mx + 1, my + 2, 119, 46, _menuColours[1])
-					.FillRectangle(mx + 2, my + 2, 118, 45, _menuColours[2]);
+				this.FillRectangle(mx, my, 122, 49, CassetteTheme.BORDER)
+					.FillRectangle(mx + 1, my + 1, 120, 47, CassetteTheme.BG1);
 				
 				CreateMenu();
 			}
@@ -418,7 +416,6 @@ namespace CivOne.Screens
 			DefaultTextSettings!.Alignment = TextAlign.Center;
 			DefaultTextSettings!.FontId = 4;
 			
-			_menuColours = [8, 15, 7];
 			
 			Palette = _pictures[2].Palette;
 

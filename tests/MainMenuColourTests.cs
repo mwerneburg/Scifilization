@@ -33,5 +33,24 @@ namespace CivOne.Tests
 			Assert.True(text - bar >= 100, $"text {text:0} vs highlight {bar:0}");
 			menu.Close();
 		}
+
+		// The panel the title screen draws behind the menu was a DOS raised box in slots 8, 15
+		// and 7 (dark grey, white, light grey), which in our palette are cream and white: cream
+		// text on a cream box. The panel beside the menu text must be as dark as the highlight.
+		[Fact]
+		public void TheStartMenuPanelIsDark()
+		{
+			Sim.EnsureRuntime();
+			var credits = new Credits();
+			MethodInfo update = typeof(Credits).GetMethod("HasUpdate", BindingFlags.NonPublic | BindingFlags.Instance)!;
+			for (uint t = 0; t < 3; t++) update.Invoke(credits, new object[] { t });
+
+			int mx = (credits.Bitmap.Width - 120) / 2, my = credits.Bitmap.Height - 59;
+			byte beside = credits.Bitmap[mx + 1, my + 24];   // inside the panel, left of the menu text
+
+			Assert.True(Luma(credits.Palette[beside]) <= 60, $"panel slot {beside}, luma {Luma(credits.Palette[beside]):0}");
+			foreach (IMenu m in (System.Collections.Generic.List<IMenu>)typeof(BaseScreen)
+				.GetField("_menus", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(credits)!) m.Close();
+		}
 	}
 }

@@ -41,6 +41,7 @@
 	<ItemGroup>
 		<EmbeddedResource Include="resources/pixel_operator_8.txt" LogicalName="CivOne.pixel_operator_8.txt" />
     <EmbeddedResource Include="resources/pixel_operator_16.txt" LogicalName="CivOne.pixel_operator_16.txt" />
+    <EmbeddedResource Include="runtime/sdl/Resources/defaults/data/palette.txt" LogicalName="CivOne.palette.txt" />
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Remove="**" />
