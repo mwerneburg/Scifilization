@@ -189,7 +189,7 @@ namespace CivOne.Screens.Reports
 
 			// Annual Income — gold per turn per 100 citizens
 			int income = AnnualIncomeValue(Human);
-			yield return new TableRow("Annual Income", $"{income}$ per capita",
+			yield return new TableRow("Annual Income", $"{income}{IconGlyphs.Gold} per capita",
 			                          Rank(AnnualIncomeValue));
 
 			// Productivity — shields + trade, all cities

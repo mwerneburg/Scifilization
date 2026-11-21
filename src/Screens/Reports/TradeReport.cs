@@ -18,9 +18,9 @@ namespace CivOne.Screens.Reports
 {
 	internal class TradeReport : BaseReport
 	{
-		private const char LUXURIES = '\\';
-		private const char GOLD = '$';
-		private const char SCIENCE = '~';
+		private const char LUXURIES = IconGlyphs.Luxuries;
+		private const char GOLD = IconGlyphs.Gold;
+		private const char SCIENCE = IconGlyphs.Science;
 
 		private readonly City[] _cities;
 
@@ -100,9 +100,9 @@ namespace CivOne.Screens.Reports
 				if (count == 0) continue;
 				IBuilding building = _cities.SelectMany(c => c.Buildings).First(b => b.Id == (int)entry);
 				if (building.Maintenance == 0) continue;
-				lines.Add($"{count} {building.Name}, {building.Maintenance * count}$");
+				lines.Add($"{count} {building.Name}, {building.Maintenance * count}{GOLD}");
 			}
-			lines.Add($"Total Cost: {_cities.Sum(c => c.TotalMaintenance)}$");
+			lines.Add($"Total Cost: {_cities.Sum(c => c.TotalMaintenance)}{GOLD}");
 			return lines.ToArray();
 		}
 
@@ -121,7 +121,11 @@ namespace CivOne.Screens.Reports
 		// is the shape that drifts: pagination, the "is this the last page" test and the list
 		// loop all have to agree or the totals draw over a city or never draw at all.
 		private int PageSize => Math.Max(1,
-			((Height - 40) / Resources.GetFontHeight(0)) - SUMMARY_ROWS);
+			((Height - 40) / RowHeight) - SUMMARY_ROWS);
+
+		// A blank pixel row between data rows, so a row's icons do not touch the next row's
+		// letters (the user, Nov 2026).
+		internal int RowHeight => Resources.GetFontHeight(0) + 1;
 
 		private bool LastPage => (_page * PageSize) >= _cities.Length;
 
@@ -164,7 +168,7 @@ namespace CivOne.Screens.Reports
 						city.TradeRouteBonus > 0 ? CassetteTheme.OK : CassetteTheme.INK_LOW,
 						splitRight, yy, TextAlign.Right);
 
-				yy += Resources.GetFontHeight(0);
+				yy += RowHeight;
 			}
 
 			if (LastPage)
@@ -188,14 +192,12 @@ namespace CivOne.Screens.Reports
 		{
 			string[] lines = MaintenanceLines();
 			int x = MaintenanceX;
-			int fh = Resources.GetFontHeight(0);
-
 			this.DrawText(lines[0], 0, CassetteTheme.PHOS, x, 32);
 			int yy = 40;
 			for (int i = 1; i < lines.Length - 1; i++)
 			{
 				this.DrawText(lines[i], 0, 14, x, yy);
-				yy += fh;
+				yy += RowHeight;
 			}
 			yy += 4;
 			this.DrawText(lines[lines.Length - 1], 0, 14, x, yy);

@@ -60,7 +60,7 @@ namespace CivOne.Screens.Debug
 			else
 			{
 				_selectedPlayer!.Gold = playerGold;
-				GameTask.Enqueue(Message.General($"{_selectedPlayer.TribeName} gold set to {playerGold}$."));
+				GameTask.Enqueue(Message.General($"{_selectedPlayer.TribeName} gold set to {playerGold}{IconGlyphs.Gold}."));
 			}
 
 			if (Accept is not null)

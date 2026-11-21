@@ -12,6 +12,7 @@
 using System.Reflection;
 using CivOne;
 using CivOne.Graphics;
+using CivOne.IO;
 using CivOne.Screens.GamePlayPanels;
 
 namespace CivOne.Tests
@@ -95,7 +96,12 @@ namespace CivOne.Tests
 			using (Palette palette = CassetteTheme.CreatePalette())
 			{
 				int height = PanelOf(new SideBar(palette), "_demographics").Height;
-				int bottom = ScoreY + Resources.Instance.GetTextSize(0, "9999 PTS").Height;
+				// The letters, not the cell: Pixel Operator's cell carries a descender row that
+				// "9999 PTS" leaves blank, and blank pixels do not draw over the border.
+				Bytemap text = Resources.Instance.GetText("9999 PTS", 0, CassetteTheme.PHOS_DIM).Bitmap;
+				int inked = System.Linq.Enumerable.Range(0, text.Height)
+					.Last(y => System.Linq.Enumerable.Range(0, text.Width).Any(x => text[x, y] != 0));
+				int bottom = ScoreY + inked + 1;
 
 				Assert.True(bottom <= height - 1, $"score line ends at {bottom}, border row is {height - 1}");
 			}

@@ -59,7 +59,7 @@ namespace CivOne.Screens.Reports
 					.DrawText("Government:", 0, CassetteTheme.INK_MID, OX + 16, (y += fontHeight))
 					.DrawText(player.Government.Name, 0, CassetteTheme.INK_HIGH, OX + 83, y)
 					.DrawText("Treasury:", 0, CassetteTheme.INK_MID, OX + 16, (y += fontHeight))
-					.DrawText($"{player.Gold}$", 0, CassetteTheme.OK, OX + 73, y)
+					.DrawText($"{player.Gold}{IconGlyphs.Gold}", 0, CassetteTheme.OK, OX + 73, y)
 					.DrawText("Military:", 0, CassetteTheme.INK_MID, OX + 16, (y += fontHeight))
 					.DrawText($"{Game.GetUnits().Count(x => player == x.Owner)} Units", 0, CassetteTheme.INK_HIGH, OX + 67, y)
 					.DrawText("Culture:", 0, CassetteTheme.INK_MID, OX + 16, (y += fontHeight))
@@ -74,10 +74,10 @@ namespace CivOne.Screens.Reports
 				if (humanCanSee)
 				{
 					foreach (Player protector in player.TributeProtectors)
-						this.DrawText($"  Pays tribute to {protector.TribeName} ({player.TributeAmountTo(protector)}$/turn)",
+						this.DrawText($"  Pays tribute to {protector.TribeName} ({player.TributeAmountTo(protector)}{IconGlyphs.Gold}/turn)",
 							0, CassetteTheme.PHOS, OX + 24, (y += fontHeight));
 					foreach (Player payer in player.TributePayers)
-						this.DrawText($"  Receives tribute from {payer.TribeName} ({payer.TributeAmountTo(player)}$/turn)",
+						this.DrawText($"  Receives tribute from {payer.TribeName} ({payer.TributeAmountTo(player)}{IconGlyphs.Gold}/turn)",
 							0, CassetteTheme.OK, OX + 24, (y += fontHeight));
 				}
 
@@ -118,7 +118,7 @@ namespace CivOne.Screens.Reports
 
 					this.DrawText($"{player.TribeNamePlural}: {player.LeaderName}", 0, CassetteTheme.BG0, OX + 8, yy + 3)
 						.DrawText($"{player.TribeNamePlural}: {player.LeaderName}", 0, CassetteTheme.INK_HIGH, OX + 8, yy + 2)
-						.DrawText($"{player.Government.Name}, {player.Gold}$, {unitCount} Units.", 0, CassetteTheme.INK_MID, OX + 160, yy + 2);
+						.DrawText($"{player.Government.Name}, {player.Gold}{IconGlyphs.Gold}, {unitCount} Units.", 0, CassetteTheme.INK_MID, OX + 160, yy + 2);
 
 					if (!player.IsHuman)
 					{

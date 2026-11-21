@@ -50,7 +50,7 @@ namespace CivOne.Screens.Dialogs
 			AddMenu(menu);
 		}
 
-		public ConfirmSell(IBuilding building) : base(128, 80, 18, 23, ["Do you want to sell", $"your {building.Name} for {building.SellPrice}$?"])
+		public ConfirmSell(IBuilding building) : base(128, 80, 18, 23, ["Do you want to sell", $"your {building.Name} for {building.SellPrice}{IconGlyphs.Gold}?"])
 		{
 			Building = building;
 			

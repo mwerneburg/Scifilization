@@ -26,6 +26,7 @@ namespace CivOne.Graphics
 
 		private readonly Dictionary<string, Bytemap> _textCache = new();
 		private readonly IFont _defaultFont = new DefaultFont();
+		private readonly GlyphFont? _font = GlyphFont.Load();
 		private readonly Dictionary<Direction, IBitmap> _fog = new();
 		
 		internal void ClearTextCache() => _textCache.Clear();
@@ -86,10 +87,10 @@ namespace CivOne.Graphics
 		
 		internal Size GetLetterSize(int font, char letter) => GetLetter(5, font, letter).Size;
 
-		// One font. The font ids callers pass are the DOS FONTS.CV's eight faces, which no
+		// One face. The font ids callers pass are the DOS FONTS.CV's eight faces, which no
 		// longer load (Nov 2026); they are kept so a second face can be added without
 		// touching every caller.
-		private IFont Font(int font) => _defaultFont;
+		private IFont Font(int font) => (IFont?)_font ?? _defaultFont;
 		
 		public int GetFontHeight(int font)
 		{
@@ -101,7 +102,9 @@ namespace CivOne.Graphics
 			string key = $"letter{colour}|{font}|{letter}";
 			if (!_textCache.ContainsKey(key))
 			{
-				_textCache.Add(key, Font(font).GetLetter(letter, colour));
+				// Icons first, then Pixel Operator for ASCII, then DefaultFont's symbols (★, ♥).
+				IFont face = _font is not null && !_font.Has(letter) ? _defaultFont : Font(font);
+				_textCache.Add(key, IconGlyphs.Get(letter, colour, Font(font).FontHeight) ?? face.GetLetter(letter, colour));
 			}
 			return _textCache[key];
 		}

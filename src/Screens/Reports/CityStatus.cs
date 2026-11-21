@@ -18,10 +18,14 @@ namespace CivOne.Screens.Reports
 {
 	internal class CityStatus : BaseReport
 	{
-		private const char FOOD = '{';
-		private const char SHIELD = '|';
-		private const char TRADE = '}';
+		private const char FOOD = IconGlyphs.Food;
+		private const char SHIELD = IconGlyphs.Shield;
+		private const char TRADE = IconGlyphs.Trade;
 		private const byte FONT_ID = 0;
+
+		// A blank pixel row between data rows, so a row's icons do not touch the next row's
+		// letters (the user, Nov 2026).
+		internal int RowHeight => Resources.GetFontHeight(FONT_ID) + 1;
 
 		private readonly City[] _cities;
 
@@ -41,8 +45,7 @@ namespace CivOne.Screens.Reports
 
 			this.FillRectangle(0, 32, Width, Height - 32, CassetteTheme.BG1);
 
-			int fontHeight = Resources.GetFontHeight(FONT_ID);
-			int pageSize   = (Height - 32) / fontHeight;
+			int pageSize   = (Height - 32) / RowHeight;
 			int yy = 32;
 
 			// Column x-positions (within the 320-wide centred content area)
@@ -70,7 +73,7 @@ namespace CivOne.Screens.Reports
 				    .DrawText(production, FONT_ID, prodColor, colProd, yy)
 				    .DrawText(progress, FONT_ID, progColor, colProgress, yy, TextAlign.Right);
 
-				yy += fontHeight;
+				yy += RowHeight;
 			}
 
 			_update = false;
@@ -79,7 +82,7 @@ namespace CivOne.Screens.Reports
 
 		private bool NextPage()
 		{
-			int pageSize = (Height - 32) / Resources.GetFontHeight(FONT_ID);
+			int pageSize = (Height - 32) / RowHeight;
 			if ((_page * pageSize) < _cities.Length)
 			{
 				_update = true;
@@ -98,11 +101,10 @@ namespace CivOne.Screens.Reports
 		
 		public override bool MouseDown(ScreenEventArgs args)
 		{
-			int fh       = Resources.GetFontHeight(FONT_ID);
-			int pageSize = (Height - 32) / fh;
+			int pageSize = (Height - 32) / RowHeight;
 			if (args.Y >= 32)
 			{
-				int rowIdx  = (args.Y - 32) / fh;
+				int rowIdx  = (args.Y - 32) / RowHeight;
 				int cityIdx = (_page - 1) * pageSize + rowIdx;
 				if (cityIdx >= 0 && cityIdx < _cities.Length)
 				{

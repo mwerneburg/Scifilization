@@ -98,7 +98,7 @@ namespace CivOne.Screens.GamePlayPanels
 			if (Human.Population > 0)
 			{
 				string population = Common.NumberSeperator(Human.Population);
-				_demographics.DrawText($"{population}#", 0, CassetteTheme.INK_HIGH, 2, 15, TextAlign.Left);
+				_demographics.DrawText($"{population}{IconGlyphs.Person}", 0, CassetteTheme.INK_HIGH, 2, 15, TextAlign.Left);
 			}
 			_demographics.DrawText(Game.GameYear, 0, CassetteTheme.INK_HIGH, 2, 23, TextAlign.Left);
 
@@ -106,7 +106,7 @@ namespace CivOne.Screens.GamePlayPanels
 			int stage = (int)Math.Floor(((double)Human.Science / Human.ScienceCost) * 4);
 			_demographics.AddLayer(Icons.Lamp(stage), 4 + width, 22);
 
-			_demographics.DrawText($"{Human.Gold}$ {Human.LuxuriesRate}.{Human.TaxesRate}.{Human.ScienceRate}", 0, CassetteTheme.INK_MID, 2, 31, TextAlign.Left);
+			_demographics.DrawText($"{Human.Gold}{IconGlyphs.Gold} {Human.LuxuriesRate}.{Human.TaxesRate}.{Human.ScienceRate}", 0, CassetteTheme.INK_MID, 2, 31, TextAlign.Left);
 
 			// Score, on a line of its own — the panel grew by 8px for it. It first shared the
 			// year line, right-aligned, where it fit but sat close enough to the lamp to read

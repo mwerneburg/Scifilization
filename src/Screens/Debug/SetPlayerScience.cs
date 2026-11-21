@@ -61,7 +61,7 @@ namespace CivOne.Screens.Debug
 			{
 				if (playerScience > _selectedPlayer!.ScienceCost) playerScience = _selectedPlayer.ScienceCost;
 				_selectedPlayer.Science = playerScience;
-				GameTask.Enqueue(Message.General($"{_selectedPlayer.TribeName} science set to {playerScience}~."));
+				GameTask.Enqueue(Message.General($"{_selectedPlayer.TribeName} science set to {playerScience}{IconGlyphs.Science}."));
 			}
 
 			if (Accept is not null)

@@ -12,8 +12,9 @@ namespace CivOne.Tests
 {
 	public class CityStatusWonderTests
 	{
-		// The barracks row is the control: nothing else on the page is near-white, so the
-		// wonder row's white comes from the wonder.
+		// The barracks row is the control: nothing else in the production column is near-white,
+		// so the wonder row's white comes from the wonder. (The column only: the food, shield
+		// and trade icons beside it have near-white in them.)
 		[Theory]
 		[InlineData(true)]
 		[InlineData(false)]
@@ -29,7 +30,7 @@ namespace CivOne.Tests
 			typeof(CityStatus).GetMethod("HasUpdate", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(screen, new object[] { 0u });
 
 			bool white = Enumerable.Range(32, screen.Bitmap.Height - 32)
-				.Any(y => Enumerable.Range(0, screen.Bitmap.Width).Any(x => screen.Bitmap[x, y] == CassetteTheme.WHITE));
+				.Any(y => Enumerable.Range(172, screen.Bitmap.Width - 172).Any(x => screen.Bitmap[x, y] == CassetteTheme.WHITE));
 			Assert.Equal(wonder, white);
 		}
 	}
