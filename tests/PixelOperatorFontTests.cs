@@ -54,6 +54,35 @@ namespace CivOne.Tests
 				Assert.Equal(icon[x, y], drawn[x, drawn.Height - icon.Height + y]);
 		}
 
+		// The coin was drawn in the DOS palette's yellow (14), which in ours is the green
+		// status colour: the sidebar's gold read as a green dot (Nov 2026).
+		[Fact]
+		public void TheGoldCoinIsAmber()
+		{
+			Sim.EnsureRuntime();
+			Bytemap coin = Icons.Taxes.Bitmap;
+			int amber = 0;
+			for (int y = 0; y < coin.Height; y++)
+			for (int x = 0; x < coin.Width; x++)
+			{
+				Assert.NotEqual(CassetteTheme.OK, coin[x, y]);
+				if (coin[x, y] == CassetteTheme.PHOS_GLOW) amber++;
+			}
+			Assert.True(amber > 20, $"{amber} bright amber pixels");
+		}
+
+		// The trade icon's right arrow was the DOS palette's light green (10), in ours the faint
+		// amber of a selection background, near-invisible on a dark panel (Nov 2026).
+		[Fact]
+		public void BothTradeArrowsShowOnADarkPanel()
+		{
+			Sim.EnsureRuntime();
+			Bytemap trade = Icons.Trade.Bitmap;
+			for (int y = 0; y < trade.Height; y++)
+			for (int x = 0; x < trade.Width; x++)
+				Assert.NotEqual(CassetteTheme.PHOS_FAINT, trade[x, y]);
+		}
+
 		// "Future Tech #3" and the Hall of Fame's # column mean the character itself.
 		[Fact]
 		public void AHashIsStillAHash()

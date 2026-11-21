@@ -67,7 +67,7 @@ namespace CivOne.Screens
 					var meta = CosSerializer.DeserializeMeta(File.ReadAllText(path));
 					if (meta is null) continue;
 					slots[i].Exists = true;
-					slots[i].Label  = meta.Name ?? "(unknown)";
+					slots[i].Label  = LoadGame.SaveLabel(meta.Name, (ushort)meta.Turn);
 					slots[i].Year   = Common.YearString((ushort)meta.Turn);
 				}
 				catch (Exception ex)

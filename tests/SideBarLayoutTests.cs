@@ -9,6 +9,7 @@
 // The score's earlier home was the YEAR line, right-aligned; this file caught it colliding
 // with a 500,000,000 population when it was tried on the population line before that.
 
+using System.Linq;
 using System.Reflection;
 using CivOne;
 using CivOne.Graphics;
@@ -19,9 +20,10 @@ namespace CivOne.Tests
 {
 	public class SideBarLayoutTests
 	{
-		// DrawDemographics: score drawn left-aligned at x=2, baseline y=39, inside a panel
-		// 47 tall whose bottom border row is y=46.
-		private const int ScoreX = 2, ScoreY = 39, PanelHeight = 47, SideBarHeight = 192;
+		// DrawDemographics: score drawn left-aligned at x=2 on the fourth line, inside a panel
+		// 50 tall whose bottom border row is y=49.
+		private const int ScoreX = 2, PanelHeight = 50, SideBarHeight = 192;
+		private const int ScoreY = SideBar.DemoTop + 3 * SideBar.DemoRow;
 
 		// The game's name sits in a strip above the minimap (SideBar.DrawTitle).
 		private static readonly int TitleH = (int)typeof(SideBar)
@@ -104,6 +106,27 @@ namespace CivOne.Tests
 				int bottom = ScoreY + inked + 1;
 
 				Assert.True(bottom <= height - 1, $"score line ends at {bottom}, border row is {height - 1}");
+			}
+		}
+
+		// One blank pixel row between the population line and the year line under it (the user,
+		// Nov 2026): the year's first inked row is a font height plus one below the population's.
+		[Fact]
+		public void TheDemographicLinesHaveABlankRowBetweenThem()
+		{
+			Sim.NewGame(width: 80, height: 50);
+			Game g = Game.Instance;
+			Map.Instance.ChangeTileType(30, 25, CivOne.Enums.Terrain.Grassland1);
+			g.AddCity(g.HumanPlayer, 0, 30, 25);
+			using (Palette palette = CassetteTheme.CreatePalette())
+			{
+				Bytemap b = PanelOf(new SideBar(palette), "_demographics").Bitmap;
+				bool Inked(int y) => System.Linq.Enumerable.Range(2, 40).Any(x => b[x, y] == CassetteTheme.INK_HIGH);
+				int pop  = System.Linq.Enumerable.Range(14, 20).First(Inked);
+				int gap  = System.Linq.Enumerable.Range(pop, 20).First(y => !Inked(y));
+				int year = System.Linq.Enumerable.Range(gap, 20).First(Inked);
+
+				Assert.Equal(Resources.Instance.GetFontHeight(0) + 1, year - pop);
 			}
 		}
 

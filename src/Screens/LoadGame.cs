@@ -48,6 +48,14 @@ namespace CivOne.Screens
 			public bool   IsAuto;
 		}
 
+		// The list prints the year in a column of its own, so a save's name without it. Saves
+		// made before Nov 2026 carry it in the name ("Prince ..., Franks / 1695 CE").
+		internal static string SaveLabel(string? name, ushort turn)
+		{
+			string suffix = $" / {Common.YearString(turn)}";
+			return name is not null && name.EndsWith(suffix) ? name.Substring(0, name.Length - suffix.Length) : name ?? "(unknown)";
+		}
+
 		private SlotInfo[] _slots;
 
 		private SlotInfo[] LoadSlots()
@@ -69,7 +77,7 @@ namespace CivOne.Screens
 						if (meta is not null)
 						{
 							slots[i].Exists = true;
-							slots[i].Label  = meta.Name ?? "(unknown)";
+							slots[i].Label  = SaveLabel(meta.Name, (ushort)meta.Turn);
 							slots[i].Year   = Common.YearString((ushort)meta.Turn);
 						}
 					}
@@ -100,7 +108,7 @@ namespace CivOne.Screens
 					if (meta is not null)
 					{
 						slots[MANUAL_SLOTS].Exists = true;
-						slots[MANUAL_SLOTS].Label  = $"AUTO: {meta.Name ?? "autosave"}";
+						slots[MANUAL_SLOTS].Label  = $"AUTO: {(meta.Name is null ? "autosave" : SaveLabel(meta.Name, (ushort)meta.Turn))}";
 						slots[MANUAL_SLOTS].Year   = Common.YearString((ushort)meta.Turn);
 					}
 				}

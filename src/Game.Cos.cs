@@ -1185,9 +1185,8 @@ namespace CivOne
 		private string BuildDisplayName()
 		{
 			var human = HumanPlayer;
-			string year = Common.YearString(_gameTurn);
 			string rank = Common.DifficultyName(_difficulty);
-			return $"{rank} {human.LeaderName}, {human.TribeNamePlural} / {year}";
+			return $"{rank} {human.LeaderName}, {human.TribeNamePlural}";   // the save lists show the year beside it
 		}
 
 		// Citizen governors as a bitfield: bit 0 = order, bit 1 = growth, bit 2 = culture.

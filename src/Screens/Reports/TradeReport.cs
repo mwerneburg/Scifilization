@@ -77,7 +77,7 @@ namespace CivOne.Screens.Reports
 		}
 
 		// The longest prefix of `text` that fits, with a trailing dot to show it was cut.
-		private static string Fit(string text, int maxWidth)
+		internal static string Fit(string text, int maxWidth)
 		{
 			if (maxWidth <= 0) return string.Empty;
 			if (string.IsNullOrEmpty(text) || TextWidth(text) <= maxWidth) return text;

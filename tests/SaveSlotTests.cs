@@ -54,5 +54,29 @@ namespace CivOne.Tests
 			Assert.True((bool)Get(slots.GetValue(14)!, "IsAuto")!);
 			File.Delete(file);
 		}
+
+		// The lists print the year in a column of their own, so the name beside it does not
+		// repeat it (the user, Nov 2026): not in a new save, and not in one made before, whose
+		// name was written as "... / 1695 CE".
+		[Fact]
+		public void TheSaveNameDoesNotRepeatTheYear()
+		{
+			Sim.NewGame(width: 80, height: 50);
+			SaveGame.SelectedGame = 0;
+			string file = Path.Combine(Settings.Instance.SavesDirectory, "c", "CIVIL13.cos");
+			File.Delete(file);
+			var save = new SaveGame();
+			Press(save, Key.Down, 20);
+			Press(save, Key.Enter);
+
+			object slot = ((Array)Get(new LoadGame(null!), "_slots")!).GetValue(13)!;
+			string label = (string)Get(slot, "Label")!, year = (string)Get(slot, "Year")!;
+			Assert.NotEqual("", year);
+			Assert.DoesNotContain(year, label);
+			File.Delete(file);
+
+			Assert.Equal("Prince Charlemagne, Franks",
+				LoadGame.SaveLabel($"Prince Charlemagne, Franks / {Common.YearString(200)}", 200));
+		}
 	}
 }

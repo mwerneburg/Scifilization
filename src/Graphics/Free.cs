@@ -1332,6 +1332,9 @@ namespace CivOne.Graphics
 			}
 		}
 
+		// The right-pointing arrow is dim amber (PHOS_DIM 11). It was the DOS palette's light
+		// green, 10, which in ours is the faint amber of a selection background and all but
+		// vanished on a dark panel (the user, Nov 2026).
 		public Bytemap Trade
 		{
 			get
@@ -1340,11 +1343,11 @@ namespace CivOne.Graphics
 					0,  0,  5, 12,  0,  0,  0,  0,
 					0,  5, 12, 12,  5,  5,  5,  0,
 					5, 12, 12, 12, 12, 12, 12,  0,
-					0,  0, 12, 12, 10,  5,  0,  0,
-					0,  0,  0, 12, 10, 10,  5,  0,
-					0, 10, 10, 10, 10, 10, 10,  5,
-					0,  0,  0,  0, 10, 10,  5,  0,
-					0,  0,  0,  0, 10,  5,  0,  0
+					0,  0, 12, 12, 11,  5,  0,  0,
+					0,  0,  0, 12, 11, 11,  5,  0,
+					0, 11, 11, 11, 11, 11, 11,  5,
+					0,  0,  0,  0, 11, 11,  5,  0,
+					0,  0,  0,  0, 11,  5,  0,  0
 				);
 			}
 		}
@@ -1366,18 +1369,20 @@ namespace CivOne.Graphics
 			}
 		}
 
+		// Gold: bright amber (PHOS_GLOW 13) shaded with dim amber (PHOS_DIM 11). It was drawn
+		// in the DOS palette's yellow, 14, which in ours is the green status colour.
 		public Bytemap Taxes
 		{
 			get
 			{
 				return new Bytemap(8, 8).FromByteArray(
 					0,  0,  5,  5,  5,  5,  0,  0,
-					0,  5, 14, 14, 14, 15,  5,  0,
-					5, 14, 14, 14, 14, 14, 15,  5,
-					5, 14, 14, 14, 14, 14, 15,  5,
-					5, 14, 14, 14, 14, 14, 15,  5,
-					5, 14, 14, 14, 14, 14, 15,  5,
-					0,  5, 14, 14, 14, 15,  5,  0,
+					0,  5, 13, 13, 13, 11,  5,  0,
+					5, 13, 13, 13, 13, 13, 11,  5,
+					5, 13, 13, 13, 13, 13, 11,  5,
+					5, 13, 13, 13, 13, 13, 11,  5,
+					5, 13, 13, 13, 13, 13, 11,  5,
+					0,  5, 13, 13, 13, 11,  5,  0,
 					0,  0,  5,  5,  5,  5,  0,  0
 				);
 			}

@@ -7,6 +7,7 @@
 // You should have received a copy of the CC0 legalcode along with this
 // work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 
+using System;
 using System.Linq;
 using CivOne.Buildings;
 using CivOne.Enums;
@@ -29,6 +30,56 @@ namespace CivOne.Screens.Reports
 
 		private readonly City[] _cities;
 
+		// ── layout ───────────────────────────────────────────────────────────
+		//
+		// Measured, across the real canvas, the way TradeReport is laid out. It was a fixed
+		// 320-wide band with the stats as one string, so the numbers did not line up from row
+		// to row, a three-digit trade ran into the production name and a long production name
+		// ran into its progress ("Infrastructure Bond54/70"; the user, Nov 2026).
+		//
+		// Food, shields and trade are columns of their own, each right-aligned so its digits
+		// line up. The gaps between the four groups widen with the canvas, up to MAX_GAP; on a
+		// canvas too narrow for everything the production name is cut (TradeReport.Fit).
+		private const int MARGIN = 8, MIN_GAP = 8, MAX_GAP = 24, STAT_GAP = 6;
+
+		internal readonly struct Columns
+		{
+			public readonly int Name, FoodRight, ShieldRight, TradeRight, Prod, ProdRoom, ProgressRight;
+			public Columns(int name, int foodRight, int shieldRight, int tradeRight, int prod, int prodRoom, int progressRight)
+			{
+				Name = name; FoodRight = foodRight; ShieldRight = shieldRight; TradeRight = tradeRight;
+				Prod = prod; ProdRoom = prodRoom; ProgressRight = progressRight;
+			}
+		}
+
+		// The widths are the widest entry in each column.
+		internal static Columns Layout(int width, int name, int food, int shield, int trade, int prod, int progress)
+		{
+			int content = name + food + STAT_GAP + shield + STAT_GAP + trade + prod + progress;
+			int gap     = Math.Max(MIN_GAP, Math.Min(MAX_GAP, (width - 2 * MARGIN - content) / 3));
+			int left    = Math.Max(MARGIN, (width - content - 3 * gap) / 2);
+
+			int foodRight   = left + name + gap + food;
+			int shieldRight = foodRight + STAT_GAP + shield;
+			int tradeRight  = shieldRight + STAT_GAP + trade;
+			int prodX       = tradeRight + gap;
+			int progRight   = Math.Min(width - MARGIN, prodX + prod + gap + progress);
+			int prodRoom    = Math.Max(0, progRight - progress - gap - prodX);
+			return new Columns(left, foodRight, shieldRight, tradeRight, prodX, prodRoom, progRight);
+		}
+
+		private static int TextWidth(string text) => Resources.GetTextSize(FONT_ID, text).Width;
+		private static string FoodText(City c)     => $"{c.Size}-{c.FoodTotal}{FOOD}";
+		private static string ShieldText(City c)   => $"{c.ShieldTotal}{SHIELD}";
+		private static string TradeText(City c)    => $"{c.TradeTotal}{TRADE}";
+		private static string ProdText(City c)     => (c.CurrentProduction as ICivilopedia)?.Name ?? string.Empty;
+		private static string ProgressText(City c) => $"{c.Shields}/{c.ProductionCost(c.CurrentProduction)}";
+
+		private int Widest(Func<City, string> text) => _cities.Select(c => TextWidth(text(c))).DefaultIfEmpty(0).Max();
+
+		internal Columns Layout() => Layout(Width, Widest(c => c.Name), Widest(FoodText), Widest(ShieldText),
+			Widest(TradeText), Widest(ProdText), Widest(ProgressText));
+
 		private bool _update = true;
 		private int _page = 0;
 
@@ -48,19 +99,14 @@ namespace CivOne.Screens.Reports
 			int pageSize   = (Height - 32) / RowHeight;
 			int yy = 32;
 
-			// Column x-positions (within the 320-wide centred content area)
-			int colName    = OX + 8;    // city name
-			int colStats   = OX + 82;   // size / food / shield / trade
-			int colProd    = OX + 172;  // production name (clipped to colProgress - gap)
-			int colProgress = OX + 310; // shields progress, right-aligned
+			Columns col = Layout();
 
 			for (int i = (_page++ * pageSize); i < _cities.Length && i < (_page * pageSize); i++)
 			{
 				City city = _cities[i];
 
 				bool   invalid    = ProductionInvalid(city);
-				string? production = (city.CurrentProduction as ICivilopedia)?.Name;
-				string progress   = $"{city.Shields}/{city.ProductionCost(city.CurrentProduction)}";
+				string production = TradeReport.Fit(ProdText(city), col.ProdRoom);
 
 				// A wonder in near-white, so it stands out from the ordinary builds (the user, Nov 2026).
 				byte prodColor = invalid ? CassetteTheme.ALERT
@@ -68,10 +114,12 @@ namespace CivOne.Screens.Reports
 				               : CassetteTheme.INK_MID;
 				byte progColor = invalid ? CassetteTheme.ALERT : CassetteTheme.INK_LOW;
 
-				this.DrawText(city.Name, FONT_ID, CassetteTheme.PHOS, colName, yy)
-				    .DrawText($"{city.Size}-{city.FoodTotal}{FOOD} {city.ShieldTotal}{SHIELD} {city.TradeTotal}{TRADE}", FONT_ID, CassetteTheme.INK_HIGH, colStats, yy)
-				    .DrawText(production, FONT_ID, prodColor, colProd, yy)
-				    .DrawText(progress, FONT_ID, progColor, colProgress, yy, TextAlign.Right);
+				this.DrawText(city.Name, FONT_ID, CassetteTheme.PHOS, col.Name, yy)
+				    .DrawText(FoodText(city), FONT_ID, CassetteTheme.INK_HIGH, col.FoodRight, yy, TextAlign.Right)
+				    .DrawText(ShieldText(city), FONT_ID, CassetteTheme.INK_HIGH, col.ShieldRight, yy, TextAlign.Right)
+				    .DrawText(TradeText(city), FONT_ID, CassetteTheme.INK_HIGH, col.TradeRight, yy, TextAlign.Right)
+				    .DrawText(production, FONT_ID, prodColor, col.Prod, yy)
+				    .DrawText(ProgressText(city), FONT_ID, progColor, col.ProgressRight, yy, TextAlign.Right);
 
 				yy += RowHeight;
 			}

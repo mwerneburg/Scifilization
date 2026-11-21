@@ -29,8 +29,9 @@ namespace CivOne.Tests
 			var screen = new CityStatus();
 			typeof(CityStatus).GetMethod("HasUpdate", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(screen, new object[] { 0u });
 
+			int prod = screen.Layout().Prod;
 			bool white = Enumerable.Range(32, screen.Bitmap.Height - 32)
-				.Any(y => Enumerable.Range(172, screen.Bitmap.Width - 172).Any(x => screen.Bitmap[x, y] == CassetteTheme.WHITE));
+				.Any(y => Enumerable.Range(prod, screen.Bitmap.Width - prod).Any(x => screen.Bitmap[x, y] == CassetteTheme.WHITE));
 			Assert.Equal(wonder, white);
 		}
 	}
