@@ -26,6 +26,22 @@ namespace CivOne.Tests
 			Assert.All(Enumerable.Range(32, 95), c => Assert.True(font.Has((char)c), $"no glyph for '{(char)c}'"));
 		}
 
+		// The city, discovery and conquest headlines (font 5) and the title (font 4) space their
+		// lines 15 pixels apart, for a face that size; with the text face they were 8-pixel
+		// lines in 15-pixel slots. A missing resource would fall back to the text face in silence.
+		[Fact]
+		public void HeadlinesUseTheSixteenPixelFace()
+		{
+			Sim.EnsureRuntime();
+			GlyphFont? headline = GlyphFont.Load(GlyphFont.HeadlineResourceName);
+
+			Assert.NotNull(headline);
+			Assert.All(Enumerable.Range(32, 95), c => Assert.True(headline!.Has((char)c), $"no glyph for '{(char)c}'"));
+			Assert.Equal(16, Resources.Instance.GetFontHeight(4));
+			Assert.Equal(16, Resources.Instance.GetFontHeight(5));
+			Assert.Equal(8, Resources.Instance.GetFontHeight(0));
+		}
+
 		[Fact]
 		public void AnIconCharacterDrawsTheIcon()
 		{

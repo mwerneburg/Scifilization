@@ -13,13 +13,15 @@ using CivOne.IO;
 
 namespace CivOne.Graphics
 {
-	// The game's text face: Pixel Operator 8 by Jayvee Enaguas (CC0 1.0), one pixel between
-	// letters, stored as editable glyph grids (resources/pixel_operator_8.txt, built by
-	// design/build_font.py) and compiled into the assembly, so the game and the tests draw
-	// with the same font. It covers printable ASCII; DefaultFont keeps the few symbols above it.
+	// The game's faces: Pixel Operator 8 for text and Pixel Operator Bold (16px) for headlines,
+	// by Jayvee Enaguas (CC0 1.0), one pixel between letters, stored as editable glyph grids
+	// (resources/pixel_operator_*.txt, built by design/build_font.py) and compiled into the
+	// assembly, so the game and the tests draw with the same font. They cover printable ASCII;
+	// DefaultFont keeps the few symbols above it.
 	internal class GlyphFont : IFont
 	{
 		internal const string ResourceName = "CivOne.pixel_operator_8.txt";
+		internal const string HeadlineResourceName = "CivOne.pixel_operator_16.txt";
 
 		private readonly Dictionary<char, bool[,]> _glyphs = new();
 
@@ -29,9 +31,9 @@ namespace CivOne.Graphics
 
 		internal bool Has(char c) => _glyphs.ContainsKey(c);
 
-		internal static GlyphFont? Load()
+		internal static GlyphFont? Load(string resourceName = ResourceName)
 		{
-			using Stream? stream = typeof(GlyphFont).Assembly.GetManifestResourceStream(ResourceName);
+			using Stream? stream = typeof(GlyphFont).Assembly.GetManifestResourceStream(resourceName);
 			if (stream is null) return null;
 			using StreamReader reader = new StreamReader(stream);
 			return new GlyphFont(reader.ReadToEnd().Replace("\r", "").Split('\n'));

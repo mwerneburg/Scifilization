@@ -63,9 +63,9 @@ namespace CivOne.Screens.Debug
 				X = xx + 2,
 				Y = yy + 11,
 				MenuWidth = ww - 4,
-				ActiveColour = 11,
-				TextColour = 5,
-				DisabledColour = 3,
+				ActiveColour = CassetteTheme.PHOS_FAINT,
+				TextColour = CassetteTheme.INK_HIGH,
+				DisabledColour = CassetteTheme.INK_LOW,
 				FontId = 0,
 				Indent = 8
 			};

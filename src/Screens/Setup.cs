@@ -58,9 +58,9 @@ namespace CivOne.Screens
 			{
 				Title = $"{title.ToUpper()}:",
 				TitleColour = 15,
-				ActiveColour = 11,
-				TextColour = 5,
-				DisabledColour = 8,
+				ActiveColour = CassetteTheme.PHOS_FAINT,
+				TextColour = CassetteTheme.INK_HIGH,
+				DisabledColour = CassetteTheme.INK_LOW,
 				FontId = MenuFont,
 				IndentTitle = 2
 			}

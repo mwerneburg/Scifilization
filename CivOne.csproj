@@ -40,6 +40,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<EmbeddedResource Include="resources/pixel_operator_8.txt" LogicalName="CivOne.pixel_operator_8.txt" />
+    <EmbeddedResource Include="resources/pixel_operator_16.txt" LogicalName="CivOne.pixel_operator_16.txt" />
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Remove="**" />

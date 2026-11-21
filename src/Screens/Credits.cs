@@ -190,9 +190,9 @@ namespace CivOne.Screens
 				X = ((Width - 120) / 2) + 3,
 				Y = Height - 55,
 				MenuWidth = 116,
-				ActiveColour = 11,
-				TextColour = 5,
-				DisabledColour = 8,
+				ActiveColour = CassetteTheme.PHOS_FAINT,
+				TextColour = CassetteTheme.INK_HIGH,
+				DisabledColour = CassetteTheme.INK_LOW,
 				FontId = 0
 			};
 			menu.Items.Add("Start a New Game").OnSelect(StartNewGame);
@@ -299,9 +299,9 @@ namespace CivOne.Screens
 				Y = Height - 55,
 				MenuWidth = 116,
 				TitleColour = 15,
-				ActiveColour = 11,
-				TextColour = 5,
-				DisabledColour = 8,
+				ActiveColour = CassetteTheme.PHOS_FAINT,
+				TextColour = CassetteTheme.INK_HIGH,
+				DisabledColour = CassetteTheme.INK_LOW,
 				FontId = 0
 			};
 			menu.Items.Add("Yes").OnSelect((s, a) => StartIntro(new AurigaIntroScreen()));

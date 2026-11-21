@@ -46,8 +46,8 @@ namespace CivOne.Screens
 				Title = "CUSTOM MAP SIZE",
 				TitleColour = 15,
 				MenuWidth = 120,
-				ActiveColour = 11,
-				TextColour = 5,
+				ActiveColour = CassetteTheme.PHOS_FAINT,
+				TextColour = CassetteTheme.INK_HIGH,
 				FontId = 0,
 				Indent = 8
 			};
