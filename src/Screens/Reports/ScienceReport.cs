@@ -445,6 +445,16 @@ namespace CivOne.Screens.Reports
 			return true;
 		}
 
+		// Turns to finish the current advance, and to learn one from nothing (the trade
+		// report's figure), at this turn's science rate. Null when nothing comes in.
+		internal static string? TurnsText(int cost, int have, int rate)
+		{
+			if (rate <= 0) return null;
+			int left = (int)Math.Ceiling((double)Math.Max(0, cost - have) / rate);
+			int each = (int)Math.Ceiling((double)cost / rate);
+			return $"{left} turn{(left == 1 ? "" : "s")} left, {each} per advance";
+		}
+
 		// ── constructor ───────────────────────────────────────────────────────────
 
 		public ScienceReport() : base("SCIENCE REPORT", 1, MouseCursor.Pointer)
@@ -471,7 +481,13 @@ namespace CivOne.Screens.Reports
 					plotX = nx;
 					this.AddLayer(Icons.Science, nx, 30);
 				}
-				_treeTop = labelY + Resources.GetFontHeight(0) + 2;
+				int fh = Resources.GetFontHeight(0);
+				// Same rate as the trade report's "Discoveries" line.
+				int rate = Game.GetCities().Where(c => Human == c.Owner && c.Size > 0).Sum(c => Math.Max(0, (int)c.Science));
+				string? turns = TurnsText(Human.ScienceCost, Human.Science, rate);
+				if (turns is not null)
+					this.DrawText(turns, 0, CassetteTheme.INK_MID, Width / 2, labelY + fh, TextAlign.Center);
+				_treeTop = labelY + fh * (turns is null ? 1 : 2) + 2;
 			}
 			else
 			{
