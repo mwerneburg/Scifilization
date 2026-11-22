@@ -13,9 +13,12 @@ Inputs:
   --output PATH  Output binary file. Default is the platform's CivOne data
                  directory + earth_epic.bin so the MapPreview hotkey 'E'
                  picks it up automatically.
-  --sea-level N  Pixel value (0-255) below which a tile is Ocean. Default 1
-                 (matches NASA SRTM-derived images where ocean = 0). Raise to
-                 shrink land mass, e.g. --sea-level 5 to drop shallow shelves.
+  --land PATH    Natural Earth 1:50m land polygons (shapefile), which decide land
+                 and sea. Default design/naturalearth/ne_50m_land.shp (public
+                 domain, v4.1.0, checked in). Needs pyshp: pip3 install pyshp.
+  --sea-level N  Pixel value (0-255) below which a source pixel is sea, so relief
+                 ignores it. Default 1 (matches NASA SRTM-derived images where
+                 ocean = 0). It no longer decides land and sea: see --land.
   --hill-relief N  Local relief within one tile (p95-p20 of the source pixels it
                  covers, ocean excluded) at or above which it becomes Hills.
                  Default 15 (~500 m). See DEFAULT_HILL_RELIEF for why rough ground
@@ -34,7 +37,7 @@ Source data — any equirectangular elevation PNG works; recommended:
 None of these need an account; they're public domain / CC0.
 
 Terrain classification:
-  pixel < sea-level                  → Ocean
+  under LAND_SHARE land (Natural Earth) → Ocean
   tile relief high                   → Hills
   tile relief very high              → Mountains
   very high mean, flat (a plateau)   → Tundra (Arctic at 60 deg+)
@@ -66,7 +69,6 @@ Usage examples:
   ./build_earth_map.py --elev topo.png --width 80 --height 50 \
       --output ../resources/earth_standard.bin     # replaces the old MAP.PIC
   ./build_earth_map.py --elev topo.png --width 160 --height 100   # Huge size
-  ./build_earth_map.py --elev topo.png --sea-level 100            # less land
   ./build_earth_map.py --elev topo.png --mtn-relief 60            # gentler ranges
   ./build_earth_map.py --elev topo.png --lat-south -90 --no-warp  # old behaviour
 """
@@ -214,63 +216,6 @@ MAJOR_RIVERS = [
     ("Mackenzie",    [( 61.0,-117.0), ( 65.0,-125.0), ( 68.0,-130.0), ( 69.5,-134.0)]),
 ]
 
-# ── Land-force polygons ──────────────────────────────────────────────────────
-# Regions whose real-world elevation is so close to sea level that the
-# elevation pass writes them as Ocean. Each entry is
-# (name, biome_code, [(lat, lon), ...]). The carver only converts tiles that
-# are currently Ocean — it never overwrites Hills/Mountains/biome that the
-# elevation pass classified correctly. Applied BEFORE lakes/rivers so those
-# passes can still cut through the forced land normally.
-LAND_FORCES = [
-    # Florida: pancake-flat peninsula, real elevation mostly < 30 m. Use SWAMP
-    # because the southern half is the Everglades and the engine treats Swamp
-    # as a freshwater source (settler-friendly). North Florida is technically
-    # higher and drier (pine woods) — refine into two polygons if you want
-    # northern Plains + southern Swamp.
-    ("Florida", SWAMP, [
-        ( 30.5, -87.5), ( 31.0, -85.0), ( 31.0, -82.0),
-        ( 27.5, -80.0), ( 25.0, -80.4), ( 24.6, -81.5),
-        ( 26.0, -81.8), ( 28.0, -82.7), ( 29.5, -83.4),
-        ( 30.2, -86.0),
-    ]),
-    # The Caspian Depression: the source image clamps everything at or below sea level to
-    # 0, so the Kalmyk steppe, the Ryn desert, the lower Volga and Ural and the Kura
-    # lowland all came out as sea, three rows north of the real shore (Nov 2026). The
-    # whole basin is forced to land here and the Caspian polygon below carves the sea back,
-    # so the sea's shape is its outline, not the clamp. The delta goes first: first wins.
-    ("VolgaDelta", SWAMP, [
-        ( 46.8, 47.4), ( 46.8, 49.4), ( 45.9, 50.0), ( 45.4, 48.0),
-    ]),
-    ("CaspianDepression", PLAINS, [
-        ( 51.5, 44.0), ( 51.5, 55.5), ( 36.0, 55.5), ( 36.0, 48.0),
-        ( 40.0, 46.0), ( 44.0, 44.0),
-    ]),
-]
-
-# ── Strait overrides ──────────────────────────────────────────────────────────
-# Real-world straits (Gibraltar, Bosporus, Dardanelles, etc.) are narrower than
-# our 1.125°/pixel longitude resolution, so the procedural elevation pipeline
-# always rounds them to "land" and turns enclosed seas into lakes. List one
-# (lat, lon, name) per strait to force-Ocean exactly one tile and reopen the
-# corresponding sea passage. Search radius is 1 tile so a slight latitude/
-# longitude miss still hits the right corridor.
-STRAITS = [
-    (36.0,  -5.5, "Gibraltar"),     # opens Mediterranean to Atlantic
-    (12.5,  43.3, "Bab-el-Mandeb"), # opens Red Sea to Indian Ocean
-    (26.3,  56.3, "Hormuz"),        # opens Persian Gulf to Indian Ocean
-    ( 1.2, 103.8, "Malacca"),       # Sumatra/Malay strait (may already be open at this resolution)
-]
-
-# A one-tile-wide ocean lane hugging the North African coast, from the Atlantic west of
-# Gibraltar east to the waters off Tripoli, so the Mediterranean opens to the Atlantic. At
-# ~1.1°/tile the basin otherwise floods to an isolated inland lake (Gibraltar's lone strait
-# tile can't bridge it). Traced (lat, lon) just along the coast: Morocco/Algeria/Tunisia at
-# ~36-37°N, dipping toward Tripoli at ~33°N. carve_sea_channel only fills the land gaps.
-MED_CHANNEL = [
-    (35.8, -7.5), (35.7, -5.5), (36.2, -1.0), (36.7,  4.0),
-    (37.0,  9.0), (35.0, 11.5), (33.5, 13.5),
-]
-
 
 # ── Major lakes ───────────────────────────────────────────────────────────────
 # Each entry forces *all* tiles inside the bounding box to Ocean. After the
@@ -305,12 +250,6 @@ MAJOR_LAKES = [
 # polygon filler, so all tiles inside the shape become Ocean (then engine
 # flags them freshwater on load). Refine via QGIS if you want tighter shapes.
 MAJOR_LAKE_POLYGONS = [
-    # Caspian: 1200 km N-S, narrows in middle, widest in the north.
-    ("Caspian", [
-        ( 47.0, 51.5), ( 46.0, 53.0), ( 43.0, 51.0), ( 40.0, 52.5),
-        ( 37.5, 53.5), ( 36.5, 50.5), ( 39.0, 48.7), ( 42.0, 47.5),
-        ( 45.5, 47.5),
-    ]),
     # Great Slave: a south-west to north-east main basin, from Hay River up to
     # Yellowknife, and the long East Arm reaching out toward Lutsel K'e.
     ("GreatSlave", [
@@ -474,69 +413,6 @@ def draw_river_polyline(grid: np.ndarray, waypoints, sea_level: int = 1) -> int:
     return painted
 
 
-def carve_strait(grid: np.ndarray, lat: float, lon: float) -> bool:
-    """Carve one strait tile: find the closest land tile within 1-tile radius of
-    the target lat/lon and flip it to Ocean. Returns True if a tile was carved.
-    Used to reopen narrow sea passages (Gibraltar, Bosporus, Suez) that the
-    elevation pipeline's coarse resolution always closes off."""
-    h, w = grid.shape
-    cy = row_for_lat(lat, h)
-    cx = int(((lon + 180.0) / 360.0) * w)
-    for dy in (0, -1, 1):
-        for dx in (0, -1, 1):
-            x = (cx + dx + w) % w
-            y = cy + dy
-            if y < 0 or y >= h: continue
-            if grid[y, x] != OCEAN:
-                grid[y, x] = OCEAN
-                return True
-    return False
-
-
-def carve_sea_channel(grid: np.ndarray, waypoints) -> int:
-    """Rasterise a 4-connected polyline, flipping every land tile it crosses to Ocean.
-    A single strait shave (carve_strait) only opens one tile; this cuts a continuous
-    one-tile-wide lane where the coarse resolution seals a whole sea off — e.g. the
-    Mediterranean, which floods to a 140-tile inland lake until a channel along the
-    North African coast reconnects it to the Atlantic. Tiles already Ocean are left
-    as-is, so the lane only fills the land gaps. Returns the number of tiles carved."""
-    h, w = grid.shape
-    carved = 0
-
-    def carve(x: int, y: int):
-        nonlocal carved
-        if not (0 <= x < w and 0 <= y < h): return
-        if grid[y, x] != OCEAN:
-            grid[y, x] = OCEAN
-            carved += 1
-
-    pts = []
-    for lat, lon in waypoints:
-        y = row_for_lat(lat, h)
-        x = max(0, min(w - 1, int(((lon + 180.0) / 360.0) * w)))
-        pts.append((x, y))
-    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
-        dx = abs(x1 - x0); dy = -abs(y1 - y0)
-        sx = 1 if x0 < x1 else -1
-        sy = 1 if y0 < y1 else -1
-        err = dx + dy
-        cx, cy = x0, y0
-        while True:
-            carve(cx, cy)
-            if cx == x1 and cy == y1: break
-            e2 = 2 * err
-            step_x = (e2 >= dy)
-            step_y = (e2 <= dx)
-            if step_x and step_y:
-                carve(cx + sx, cy)   # orthogonal stepping stone keeps the lane 4-connected
-                err += dy + dx; cx += sx; cy += sy
-            elif step_x:
-                err += dy; cx += sx
-            elif step_y:
-                err += dx; cy += sy
-    return carved
-
-
 def carve_lake_box(grid: np.ndarray, lat_min: float, lat_max: float, lon_min: float, lon_max: float) -> int:
     """Force all tiles inside the lat/lon box to Ocean. Returns count carved."""
     h, w = grid.shape
@@ -550,27 +426,6 @@ def carve_lake_box(grid: np.ndarray, lat_min: float, lat_max: float, lon_min: fl
     n_change = int(np.sum(region != OCEAN))
     region[:] = OCEAN
     return n_change
-
-
-def force_land_polygon(grid: np.ndarray, polygon, biome: int) -> int:
-    """Force every Ocean tile inside the lat/lon polygon to the given biome.
-    Non-Ocean tiles (Hills/Mountains/biome) are left as the elevation pass set
-    them, so a polygon spanning a coastal range only converts the truly-flooded
-    cells. Returns count converted."""
-    from PIL import Image, ImageDraw
-    h, w = grid.shape
-    pixels = []
-    for lat, lon in polygon:
-        x = ((lon + 180.0) / 360.0) * w
-        y = row_for_lat_f(lat, h)
-        pixels.append((x, y))
-    mask = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(mask).polygon(pixels, fill=1)
-    mask_arr = np.array(mask, dtype=bool)
-    target = mask_arr & (grid == OCEAN)
-    n = int(np.sum(target))
-    grid[target] = biome
-    return n
 
 
 def carve_lake_polygon(grid: np.ndarray, polygon) -> int:
@@ -924,6 +779,159 @@ def clear_edge_land(grid: np.ndarray, rows: int) -> int:
     return n
 
 
+# How much of a tile must be land for it to be land. Half would be area-true, but
+# the old elevation rule counted any land at all, and the board is built around that
+# generosity: at 0.5 a one-tile rim came off nearly every coast, 5.5% of all land.
+# 0.35 keeps land within 3% of the old total; at 0.25 the Red Sea and the Gulf of
+# Bothnia narrow to a tile, and at 0.4 Lake Ladoga touches the Gulf of Finland and
+# becomes sea (measured on the 320x200 board, Nov 2026).
+LAND_SHARE = 0.35
+
+
+def resample_land(path: Path, width: int, height: int):
+    """Which tiles are land, from Natural Earth's land polygons (Nov 2026).
+
+    The elevation image cannot answer this: it stores ground from roughly sea level to
+    25 m as 0, the value of the sea, so the Netherlands, the Yangtze, Ganges and Yukon
+    deltas, the North China Plain and Mesopotamia came out as sea; and a narrow sea
+    averaged with its coastal ranges came out as land, which shut the Red Sea, the
+    Persian Gulf and the Adriatic off from the ocean as freshwater lakes.
+
+    A tile is land when LAND_SHARE of it is. An island too small to win a tile of
+    its own keeps the tile at its centre if it covers a fifth of one — the old map
+    kept islands generously, and a game needs Crete and Hawaii more than it needs
+    accuracy. Lakes are land in this layer (the lake passes carve them); the Caspian
+    is its one hole, so it comes out as the sea it is."""
+    try:
+        import shapefile
+    except ImportError:
+        sys.exit("missing dependency: pyshp. Install with: pip3 install pyshp")
+    from PIL import ImageDraw
+    R = 20   # raster pixels per degree; a 320-wide tile is 22 of them
+    mask = Image.new("L", (360 * R, 180 * R), 0)
+    draw = ImageDraw.Draw(mask)
+    rings = []
+    for shp in shapefile.Reader(str(path)).shapes():
+        parts = list(shp.parts) + [len(shp.points)]
+        for a, b in zip(parts, parts[1:]):
+            pts = shp.points[a:b]
+            if len(pts) < 3: continue
+            area = sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(pts, pts[1:] + pts[:1])) / 2
+            rings.append((area, pts))
+    # Shapefile rings run clockwise round land (negative area here) and anticlockwise
+    # round holes, so outers paint first and holes cut after.
+    for area, pts in sorted(rings, key=lambda r: r[0] > 0):
+        draw.polygon([((lon + 180) * R, (90 - lat) * R) for lon, lat in pts], fill=0 if area > 0 else 1)
+    fine = np.array(mask, dtype=np.float32)
+
+    frac = np.zeros((height, width), dtype=np.float32)
+    for y in range(height):
+        r0 = int((90.0 - LAT_EDGES[y]) * R)
+        r1 = max(r0 + 1, int((90.0 - LAT_EDGES[y + 1]) * R))
+        band = fine[r0:r1]
+        for x in range(width):
+            frac[y, x] = band[:, int(x * 360 * R / width):int((x + 1) * 360 * R / width)].mean()
+    land = frac >= LAND_SHARE
+
+    for area, pts in rings:
+        if area > 0: continue
+        lons = [p[0] for p in pts]; lats = [p[1] for p in pts]
+        lat_c = (min(lats) + max(lats)) / 2
+        y = row_for_lat(lat_c, height)
+        x = int(((min(lons) + max(lons)) / 2 + 180.0) / 360.0 * width) % width
+        tile_area = (360.0 / width) * abs(LAT_EDGES[y] - LAT_EDGES[y + 1])
+        if not land[y, x] and -area >= 0.2 * tile_area:
+            land[y, x] = True
+    return land, frac
+
+
+# Real seas with no outlet, which open_seas must leave closed: (lat, lon, name).
+INLAND_SEAS = [(42.0, 50.5, "Caspian")]
+
+
+def water_bodies(grid: np.ndarray):
+    """Label 4-connected water on the cylinder, as Map.ComputeFreshwaterLakes sees it."""
+    h, w = grid.shape
+    label = np.full((h, w), -1, dtype=np.int32)
+    sizes = []
+    for y0 in range(h):
+        for x0 in range(w):
+            if grid[y0, x0] != OCEAN or label[y0, x0] >= 0: continue
+            n = len(sizes); label[y0, x0] = n; stack = [(y0, x0)]; size = 0
+            while stack:
+                y, x = stack.pop(); size += 1
+                for ny, nx in ((y - 1, x), (y + 1, x), (y, (x - 1) % w), (y, (x + 1) % w)):
+                    if 0 <= ny < h and grid[ny, nx] == OCEAN and label[ny, nx] < 0:
+                        label[ny, nx] = n; stack.append((ny, nx))
+            sizes.append(size)
+    return label, sizes
+
+
+def open_seas(grid: np.ndarray, frac: np.ndarray) -> int:
+    """Cut each enclosed body of sea a channel to the ocean. Returns tiles cut.
+
+    The engine makes every water body but the largest a freshwater lake, and a
+    strait narrower than a tile (Gibraltar, the Bosporus, Bab-el-Mandeb, the Danish
+    straits) always rounds to land, so the Mediterranean, the Black Sea, the Red Sea
+    and the Baltic would all be lakes with no way out for a ship. This replaced a
+    hand list of strait tiles and a lane cut along the North African coast.
+
+    The channel is the cheapest path over land, a tile costing more the more of it
+    is land, so it runs where the real strait is. Largest body first, and each one
+    joins the open water the next can reach: the Black Sea finds the Aegean once the
+    Mediterranean is open. Every pocket counts, down to one tile: the lakes are carved
+    after this, so all water here is sea, and a cove the rounding sealed off would
+    otherwise be fresh water on a salt coast."""
+    import heapq
+    h, w = grid.shape
+    label, sizes = water_bodies(grid)
+    inland = {int(label[row_for_lat(lat, h), int((lon + 180.0) / 360.0 * w) % w])
+              for lat, lon, _ in INLAND_SEAS} - {-1}   # -1 is land: the sea missed its tile
+    connected = {int(np.argmax(sizes))}
+    cut = 0
+    for body in sorted(range(len(sizes)), key=lambda b: -sizes[b]):
+        if body in connected or body in inland: continue
+        dist, prev, heap = {}, {}, []
+        for y, x in zip(*np.nonzero(label == body)):
+            dist[(y, x)] = 0.0
+            heap.append((0.0, int(y), int(x)))
+        heapq.heapify(heap)
+        end = None
+        while heap:
+            d, y, x = heapq.heappop(heap)
+            if d > dist[(y, x)]: continue
+            if label[y, x] in connected: end = (y, x); break
+            for ny, nx in ((y - 1, x), (y + 1, x), (y, (x - 1) % w), (y, (x + 1) % w)):
+                if not 0 <= ny < h or label[ny, nx] in inland: continue
+                nd = d + (0.0 if grid[ny, nx] == OCEAN else 0.1 + float(frac[ny, nx]))
+                if nd < dist.get((ny, nx), float("inf")):
+                    dist[(ny, nx)] = nd; prev[(ny, nx)] = (y, x)
+                    heapq.heappush(heap, (nd, ny, nx))
+        if end is None: continue
+        connected.add(body)
+        while end in prev:
+            y, x = end
+            if grid[y, x] != OCEAN:
+                grid[y, x] = OCEAN; cut += 1
+            elif label[y, x] >= 0:
+                connected.add(int(label[y, x]))   # crossed another enclosed body: open too
+            end = prev[end]
+    return cut
+
+
+def keep_lake_shores(grid: np.ndarray, before: np.ndarray) -> int:
+    """Put back any lake tile carved next to the sea. A lake 4-connected to the sea
+    is part of it to the engine, so it turns salt: Peipus joined the Gulf of Finland,
+    and Ladoga did too at some land shares. Returns tiles restored."""
+    sea = before == OCEAN
+    near = sea | np.roll(sea, 1, axis=1) | np.roll(sea, -1, axis=1)
+    near[1:] |= sea[:-1]
+    near[:-1] |= sea[1:]
+    shore = near & (before != OCEAN) & (grid == OCEAN)
+    grid[shore] = before[shore]
+    return int(shore.sum())
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main() -> int:
@@ -953,6 +961,9 @@ def main() -> int:
                     help="tiles of raggedness on biome-box edges (0 = hard rectangles)")
     ap.add_argument("--max-rivers", type=int, default=None,
                     help="how many of MAJOR_RIVERS to draw (default scales with board area)")
+    ap.add_argument("--land", default=str(Path(__file__).resolve().parent / "naturalearth" / "ne_50m_land.shp"),
+                    help="Natural Earth land polygons that decide land and sea "
+                         "(default design/naturalearth/ne_50m_land.shp)")
     ap.add_argument("--no-warp", action="store_true",
                     help="flat equirectangular rows instead of the LAT_WEIGHTS warp")
     args = ap.parse_args()
@@ -980,6 +991,12 @@ def main() -> int:
     print(f"relief cuts: hills >= {hill_cut:.0f}, mountains >= {mtn_cut:.0f} "
           f"(x{rscale:.2f} for a {args.width}x{args.height} board)")
 
+    land_path = Path(args.land).expanduser()
+    if not land_path.exists():
+        sys.exit(f"land polygons not found: {land_path} (Natural Earth 1:50m land, "
+                 "https://www.naturalearthdata.com/downloads/50m-physical-vectors/)")
+    land, land_frac = resample_land(land_path, args.width, args.height)
+
     jitter_lat, jitter_lon = build_jitter(args.width, args.height, args.edge_jitter)
 
     grid = np.full((args.height, args.width), OCEAN, dtype=np.uint8)
@@ -990,7 +1007,7 @@ def main() -> int:
         for x in range(args.width):
             elev = int(arr[y, x])
             relief = float(rel[y, x])
-            if elev < args.sea_level:
+            if not land[y, x]:
                 code = OCEAN
             elif relief >= mtn_cut:
                 code = MTNS
@@ -1016,34 +1033,23 @@ def main() -> int:
             counts[code] = counts.get(code, 0) + 1
 
     # Blend complementary terrain into the big single-biome swaths (and add desert
-    # oases). Runs after the biome/override pass but before land-force/lakes/rivers
+    # oases). Runs after the biome/override pass but before the seas/lakes/rivers
     # so those still win on the tiles they touch.
     blend_tiles = blend_biomes(grid)
 
-    # Land-force overrides run BEFORE lakes/straits so subsequent water passes
-    # can still carve through (e.g. Mississippi delta river crossing forced FL
-    # land would still draw the river segment). Only converts existing Ocean
-    # tiles — never overwrites a Hill/Mountain/biome the elevation pass set.
-    land_force_tiles = 0
-    for name, biome, polygon in LAND_FORCES:
-        land_force_tiles += force_land_polygon(grid, polygon, biome)
+    # Before the lakes, so every enclosed body here is sea the coastline closed off.
+    strait_tiles = open_seas(grid, land_frac)
 
     # Apply lakes BEFORE rivers: lakes overwrite land with ocean, then river
     # polylines that happen to cross a lake's bounding box terminate naturally
     # because draw_river_polyline skips ocean tiles.
     lake_tiles = 0
+    before_lakes = grid.copy()
     for lat_min, lat_max, lon_min, lon_max, name in MAJOR_LAKES:
         lake_tiles += carve_lake_box(grid, lat_min, lat_max, lon_min, lon_max)
     for name, polygon in MAJOR_LAKE_POLYGONS:
         lake_tiles += carve_lake_polygon(grid, polygon)
-    # Strait shaves: open one tile at each narrow sea passage so the elevation
-    # pipeline's tiles-too-coarse rounding doesn't trap Mediterranean/Black-Sea/
-    # Red-Sea bodies as inland lakes.
-    strait_tiles = 0
-    for lat, lon, name in STRAITS:
-        if carve_strait(grid, lat, lon): strait_tiles += 1
-    # Sea channels: cut continuous lanes where a single strait shave isn't enough.
-    channel_tiles = carve_sea_channel(grid, MED_CHANNEL)
+    shore_tiles = keep_lake_shores(grid, before_lakes)
     river_tiles = 0
     for name, waypoints in MAJOR_RIVERS[:args.max_rivers]:
         river_tiles += draw_river_polyline(grid, waypoints, args.sea_level)
@@ -1094,9 +1100,8 @@ def main() -> int:
     print(f"  blend:   {blend_tiles} tiles re-mixed across grassland/forest/desert")
     print(f"  rivers:  {river_tiles} tiles drawn across {args.max_rivers} of {len(MAJOR_RIVERS)} polylines (4-connected)")
     print(f"  lakes:   {lake_tiles} land tiles carved across {len(MAJOR_LAKES)} boxes + {len(MAJOR_LAKE_POLYGONS)} polygons (engine flags as freshwater)")
-    print(f"  land-force: {land_force_tiles} ocean tiles reclaimed across {len(LAND_FORCES)} polygons")
-    print(f"  straits: {strait_tiles} tiles opened of {len(STRAITS)} configured")
-    print(f"  channels: {channel_tiles} tiles carved (Mediterranean -> Atlantic lane)")
+    print(f"  shores:  {shore_tiles} lake tiles kept as land so a lake does not join the sea")
+    print(f"  straits: {strait_tiles} land tiles cut to open enclosed seas to the ocean")
     for code, count in sorted(counts.items(), key=lambda kv: -kv[1]):
         print(f"  {name.get(code, '?'):8s} {count:6d} ({100*count/total:5.1f}%)")
     return 0

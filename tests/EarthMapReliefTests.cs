@@ -72,6 +72,33 @@ namespace CivOne.Tests
 				}
 				return (double)water / all;
 			}
+
+			// Whether the water at a point is part of the world ocean: the largest 4-connected
+			// body, wrapping east-west, which is how Map.ComputeFreshwaterLakes tells the sea
+			// from a lake.
+			public bool OnTheOcean(double lat, double lon)
+			{
+				int[] body = new int[Tiles.Length];
+				var size = new System.Collections.Generic.List<int> { 0 };
+				for (int i = 0; i < Tiles.Length; i++)
+				{
+					if (Tiles[i] != Ocean || body[i] != 0) continue;
+					size.Add(0);
+					int id = size.Count - 1;
+					var open = new System.Collections.Generic.Stack<int>();
+					open.Push(i); body[i] = id;
+					while (open.Count > 0)
+					{
+						int c = open.Pop(), x = c % Width, y = c / Width;
+						size[id]++;
+						foreach (int n in new[] { y > 0 ? c - Width : -1, y < Height - 1 ? c + Width : -1,
+							y * Width + (x + Width - 1) % Width, y * Width + (x + 1) % Width })
+							if (n >= 0 && Tiles[n] == Ocean && body[n] == 0) { body[n] = id; open.Push(n); }
+					}
+				}
+				int t = Row(lat) * Width + (int)((lon + 180.0) / 360.0 * Width) % Width;
+				return body[t] != 0 && size[body[t]] == size.Max();
+			}
 		}
 
 		private static EarthMap? Load(string name)
@@ -197,7 +224,48 @@ namespace CivOne.Tests
 			EarthMap? m = Load("earth_epic.bin");
 			if (m is null) return;
 			Assert.True(m.Water(50.5, 48.0, 45.5, 53.5) < 0.05, $"north of the Caspian is {m.Water(50.5, 48.0, 45.5, 53.5):P0} water");
-			Assert.True(m.Water(45.0, 38.0, 49.0, 51.5) > 0.9, "the Caspian itself went dry");
+			// 0.75 on Natural Earth's outline: the Absheron peninsula and the west shore are in
+			// the box. The hand-drawn polygon that filled it entirely sat too far east.
+			Assert.True(m.Water(45.0, 38.0, 49.0, 51.5) > 0.6, "the Caspian itself went dry");
+			Assert.False(m.OnTheOcean(42.0, 50.5), "the Caspian has no outlet");
+		}
+
+		// The Caspian was one case of a wider fault: the clamp drowned every low coast. Land and
+		// sea come from Natural Earth's coastline now, and elevation only shapes the land
+		// (Nov 2026). Lake Eyre is a salt pan, dry most years, that the clamp made a lake.
+		[Theory]
+		[InlineData("Netherlands",     53.0,  51.5,   4.5,   7.0)]
+		[InlineData("YangtzeDelta",    32.5,  30.5, 118.0, 121.0)]
+		[InlineData("GangesDelta",     24.5,  22.5,  88.5,  91.0)]
+		[InlineData("NorthChinaPlain", 39.5,  37.0, 115.5, 117.5)]
+		[InlineData("Mesopotamia",     32.5,  30.5,  45.0,  47.5)]
+		[InlineData("LakeEyre",       -27.5, -29.5, 136.5, 138.5)]
+		public void ALowlandIsLand(string _, double n, double s, double w, double e)
+		{
+			EarthMap? m = Load("earth_epic.bin");
+			if (m is null) return;
+			Assert.True(m.Water(n, s, w, e) < 0.1, $"{m.Water(n, s, w, e):P0} water");
+		}
+
+		// The reverse: a strait narrower than a tile rounds to land and seals the sea behind
+		// it, and the engine makes any sealed water a freshwater lake no ship can leave. Hudson
+		// Bay, the Black Sea, the Red Sea, the Persian Gulf and the Adriatic were all lakes.
+		[Theory]
+		[InlineData("earth_epic.bin",     "Mediterranean", 35.0,  18.0)]
+		[InlineData("earth_epic.bin",     "BlackSea",      43.5,  34.0)]
+		[InlineData("earth_epic.bin",     "RedSea",        20.0,  38.5)]
+		[InlineData("earth_epic.bin",     "PersianGulf",   27.0,  51.0)]
+		[InlineData("earth_epic.bin",     "Adriatic",      43.0,  15.5)]
+		[InlineData("earth_epic.bin",     "Baltic",        57.0,  19.0)]
+		[InlineData("earth_epic.bin",     "HudsonBay",     60.0, -86.0)]
+		[InlineData("earth_standard.bin", "Mediterranean", 35.0,  18.0)]
+		[InlineData("earth_standard.bin", "BlackSea",      43.5,  34.0)]
+		[InlineData("earth_standard.bin", "HudsonBay",     60.0, -86.0)]
+		public void ASeaReachesTheOcean(string name, string _, double lat, double lon)
+		{
+			EarthMap? m = Load(name);
+			if (m is null) return;
+			Assert.True(m.OnTheOcean(lat, lon));
 		}
 
 		// Map.ResolveEarthBin walks FIVE directories up from the executable to reach the repo's

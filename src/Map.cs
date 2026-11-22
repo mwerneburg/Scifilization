@@ -247,7 +247,13 @@ namespace CivOne
 					// ground on the map — so without this exclusion, draining a sea would
 					// spontaneously grow RIVERS across the seabed on the next load. Found by
 					// the round-trip test, which got back River where it had saved SaltFlat.
-					&& t != Terrain.SaltFlat;
+					&& t != Terrain.SaltFlat
+					// Nor the ice ring. CreatePoles scatters its tundra with Common.Random, and
+					// fresh-water distance runs across the sea, so an oasis planted on that
+					// tundra moved the oases on every northern coast with the seed: a loaded
+					// Earth's rivers, and the forested hills they land on, varied game to game
+					// (Nov 2026, when the Natural Earth coastline put a stub on a wooded hill).
+					&& y > 1 && y < HEIGHT - 2;
 			}
 
 			// Multi-source BFS distance fields. Both seed only their source tiles, so

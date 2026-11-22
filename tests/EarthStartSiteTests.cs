@@ -55,7 +55,9 @@ namespace CivOne.Tests
 			IUnit gr = Start<Civilizations.Greek>(), jp = Start<Civilizations.Japanese>();
 
 			Assert.False(gr.X == 180 && gr.Y == 74, "the Greeks start on the Aegean islet");
-			Assert.Equal(Map.Instance[178, 70].ContinentId, Map.Instance[gr.X, gr.Y].ContinentId);
+			// (179,66) is Thessaly. The reference was (178,70) until the coastline came from
+			// Natural Earth (Nov 2026), which puts that tile in the Ionian Sea.
+			Assert.Equal(Map.Instance[179, 66].ContinentId, Map.Instance[gr.X, gr.Y].ContinentId);
 			Assert.Equal(Map.Instance[281, 73].ContinentId, Map.Instance[jp.X, jp.Y].ContinentId);
 		}
 	}
