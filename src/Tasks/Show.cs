@@ -111,36 +111,37 @@ namespace CivOne.Tasks
 			}
 		}
 
-		public static Show RoadTo
+		public static Show RoadTo => LayTo(rail: false);
+		public static Show RailTo => LayTo(rail: true);
+
+		private static Show LayTo(bool rail)
 		{
-			get
+			if (!(Game.ActiveUnit is Settlers settlers)) return null!;
+			GamePlay gamePlay = (GamePlay)Common.Screens.First(s => (s is GamePlay));
+			Goto gotoScreen = new Goto(gamePlay.X, gamePlay.Y);
+			gotoScreen.Closed += (s, a) =>
 			{
-				if (!(Game.ActiveUnit is Settlers settlers)) return null!;
-				GamePlay gamePlay = (GamePlay)Common.Screens.First(s => (s is GamePlay));
-				Goto gotoScreen = new Goto(gamePlay.X, gamePlay.Y);
-				gotoScreen.Closed += (s, a) =>
+				if (gotoScreen.X == -1 || gotoScreen.Y == -1) return;
+				int gx = gotoScreen.X, gy = gotoScreen.Y;
+				// Likewise: one standing mode at a time, or the two take turns
+				// overwriting each other's Goto and the settler oscillates.
+				settlers.CancelAutomation();
+				settlers.RoadTo = new Point(gx, gy);
+				settlers.RoadToRail = rail;
+				if (settlers.X == gx && settlers.Y == gy)
 				{
-					if (gotoScreen.X == -1 || gotoScreen.Y == -1) return;
-					int gx = gotoScreen.X, gy = gotoScreen.Y;
-					// Likewise: one standing mode at a time, or the two take turns
-					// overwriting each other's Goto and the settler oscillates.
-					settlers.CancelAutomation();
-					settlers.RoadTo = new Point(gx, gy);
-					if (settlers.X == gx && settlers.Y == gy)
-					{
-						settlers.RoadTo = Point.Empty;
-						return;
-					}
-					// Start immediately this turn: build here if needed, else begin moving.
-					ITile startTile = Map[settlers.X, settlers.Y];
-					Log($"[RoadTo] Settler ({settlers.X},{settlers.Y}) -> ({gx},{gy}). Tile road={startTile.Road} rail={startTile.RailRoad} ML={settlers.MovesLeft}");
-					bool built = settlers.BuildRoad();
-					Log($"[RoadTo] BuildRoad()={built}. After: ML={settlers.MovesLeft} BuildingRoad={settlers.BuildingRoad}");
-					if (!built)
-						settlers.Goto = new Point(gx, gy);
-				};
-				return new Show(gotoScreen);
-			}
+					settlers.RoadTo = Point.Empty;
+					return;
+				}
+				// Start immediately this turn: build here if needed, else begin moving.
+				ITile startTile = Map[settlers.X, settlers.Y];
+				Log($"[RoadTo] Settler ({settlers.X},{settlers.Y}) -> ({gx},{gy}). Tile road={startTile.Road} rail={startTile.RailRoad} ML={settlers.MovesLeft}");
+				bool built = settlers.BuildRoad();
+				Log($"[RoadTo] BuildRoad()={built}. After: ML={settlers.MovesLeft} BuildingRoad={settlers.BuildingRoad}");
+				if (!built)
+					settlers.Goto = new Point(gx, gy);
+			};
+			return new Show(gotoScreen);
 		}
 
 		public static Show TaxRate => new Show(SetRate.Taxes);

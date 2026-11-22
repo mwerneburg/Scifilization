@@ -617,7 +617,6 @@ namespace CivOne.Screens.GamePlayPanels
 				case 'V':   // Plant Forest
 				case 'E':   // Auto-Improve
 				case 'N':   // Engineer River
-				case 'O':   // Build Road To...
 				case 'L':   // Lower to Plains
 				case 'J':   // Plant Jungle
 				case 'K':   // Thaw to Grassland
@@ -631,6 +630,10 @@ namespace CivOne.Screens.GamePlayPanels
 					// orders at once, so they cannot share a key unshifted.
 					if (args.Shift && ActivateUnitMenuShortcut("Y")) return true;
 					return ActivateUnitMenuShortcut("y");
+				case 'O':
+					// Plain 'o' is Build Road To, Shift+O Build Rail To.
+					if (args.Shift && ActivateUnitMenuShortcut("O")) return true;
+					return ActivateUnitMenuShortcut("o");
 			}
 
 			return false;

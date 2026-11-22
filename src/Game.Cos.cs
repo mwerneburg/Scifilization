@@ -102,6 +102,7 @@ namespace CivOne
 				int? buildCanopy = null, buildAqua = null, buildTube = null, buildReclaim = null;
 				int? buildLower = null, buildRaise = null, buildForest = null, buildJungle = null, buildThaw = null, buildRiver = null;
 				int? roadToX = null, roadToY = null;
+				bool? roadToRail = null;
 				int? buildClean = null; bool? autoClean = null;
 				int? buildCamp = null, buildTerrace = null, buildMoisture = null;
 				if (unit is Settlers settlers)
@@ -123,7 +124,7 @@ namespace CivOne
 					if (settlers.BuildingPlantJungle > 0)   buildJungle = settlers.BuildingPlantJungle;
 					if (settlers.BuildingThawTundra > 0)    buildThaw   = settlers.BuildingThawTundra;
 					if (settlers.BuildingAddRiver > 0)      buildRiver  = settlers.BuildingAddRiver;
-					if (!settlers.RoadTo.IsEmpty) { roadToX = settlers.RoadTo.X; roadToY = settlers.RoadTo.Y; }
+					if (!settlers.RoadTo.IsEmpty) { roadToX = settlers.RoadTo.X; roadToY = settlers.RoadTo.Y; if (settlers.RoadToRail) roadToRail = true; }
 				}
 				else if (unit is HydroEngineer hydro)
 				{
@@ -168,6 +169,7 @@ namespace CivOne
 					BuildingMoistureFarm = buildMoisture,
 					RoadToX            = roadToX,
 					RoadToY            = roadToY,
+					RoadToRail         = roadToRail,
 					FuelLeft           = fuelLeft,
 					CapturedOn         = unit.CapturedOn
 				});
@@ -993,6 +995,7 @@ namespace CivOne
 					if (ud.BuildingThawTundra > 0)    s.BuildingThawTundra    = ud.BuildingThawTundra.Value;
 					if (ud.BuildingAddRiver > 0)      s.BuildingAddRiver      = ud.BuildingAddRiver.Value;
 					if (ud.RoadToX.HasValue) s.RoadTo = new Point(ud.RoadToX.Value, ud.RoadToY ?? 0);
+					if (ud.RoadToRail == true) s.RoadToRail = true;
 					if (ud.BuildingCleanPollution > 0) s.BuildingCleanPollution = ud.BuildingCleanPollution.Value;
 					if (ud.AutoClean == true) s.AutoClean = true;
 					if (ud.BuildingCamp > 0)          s.BuildingCamp          = ud.BuildingCamp.Value;

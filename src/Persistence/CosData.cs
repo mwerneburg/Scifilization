@@ -403,6 +403,7 @@ namespace CivOne.Persistence
 		// Settler "build road to" destination (null = no road-to order)
 		public int? RoadToX { get; set; }
 		public int? RoadToY { get; set; }
+		public bool? RoadToRail { get; set; }   // true: the order lays rail
 		// Air unit fuel (null = full / not an air unit)
 		public int? FuelLeft { get; set; }
 		// Turn this unit was salvaged off a foreign army (null = built, or already

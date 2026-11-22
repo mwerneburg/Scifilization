@@ -55,6 +55,16 @@ namespace CivOne.Units
 			}
 		}
 		public Point RoadTo { get; set; } = Point.Empty;
+		// The RoadTo order lays rail, not road: "Build Rail To...". Set with every order
+		// (Show.RoadTo/RailTo), so a stale value under an empty RoadTo means nothing.
+		public bool RoadToRail { get; set; }
+
+		// Whether the RoadTo order has work left on this tile. A rail order upgrades the
+		// existing road it walks along, and lays rail on its last tile too.
+		private bool RoadToNeedsWork(ITile tile) =>
+			tile.City is null && !tile.IsOcean && !tile.RailRoad && (RoadToRail || !tile.Road);
+		private bool RoadToEndsHere(ITile tile) =>
+			X == RoadTo.X && Y == RoadTo.Y && !(RoadToRail && RoadToNeedsWork(tile) && BuildRoad());
 		public int BuildingRoad { get; private set; }
 		public int BuildingCanopyArray { get; internal set; }
 		public int BuildingAquafarm { get; internal set; }
@@ -372,16 +382,18 @@ namespace CivOne.Units
 			if (!RoadTo.IsEmpty)
 			{
 				Log($"[Settlers.MovementDone] RoadTo=({RoadTo.X},{RoadTo.Y}) now at ({X},{Y}) ML={MovesLeft}");
-				if (X == RoadTo.X && Y == RoadTo.Y)
+				if (RoadToEndsHere(Map[X, Y]))
 				{
 					Log("[Settlers.MovementDone] Reached destination, clearing RoadTo+Goto");
 					RoadTo = Point.Empty;
 					Goto = Point.Empty;
 				}
+				else if (X == RoadTo.X && Y == RoadTo.Y)
+					Goto = Point.Empty;   // laying rail on the last tile
 				else
 				{
 					ITile tile = Map[X, Y];
-					bool needsRoad = !tile.Road && !tile.RailRoad && tile.City is null && !tile.IsOcean;
+					bool needsRoad = RoadToNeedsWork(tile);
 					Log($"[Settlers.MovementDone] needsRoad={needsRoad} (road={tile.Road} rail={tile.RailRoad} city={tile.City is not null} ocean={tile.IsOcean})");
 					// BuildRoad refuses a river before Bridge Building; walk on across it.
 					if (needsRoad && BuildRoad())
@@ -937,14 +949,15 @@ namespace CivOne.Units
 			if (!RoadTo.IsEmpty && BuildingRoad == 0 && BuildingIrrigation == 0 && BuildingMine == 0 && BuildingFortress == 0 && BuildingCleanPollution == 0 && BuildingCanopyArray == 0 && BuildingAquafarm == 0 && BuildingCamp == 0
 				&& BuildingLowerTerrain == 0 && BuildingRaiseTerrain == 0 && BuildingPlantForest == 0 && BuildingPlantJungle == 0 && BuildingThawTundra == 0 && BuildingAddRiver == 0)
 			{
-				if (X == RoadTo.X && Y == RoadTo.Y)
+				if (RoadToEndsHere(Map[X, Y]))
 				{
 					RoadTo = Point.Empty;
 				}
+				else if (X == RoadTo.X && Y == RoadTo.Y) { }   // laying rail on the last tile
 				else
 				{
 					ITile tile = Map[X, Y];
-					bool needsRoad = !tile.Road && !tile.RailRoad && tile.City is null && !tile.IsOcean;
+					bool needsRoad = RoadToNeedsWork(tile);
 					// A refused road (a river before Bridge Building) stranded the settler on
 					// it for good: no road started, and no Goto either.
 					if (!needsRoad || !BuildRoad())
@@ -1011,6 +1024,11 @@ namespace CivOne.Units
 			.Create("Build Road To...")
 			.SetShortcut("o")
 			.OnSelect((s, a) => GameTask.Enqueue(Show.RoadTo));
+
+		private MenuItem<int> MenuBuildRailTo() => MenuItem<int>
+			.Create("Build Rail To...")
+			.SetShortcut("O")
+			.OnSelect((s, a) => GameTask.Enqueue(Show.RailTo));
 
 		private MenuItem<int> MenuBuildIrrigation() => MenuItem<int>
 			.Create((Map[X, Y] is Forest) ? "Change to Plains" :
@@ -1132,6 +1150,8 @@ namespace CivOne.Units
 				}
 				if (!tile.IsOcean && !tile.TransportTube)
 					yield return MenuBuildRoadTo();
+				if (!tile.IsOcean && !tile.TransportTube && Human.HasAdvance<RailRoad>())
+					yield return MenuBuildRailTo();
 				if (!tile.Irrigation && ((tile is Desert) || (tile is Grassland) || (tile is Hills) || (tile is Plains) || (tile is River) || (tile is Forest) || (tile is Jungle) || (tile is Swamp)))
 					yield return MenuBuildIrrigation();
 				if (!tile.Mine && ((tile is Desert) || (tile is Hills) || (tile is Mountains) || (tile is Jungle) || (tile is Grassland) || (tile is Plains) || (tile is Swamp)))
