@@ -233,6 +233,18 @@ LAND_FORCES = [
         ( 26.0, -81.8), ( 28.0, -82.7), ( 29.5, -83.4),
         ( 30.2, -86.0),
     ]),
+    # The Caspian Depression: the source image clamps everything at or below sea level to
+    # 0, so the Kalmyk steppe, the Ryn desert, the lower Volga and Ural and the Kura
+    # lowland all came out as sea, three rows north of the real shore (Nov 2026). The
+    # whole basin is forced to land here and the Caspian polygon below carves the sea back,
+    # so the sea's shape is its outline, not the clamp. The delta goes first: first wins.
+    ("VolgaDelta", SWAMP, [
+        ( 46.8, 47.4), ( 46.8, 49.4), ( 45.9, 50.0), ( 45.4, 48.0),
+    ]),
+    ("CaspianDepression", PLAINS, [
+        ( 51.5, 44.0), ( 51.5, 55.5), ( 36.0, 55.5), ( 36.0, 48.0),
+        ( 40.0, 46.0), ( 44.0, 44.0),
+    ]),
 ]
 
 # ── Strait overrides ──────────────────────────────────────────────────────────

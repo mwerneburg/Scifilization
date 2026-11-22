@@ -188,6 +188,18 @@ namespace CivOne.Tests
 			Assert.InRange(water, 0.15, 0.75);
 		}
 
+		// The source image clamps ground at or below sea level to 0, the value of the sea, so
+		// the Caspian Depression north of the shore (Kalmyk steppe, Ryn desert, lower Volga
+		// and Ural) was drawn as sea up to 50.4N; the real shore is near 47N (Nov 2026).
+		[Fact]
+		public void TheCaspianLowlandIsLand()
+		{
+			EarthMap? m = Load("earth_epic.bin");
+			if (m is null) return;
+			Assert.True(m.Water(50.5, 48.0, 45.5, 53.5) < 0.05, $"north of the Caspian is {m.Water(50.5, 48.0, 45.5, 53.5):P0} water");
+			Assert.True(m.Water(45.0, 38.0, 49.0, 51.5) > 0.9, "the Caspian itself went dry");
+		}
+
 		// Map.ResolveEarthBin walks FIVE directories up from the executable to reach the repo's
 		// resources/ — tuned for runtime/sdl/bin/{Debug,Release}/net10.0/. That count is
 		// hard-coded arithmetic against a directory layout, and if either moves the source
