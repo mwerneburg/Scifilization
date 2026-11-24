@@ -121,12 +121,14 @@ namespace CivOne.Tests
 		// headlessly — they park at the head of the queue and block everything behind
 		// them, including the order a test is actually trying to observe. Call this
 		// immediately before the action under test.
-		// Opens the culture gate, which wants Electronics in half the world: every living civ
-		// but the claimant learns it, because it is the world that must have arrived.
+		// Opens the culture gate, which wants Electronics held by half the world's people: every
+		// living civ learns it. The claimant too (Nov 2026): in a fixture where it has the only
+		// city it IS most of the world, and the rivals alone could not open the gate. That the
+		// leader cannot open its own window is SmallCivsDoNotHoldTheGateShut's to show.
 		public static void ElectronicsForTheWorld(Player claimant)
 		{
 			Game g = Game.Instance;
-			foreach (Player p in g.Players.Where(p => p is not null && p != claimant && g.PlayerNumber(p) != 0 && !p.IsDestroyed()))
+			foreach (Player p in g.Players.Where(p => p is not null && g.PlayerNumber(p) != 0 && !p.IsDestroyed()))
 				p.AddAdvance(new CivOne.Advances.Electronics(), false);
 		}
 

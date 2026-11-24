@@ -462,6 +462,27 @@ namespace CivOne.Tests
 			Assert.True(Game.CultureGateOpenForDisplay());
 		}
 
+		// Half the world's PEOPLE. Game 62b7e2d9: the Mongols and Guarani held Electronics and
+		// 64% of the people from turn 359, but four civs did not, among them a reborn English
+		// rump of 89 people, and counting heads kept the gate shut until turn 405.
+		[Fact]
+		public void SmallCivsDoNotHoldTheGateShut()
+		{
+			Sim.NewGame(width: 80, height: 50);
+			Game g = Game.Instance;
+			Player[] world = TheWorld(g);
+			Assert.True(world.Length >= 5, $"fixture: only {world.Length} civs");
+			for (int i = 0; i < world.Length; i++)
+				g.AddCity(world[i], 0, 4 + 6 * i, 4)!.Size = (byte)(i < 2 ? 10 : 1);
+
+			world[0].AddAdvance(new Advances.Electronics(), false);
+			Assert.False(Game.CultureGateOpenForDisplay(), "the leader alone opened its own window");
+
+			world[1].AddAdvance(new Advances.Electronics(), false);
+			Assert.True(Game.CultureGateOpenForDisplay(),
+				$"two civs with {20 * 100 / (20 + world.Length - 2)}% of the people, and the gate is shut");
+		}
+
 		// The hold has to be long enough to be a contest. Leads changed hands a median of 12
 		// times a game across 21 measured runs; a short hold would make this a coronation.
 		//
@@ -523,10 +544,9 @@ namespace CivOne.Tests
 				p.Explore(40, 25, range: 20);
 			}
 			us.AddAdvance(new Advances.Philosophy(), false);
-			// The clock opens on ELECTRONICS held by anyone, not on a date. Granted to a
-			// RIVAL rather than the claimant, so the fixture also demonstrates that the gate
-			// is the world's and not the leader's. There is no way to un-learn an advance,
-			// so a shut gate is expressed by never granting it.
+			// The clock opens on ELECTRONICS held by half the world's people, not on a date.
+			// There is no way to un-learn an advance, so a shut gate is expressed by never
+			// granting it.
 			if (gateOpen) Sim.ElectronicsForTheWorld(us);
 
 			// Equal populations, so culture per head is decided by culture alone.

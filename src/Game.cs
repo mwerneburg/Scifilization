@@ -5291,13 +5291,22 @@ namespace CivOne
 		// in game aa0eb1a5 the Malians had it on turn 215 (around 650 AD), the gate opened,
 		// and the Russians won on 9 cities at turn 290 (1400 AD). Half the world had it on
 		// turn 267. The outsiders are not the world, as for the culture rivals.
+		//
+		// Half the world's PEOPLE, not half its civilizations (Nov 2026). Counting heads let a
+		// rump hold the gate shut: in game 62b7e2d9 a reborn English state of 35 villages
+		// (89 people, 9 advances) counted the same as the Guarani's 664, and the gate opened on
+		// turn 405 when, by people, it had been open since turn 359 (Mongols and Guarani, 64%).
+		// The leader alone held 36%, so it still could not open its own window. Each civ
+		// weighs at least one, so a world with no cities yet counts heads as before.
 		internal static bool CultureGateOpenForDisplay() => Instance.CultureGateOpen();
 
 		private bool CultureGateOpen()
 		{
 			Player[] world = _players.Where(p => p is not null && !p.IsDestroyed()
 				&& PlayerNumber(p) != 0 && !IsOutsider(p)).ToArray();
-			return world.Length > 0 && world.Count(p => p.HasAdvance<Advances.Electronics>()) * 2 >= world.Length;
+			long People(Player p) => Math.Max(1, p.Populace);
+			return world.Length > 0
+				&& world.Where(p => p.HasAdvance<Advances.Electronics>()).Sum(People) * 2 >= world.Sum(People);
 		}
 
 		// How the gate year is written for a player. Year 1 is the game's "0 CE" (there is no
