@@ -350,10 +350,10 @@ namespace CivOne.Screens
 				gamePlay.CenterOnPoint(startUnit.X, startUnit.Y);
 				
 				if (Game.InstantAdvice)
-				{
 					GameTask.Enqueue(Show.InterfaceHelp);
-					GameTask.Enqueue(Message.Help("--- Civilization Note ---", TextFile.Instance.GetGameText("HELP/FIRSTMOVE")));
-				}
+				// Vesta's welcome, in place of HELP/FIRSTMOVE: that text went with the DOS files
+				// and left an empty box. Guide.Note checks the Instant Advice switch itself.
+				Guide.Note(GuideNote.Welcome);
 				return true;
 			}
 			

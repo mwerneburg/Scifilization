@@ -429,7 +429,8 @@ namespace CivOne
 					PopulaceHistory      = _populaceHistory.Select(s => s.ToList()).ToList(),
 					OutputHistory        = _outputHistory.Select(s => s.ToList()).ToList(),
 					ReplayData           = replay,
-					Transmissions        = Transmissions.Select(t => new CosTransmission { Type = t.Type, Year = t.Year }).ToList()
+					Transmissions        = Transmissions.Select(t => new CosTransmission { Type = t.Type, Year = t.Year }).ToList(),
+					GuideNotes           = GuideNotesShown.Select(n => n.ToString()).ToList()
 				},
 				Map     = Map.Instance.SaveToCos(),
 				Players = players,
@@ -797,6 +798,9 @@ namespace CivOne
 			if (g.Transmissions is not null)
 				foreach (var t in g.Transmissions)
 					Transmissions.Add(new TransmissionRecord { Type = t.Type, Year = t.Year });
+			// By name, and a name this build does not know is skipped rather than failing the load.
+			foreach (string n in g.GuideNotes ?? new List<string>())
+				if (Enum.TryParse(n, out GuideNote note)) GuideNotesShown.Add(note);
 			if (g.ScoreHistory is not null)
 				foreach (var entry in g.ScoreHistory)
 					_scoreHistory.Add(entry.ToArray());

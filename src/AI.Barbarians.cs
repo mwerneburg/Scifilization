@@ -137,6 +137,7 @@ namespace CivOne
 						if (nearestCity.Player == Human && Human.Visible(unit.Tile))
 						{
 							GameTask.Insert(Message.Advisor(Advisor.Defense, false, "Barbarian raiding party", $"lands near {nearestCity.Name}!", "Citizens are alarmed."));
+							Guide.Note(GuideNote.Barbarians);
 						}
 					}
 

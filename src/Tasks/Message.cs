@@ -49,6 +49,8 @@ namespace CivOne.Tasks
 
 		public static Message General(params string[] message) => new Message(new MessageBox(message));
 
+		public static Message Guide(GuideMessage note) => new Message(note);
+
 		public static Message Help(string title, params string[] message) => new Message(new PopupMessage(2, title, message));
 
 		public static Message Error(string title, params string[] message)

@@ -118,6 +118,7 @@ namespace CivOne.Units
 				Message msgBox = Message.General(message);
 				msgBox.Done += method;
 				GameTask.Insert(msgBox);
+				Guide.Note(GuideNote.Hut);
 				return;
 			}
 			method(this, null);

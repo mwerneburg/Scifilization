@@ -510,6 +510,7 @@ namespace CivOne
 			{
 				Game.Instance.AddReplayEvent(new ReplayData.TechDiscovered(Game.GameTurn, Game.PlayerNumber(this), (advance as ICivilopedia).Name));
 				DecisionLogger.LogAdvance(this, (advance as ICivilopedia).Name);
+				if (IsHuman && advance is CivOne.Advances.Monarchy) Guide.Note(GuideNote.Monarchy);
 				InvalidateCityCaches();
 				// A holder that has just learned its Dome part's advance replans now, as at the
 				// warning. Otherwise the part waits for the current build and the queue: 20 turns
@@ -1466,6 +1467,7 @@ namespace CivOne
 						GameTask.Enqueue(Message.Newspaper(null!, "Treasury running low.",
 							$"{Gold} gold against {upkeep} upkeep.",
 							"Buildings will be sold to cover it."));
+						Guide.Note(GuideNote.Treasury);
 					}
 				}
 				else _treasuryWarned = false;

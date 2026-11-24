@@ -1425,6 +1425,10 @@ namespace CivOne
 			Enums.Wonder.DomeKineticRing,
 		};
 
+		// The guide's notes already shown this game (Guide.cs). Saved, so a reload does not
+		// greet the player twice.
+		internal readonly HashSet<GuideNote> GuideNotesShown = new();
+
 		// Log of terminal transmissions shown during this game
 		internal readonly List<TransmissionRecord> Transmissions = new();
 
@@ -2871,12 +2875,9 @@ namespace CivOne
 			}
 			GameTask.Enqueue(Turn.New(CurrentPlayer));
 
-			if (CurrentPlayer != HumanPlayer) return;
-			
-			if (Game.InstantAdvice && (Common.TurnToYear(Game.GameTurn) == -3600 || Common.TurnToYear(Game.GameTurn) == -2800))
-				GameTask.Enqueue(Message.Help("--- Civilization Note ---", TextFile.Instance.GetGameText("HELP/HELP1")));
-			else if (Game.InstantAdvice && (Common.TurnToYear(Game.GameTurn) == -3200 || Common.TurnToYear(Game.GameTurn) == -2400))
-				GameTask.Enqueue(Message.Help("--- Civilization Note ---", TextFile.Instance.GetGameText("HELP/HELP2")));
+			// Civ 1's dated Instant Advice notes (HELP1/HELP2 at 3600-2400 BC) were here. Their
+			// text went with the DOS files and they popped empty boxes; Vesta's notes, tied to
+			// moments rather than dates, replace them (Guide.cs).
 		}
 
 		// The victory paths, judged in this order each round. True when one has ended the game,
@@ -3848,6 +3849,7 @@ namespace CivOne
 			Game.UpdateResources(city.Tile);
 			if (Game.Started)
 				_replayData.Add(new ReplayData.CityBuilt(_gameTurn, city.Owner, _cities.Count - 1, nameId, x, y));
+				if (player == HumanPlayer) Guide.Note(GuideNote.FirstCity, city.Name);
 			return city;
 		}
 

@@ -83,6 +83,8 @@ namespace CivOne.Tasks
 			ChooseTech chooseTech = new ChooseTech();
 			chooseTech.Closed += ClosedChooseTech;
 			Common.AddScreen(chooseTech);
+			// Vesta's note goes on top of the choice it explains, not after it in the queue.
+			if (Guide.Take(GuideNote.Research) is Screens.Dialogs.GuideMessage note) Common.AddScreen(note);
 		}
 
 		public TechSelect(Player player)

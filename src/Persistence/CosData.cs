@@ -184,6 +184,7 @@ namespace CivOne.Persistence
 		public List<List<int>> OutputHistory { get; set; } = null!;
 		public List<CosReplayEntry> ReplayData { get; set; } = null!;
 		public List<CosTransmission> Transmissions { get; set; } = null!;
+		public List<string>? GuideNotes { get; set; }   // GuideNote names; null in saves before Nov 2026
 	}
 
 	public class CosTransmission

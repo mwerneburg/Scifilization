@@ -32,7 +32,7 @@ namespace CivOne.Tests
 				.Select(m => m.Groups[1].Value).ToHashSet();
 
 			var named = Regex.Matches(Code("src/Graphics/Free.cs"), "\"([a-z][a-z0-9_]*[a-z0-9])\"")
-				.Concat(new[] { "src/Graphics/Sprites/MapTile.cs", "src/Graphics/Icons.cs" }.SelectMany(f =>
+				.Concat(new[] { "src/Graphics/Sprites/MapTile.cs", "src/Graphics/Icons.cs", "src/Screens/Dialogs/GuideMessage.cs" }.SelectMany(f =>
 					Regex.Matches(Code(f), "Free(?:\\.Instance)?\\.(?:Improvement|AdvisorBadge)\\(\"([a-z_]+)\"\\)")))
 				.Concat(Regex.Matches(Regex.Match(Code("src/Screens/Dialogs/AdvisorMessage.cs"), @"names = \[(.*)\]").Value, "\"([a-z]+)\""))
 				.Select(m => m.Groups[1].Value).Distinct().ToList();

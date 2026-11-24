@@ -2429,6 +2429,7 @@ namespace CivOne
 
 				if (DisorderTurns == 0)
 				{
+					if (Player == Human) Guide.Note(GuideNote.Disorder, Name);
 					if (Player == Human && Game.Animations)
 					{
 						GameTask.Insert(Show.EventArt("civilunrest0", $"Civil disorder in {Name}!"));
@@ -2585,6 +2586,7 @@ namespace CivOne
 				if (!GrowthBlocked)
 				{
 					Size++;
+					if (Size == 3 && Player.IsHuman && Player.Cities.Length == 1) Guide.Note(GuideNote.Grow, Name);
 				}
 
 				if (_buildings.Any(b => (b is Granary)))
@@ -2697,6 +2699,7 @@ namespace CivOne
 					}
 					Shields = 0;
 					IUnit unit = built;
+					if (unit is Settlers && Player.IsHuman) Guide.Note(GuideNote.Settlers);
 					bool sunTzu = Player.HasWonder<SunTzusWarAcademy>() && !Game.WonderObsolete<SunTzusWarAcademy>();
 					unit.Veteran = (_buildings.Any(b => (b is Barracks)))
 						|| (sunTzu && unit.Class == UnitClass.Land && unit.Attack > 0);
