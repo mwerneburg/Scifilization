@@ -511,6 +511,8 @@ namespace CivOne
 				Game.Instance.AddReplayEvent(new ReplayData.TechDiscovered(Game.GameTurn, Game.PlayerNumber(this), (advance as ICivilopedia).Name));
 				DecisionLogger.LogAdvance(this, (advance as ICivilopedia).Name);
 				if (IsHuman && advance is CivOne.Advances.Monarchy) Guide.Note(GuideNote.Monarchy);
+				if (IsHuman && Common.Wonders.FirstOrDefault(w => w.RequiredTech?.Id == advance.Id && !Game.Instance.WonderBuilt(w)) is Wonders.IWonder wonder)
+					Guide.Note(GuideNote.Wonder, wonder.Name);
 				InvalidateCityCaches();
 				// A holder that has just learned its Dome part's advance replans now, as at the
 				// warning. Otherwise the part waits for the current build and the queue: 20 turns
@@ -781,7 +783,10 @@ namespace CivOne
 			if (this == Human)
 				GameTask.Insert(Message.Advisor(Advisor.Foreign, true, $"You have declared", $"war on the {enemy.TribeNamePlural}!"));
 			else if (enemy == Human)
+			{
 				GameTask.Insert(Message.Advisor(Advisor.Foreign, true, $"The {TribeNamePlural}", "have declared war on us!"));
+				Guide.Note(GuideNote.War);
+			}
 
 			// Mutual defense pacts: everyone bound to the victim joins against the
 			// aggressor — automatically, the human included; the treaty was signed.

@@ -112,6 +112,10 @@ namespace CivOne.Screens
 			IProduction choice = Filtered[_selection];
 			_city.SetProduction(choice);
 			DecisionLogger.LogCityProduction(_city, choice, "Human", isHuman: true);
+			// Vesta explains the +50% the first time the player orders work without its material.
+			// Here, at the player's choice, not in City.SetProduction, which loading a save calls too.
+			if (Game.RequiredResource(choice) is var need && need != StrategicResource.None && !Game.HasResource(_city.Player, need))
+				Guide.Note(GuideNote.Materials, need.ToString());
 			Destroy();
 		}
 

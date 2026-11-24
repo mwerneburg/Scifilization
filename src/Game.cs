@@ -3849,7 +3849,8 @@ namespace CivOne
 			Game.UpdateResources(city.Tile);
 			if (Game.Started)
 				_replayData.Add(new ReplayData.CityBuilt(_gameTurn, city.Owner, _cities.Count - 1, nameId, x, y));
-				if (player == HumanPlayer) Guide.Note(GuideNote.FirstCity, city.Name);
+			if (player == HumanPlayer) Guide.Note(GuideNote.FirstCity, city.Name);
+			if (player == HumanPlayer && player.Cities.Length == 4) Guide.Note(GuideNote.Victory);
 			return city;
 		}
 

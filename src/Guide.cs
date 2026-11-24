@@ -16,7 +16,8 @@ namespace CivOne
 	// or inserting here never replays an old note on a loaded game.
 	internal enum GuideNote
 	{
-		Welcome, FirstCity, Grow, Research, Hut, Barbarians, Disorder, Treasury, Settlers, Monarchy
+		Welcome, FirstCity, Grow, Research, Hut, Barbarians, Disorder, Treasury, Settlers, Monarchy,
+		War, Wonder, Materials, Victory
 	}
 
 	// Vesta, the newcomer's advisor (Nov 2026). Civ 1's Instant Advice showed HELP.TXT notes on
@@ -30,7 +31,8 @@ namespace CivOne
 	{
 		internal const string Name = "Vesta";
 
-		internal static string[] Text(GuideNote note, string city = "") => note switch
+		// `subject` is the note's one variable: a city, a wonder, a material.
+		internal static string[] Text(GuideNote note, string subject = "") => note switch
 		{
 			GuideNote.Welcome => [
 				"Hello, Leader. I am VESTA.",
@@ -43,7 +45,7 @@ namespace CivOne
 				"toward a river or coast first.",
 			],
 			GuideNote.FirstCity => [
-				$"{city}! Every story in my archive",
+				$"{subject}! Every story in my archive",
 				"began with a city like this one.",
 				"",
 				"Click it to choose what it builds:",
@@ -52,7 +54,7 @@ namespace CivOne
 				"you are ready to end the turn.",
 			],
 			GuideNote.Grow => [
-				$"{city} has reached size 3.",
+				$"{subject} has reached size 3.",
 				"The peoples who reach the stars",
 				"all spread early. Each Settlers",
 				"founds a new city, and costs its",
@@ -81,7 +83,7 @@ namespace CivOne
 				"to take.",
 			],
 			GuideNote.Disorder => [
-				$"{city} is in disorder: more",
+				$"{subject} is in disorder: more",
 				"unhappy citizens than happy ones,",
 				"and no work gets done. A Temple",
 				"calms them. In the city screen,",
@@ -112,23 +114,62 @@ namespace CivOne
 				"a few turns of anarchy, then a",
 				"better age.",
 			],
+			GuideNote.War => [
+				"War. My archive holds many, and",
+				"the peoples who reached the stars",
+				"lived through theirs. Fortify a",
+				"defender in every city: hills and",
+				"City Walls make it stronger.",
+				"For peace, TALK from the",
+				"Intelligence Advisor (F3) once",
+				"you hold an embassy.",
+			],
+			GuideNote.Wonder => [
+				"We can now build a WONDER:",
+				$"{subject}.",
+				"Each stands once in all the world",
+				"and gives its builder a lasting",
+				"gift. If a rival finishes first,",
+				"switch to another wonder: the",
+				"shields carry over.",
+			],
+			GuideNote.Materials => [
+				$"We hold no {subject.ToUpperInvariant()}, so this",
+				"costs half again in shields.",
+				"Deposits lie in special tiles:",
+				"copper and coal in hills, iron in",
+				"mountains, oil and salt in desert.",
+				"Work one from a city, or walk",
+				"Settlers there and press Y to",
+				"make camp.",
+			],
+			GuideNote.Victory => [
+				"Four cities! The peoples in my",
+				"archive are remembered six ways:",
+				"conquest, commerce, culture, the",
+				"Dome, the stars, or leading the",
+				"world in 2100. Temples, libraries",
+				"and wonders build CULTURE. The",
+				"Civilopedia's WINNING THE GAME",
+				"tells the rest.",
+			],
 			_ => [],
 		};
 
 		// The note's screen, or null when it has been shown, the guide is off, or nobody is
 		// watching (autopilot). Marks the note shown. For a caller that must put the note on
 		// top of a screen it is opening itself; everyone else calls Note.
-		internal static GuideMessage? Take(GuideNote note, string city = "")
+		internal static GuideMessage? Take(GuideNote note, string subject = "")
 		{
 			Game g = Game.Instance;
 			if (g is null || !g.InstantAdvice || Settings.Instance.Autopilot) return null;
 			if (!g.GuideNotesShown.Add(note)) return null;
-			return new GuideMessage(Text(note, city));
+			return new GuideMessage(Text(note, subject));
 		}
 
-		internal static void Note(GuideNote note, string city = "")
+		internal static void Note(GuideNote note, string subject = "")
 		{
-			if (Take(note, city) is GuideMessage m) GameTask.Enqueue(Message.Guide(m));
+			if (Take(note, subject) is GuideMessage m) GameTask.Enqueue(Message.Guide(m));
 		}
 	}
 }
