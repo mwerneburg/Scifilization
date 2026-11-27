@@ -18,32 +18,36 @@ namespace CivOne.Units
 	{
 		private static Player Human => Game.Instance.HumanPlayer;
 
+		// The letter a working Settlers wears, on the map and in the side panel's stack: the
+		// key that gave the order. Civ 1 lettered only road, irrigation, mine and fortress, so
+		// every later job (a camp, a terrace, an aquafarm) looked idle. Camp is C, not its
+		// key: lowercase y prints the same as Terrace's Y.
+		internal static char? JobLetter(this Settlers s) =>
+			s.BuildingRoad > 0 ? 'R' :
+			s.BuildingIrrigation > 0 ? 'I' :
+			s.BuildingMine > 0 ? 'M' :
+			s.BuildingFortress > 0 ? 'F' :
+			s.BuildingCamp > 0 ? 'C' :
+			s.BuildingCleanPollution > 0 ? 'P' :
+			s.BuildingCanopyArray > 0 ? 'Q' :
+			s.BuildingAquafarm > 0 ? 'A' :
+			s.BuildingLowerTerrain > 0 ? 'L' :
+			s.BuildingRaiseTerrain > 0 ? 'H' :
+			s.BuildingPlantForest > 0 ? 'V' :
+			s.BuildingPlantJungle > 0 ? 'J' :
+			s.BuildingThawTundra > 0 ? 'K' :
+			s.BuildingAddRiver > 0 ? 'N' :
+			s.BuildingTerrace > 0 ? 'Y' :
+			s.BuildingMoistureFarm > 0 ? 'I' :
+			null;
+
 		public static Bytemap ToBitmap(this IUnit unit, bool showState = true) => ToBitmap(unit, unit.Owner, showState);
 		public static Bytemap ToBitmap(this IUnit unit, byte colour, bool showState = true)
 		{
 			if (showState)
 			{
-				switch (unit)
-				{
-					case Settlers settlers:
-						if (settlers.BuildingRoad > 0)
-						{
-							return Unit.Letter(settlers.Type, 'R', colour).Bitmap;
-						}
-						else if (settlers.BuildingIrrigation > 0)
-						{
-							return Unit.Letter(settlers.Type, 'I', colour).Bitmap;
-						}
-						else if (settlers.BuildingMine > 0)
-						{
-							return Unit.Letter(settlers.Type, 'M', colour).Bitmap;
-						}
-						else if (settlers.BuildingFortress > 0)
-						{
-							return Unit.Letter(settlers.Type, 'F', colour).Bitmap;
-						}
-						break;
-				}
+				if (unit is Settlers settlers && settlers.JobLetter() is char job)
+					return Unit.Letter(settlers.Type, job, colour).Bitmap;
 				if (unit.Sentry)
 				{
 					return Unit.Sentry(unit.Type, colour).Bitmap;

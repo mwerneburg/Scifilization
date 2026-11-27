@@ -57,6 +57,22 @@ namespace CivOne.Tests
 			Assert.True(Game.Instance.HasResource(owner, StrategicResource.Coal));
 		}
 
+		// A Settlers at work wears its job's letter, on the map and in the side panel's stack
+		// under a Dirigible or a boat. A camp wore none, so a settler that had been told to camp
+		// looked exactly like one still waiting for orders (the user, Nov 2026).
+		[Fact]
+		public void ASettlerBuildingACampWearsAC()
+		{
+			var (owner, unit) = ASettlerOnCoal(human: true);
+			byte colour = Game.Instance.PlayerNumber(owner);
+			Assert.Null(unit.JobLetter());
+
+			Assert.True(unit.BuildCamp());
+
+			Assert.Equal('C', unit.JobLetter());
+			Assert.Same(CivOne.Graphics.Sprites.Unit.Letter(UnitType.Settlers, 'C', colour).Bitmap, unit.ToBitmap());
+		}
+
 		// The same order given by the human player. This is the reported failure.
 		[Fact]
 		public void AHumansCampCompletesAfterThreeTurns()
